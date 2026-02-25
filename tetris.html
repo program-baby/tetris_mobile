@@ -40,13 +40,25 @@
       max-width: 760px;
     }
 
-    canvas {
+    #game {
       width: min(300px, calc((100dvh - 190px) / 2), calc(100vw - 24px));
       height: auto;
       aspect-ratio: 1 / 2;
       border: 3px solid #334155;
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    }
+
+    .next-wrap {
+      margin-top: 10px;
+    }
+
+    #next {
+      width: 120px;
+      height: 120px;
+      border: 2px solid #334155;
+      background: rgba(2, 6, 23, 0.25);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
     }
 
     .panel {
@@ -128,6 +140,10 @@
       <div class="stat">Score: <span id="score">0</span></div>
       <div class="stat">Lines: <span id="lines">0</span></div>
       <div class="stat">Level: <span id="level">1</span></div>
+      <div class="next-wrap">
+        <div class="stat">Next</div>
+        <canvas id="next" width="120" height="120" aria-label="Next piece"></canvas>
+      </div>
       <button id="restart" type="button">Restart</button>
       <p class="muted">
         ← →: 移動<br>
@@ -143,10 +159,16 @@
     const COLS = 10;
     const ROWS = 20;
     const BLOCK = 30;
+    const NEXT_GRID = 4;
+    const NEXT_SIZE = 120;
+    const NEXT_BLOCK = NEXT_SIZE / NEXT_GRID;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
     ctx.scale(BLOCK, BLOCK);
+    const nextCanvas = document.getElementById("next");
+    const nextCtx = nextCanvas.getContext("2d");
+    nextCtx.scale(NEXT_BLOCK, NEXT_BLOCK);
 
     const scoreEl = document.getElementById("score");
     const linesEl = document.getElementById("lines");
@@ -244,49 +266,70 @@
 
     function randomPiece() {
       const type = Math.floor(Math.random() * 7) + 1;
-      const matrix = cloneMatrix(SHAPES[type]);
+      return {
+        matrix: cloneMatrix(SHAPES[type])
+      };
+    }
+
+    function createActivePiece(pieceTemplate) {
+      const matrix = cloneMatrix(pieceTemplate.matrix);
       return {
         matrix,
         pos: { x: Math.floor((COLS - matrix[0].length) / 2), y: 0 }
       };
     }
 
-    function drawMatrix(matrix, offset) {
+    function drawMatrix(targetCtx, matrix, offset) {
       matrix.forEach((row, y) => {
         row.forEach((value, x) => {
           if (!value) return;
-          ctx.fillStyle = COLORS[value];
-          ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
-          ctx.strokeStyle = "rgba(2, 6, 23, 0.4)";
-          ctx.lineWidth = 0.05;
-          ctx.strokeRect(x + offset.x, y + offset.y, 1, 1);
+          targetCtx.fillStyle = COLORS[value];
+          targetCtx.fillRect(x + offset.x, y + offset.y, 1, 1);
+          targetCtx.strokeStyle = "rgba(2, 6, 23, 0.4)";
+          targetCtx.lineWidth = 0.05;
+          targetCtx.strokeRect(x + offset.x, y + offset.y, 1, 1);
         });
       });
     }
 
-    function drawGrid() {
-      ctx.strokeStyle = "rgba(148, 163, 184, 0.15)";
-      ctx.lineWidth = 0.03;
-      for (let x = 0; x <= COLS; x++) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, ROWS);
-        ctx.stroke();
+    function drawGrid(targetCtx, cols, rows) {
+      targetCtx.strokeStyle = "rgba(148, 163, 184, 0.15)";
+      targetCtx.lineWidth = 0.03;
+      for (let x = 0; x <= cols; x++) {
+        targetCtx.beginPath();
+        targetCtx.moveTo(x, 0);
+        targetCtx.lineTo(x, rows);
+        targetCtx.stroke();
       }
-      for (let y = 0; y <= ROWS; y++) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(COLS, y);
-        ctx.stroke();
+      for (let y = 0; y <= rows; y++) {
+        targetCtx.beginPath();
+        targetCtx.moveTo(0, y);
+        targetCtx.lineTo(cols, y);
+        targetCtx.stroke();
       }
+    }
+
+    function drawNext(state) {
+      nextCtx.clearRect(0, 0, NEXT_GRID, NEXT_GRID);
+      nextCtx.fillStyle = "#020617";
+      nextCtx.fillRect(0, 0, NEXT_GRID, NEXT_GRID);
+      drawGrid(nextCtx, NEXT_GRID, NEXT_GRID);
+
+      const matrix = state.nextPiece.matrix;
+      const offset = {
+        x: (NEXT_GRID - matrix[0].length) / 2,
+        y: (NEXT_GRID - matrix.length) / 2
+      };
+      drawMatrix(nextCtx, matrix, offset);
     }
 
     function draw(state) {
       ctx.fillStyle = "#020617";
       ctx.fillRect(0, 0, COLS, ROWS);
-      drawGrid();
-      drawMatrix(state.board, { x: 0, y: 0 });
-      drawMatrix(state.piece.matrix, state.piece.pos);
+      drawGrid(ctx, COLS, ROWS);
+      drawMatrix(ctx, state.board, { x: 0, y: 0 });
+      drawMatrix(ctx, state.piece.matrix, state.piece.pos);
+      drawNext(state);
 
       if (state.gameOver) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
@@ -312,7 +355,8 @@
     }
 
     function spawnNext(state) {
-      state.piece = randomPiece();
+      state.piece = createActivePiece(state.nextPiece);
+      state.nextPiece = randomPiece();
       if (collide(state.board, state.piece)) {
         state.gameOver = true;
       }
@@ -372,9 +416,12 @@
     }
 
     function createState() {
+      const firstPiece = randomPiece();
+      const secondPiece = randomPiece();
       return {
         board: createBoard(),
-        piece: randomPiece(),
+        piece: createActivePiece(firstPiece),
+        nextPiece: secondPiece,
         score: 0,
         lines: 0,
         level: 1,
