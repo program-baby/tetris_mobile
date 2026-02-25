@@ -100,8 +100,8 @@
     }
 
     #next {
-      width: 88px;
-      height: 88px;
+      width: 80px;
+      height: 80px;
       border: 2px solid var(--line);
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
@@ -109,7 +109,7 @@
 
     .controls {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: repeat(4, 1fr);
       gap: 5px;
     }
 
@@ -133,10 +133,9 @@
       background: #334155;
     }
 
-    .mini-btn {
-      width: 88px;
-      padding: 6px 8px;
-      font-size: 0.8rem;
+    .small {
+      font-size: 0.82rem;
+      padding: 7px 6px;
     }
 
     .hint {
@@ -172,9 +171,7 @@
       </div>
       <div class="next-box">
         <div class="next-label">NEXT</div>
-        <canvas id="next" width="88" height="88" aria-label="Next piece"></canvas>
-        <button id="pause" class="ghost mini-btn" type="button">Pause</button>
-        <button id="restart" class="ghost mini-btn" type="button">Reset</button>
+        <canvas id="next" width="80" height="80" aria-label="Next piece"></canvas>
       </div>
     </section>
 
@@ -187,8 +184,10 @@
       <button id="rotate" type="button">⟳</button>
       <button id="right" type="button">▶</button>
       <button id="soft" type="button">▼</button>
+      <button id="pause" class="ghost small" type="button">Pause</button>
       <button id="hard" type="button">DROP</button>
-      <button id="spare" class="ghost" type="button" disabled>KEY: P</button>
+      <button id="restart" class="ghost small" type="button">Reset</button>
+      <button id="spare" class="ghost small" type="button" disabled>KEY: P</button>
     </section>
 
     <p class="hint">タッチ操作: ◀ ▶ 移動 / ⟳ 回転 / ▼ 落下 / DROP 即落下</p>
@@ -199,7 +198,7 @@
     const ROWS = 20;
     const BLOCK = 30;
     const NEXT_GRID = 4;
-    const NEXT_CANVAS_PX = 88;
+    const NEXT_CANVAS_PX = 80;
     const NEXT_BLOCK = NEXT_CANVAS_PX / NEXT_GRID;
 
     const canvas = document.getElementById("game");
