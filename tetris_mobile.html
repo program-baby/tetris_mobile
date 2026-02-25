@@ -6,8 +6,6 @@
   <title>Tetris Mobile</title>
   <style>
     :root {
-      --bg1: #0a1222;
-      --bg2: #101b33;
       --panel: #0f1a2f;
       --line: #334155;
       --text: #e2e8f0;
@@ -35,10 +33,10 @@
     }
 
     .app {
-      width: min(100%, 420px);
+      width: min(100%, 430px);
       max-height: 100dvh;
       display: grid;
-      grid-template-rows: auto auto 1fr auto;
+      grid-template-rows: auto auto auto auto;
       gap: 8px;
     }
 
@@ -47,6 +45,13 @@
       border: 1px solid var(--line);
       border-radius: 12px;
       padding: 10px;
+    }
+
+    .top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
     }
 
     .title {
@@ -69,18 +74,37 @@
       font-size: 0.75rem;
     }
 
+    .next-box {
+      display: grid;
+      gap: 6px;
+      justify-items: center;
+    }
+
+    .next-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
     .board-wrap {
       display: grid;
       place-items: center;
     }
 
-    canvas {
-      width: min(300px, calc((100dvh - 300px) / 2), calc(100vw - 20px));
+    #game {
+      width: min(300px, calc((100dvh - 330px) / 2), calc(100vw - 20px));
       height: auto;
       aspect-ratio: 1 / 2;
       border: 3px solid var(--line);
-      background: #020617;
+      background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    #next {
+      width: 88px;
+      height: 88px;
+      border: 2px solid var(--line);
+      background: rgba(2, 6, 23, 0.25);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
     }
 
     .actions {
@@ -131,12 +155,18 @@
 </head>
 <body>
   <main class="app">
-    <section class="panel">
-      <h1 class="title">TETRIS MOBILE</h1>
-      <div class="stats">
-        <div>Score<br><strong id="score">0</strong></div>
-        <div>Lines<br><strong id="lines">0</strong></div>
-        <div>Level<br><strong id="level">1</strong></div>
+    <section class="panel top">
+      <div>
+        <h1 class="title">TETRIS MOBILE</h1>
+        <div class="stats">
+          <div><span>Score</span><strong id="score">0</strong></div>
+          <div><span>Lines</span><strong id="lines">0</strong></div>
+          <div><span>Level</span><strong id="level">1</strong></div>
+        </div>
+      </div>
+      <div class="next-box">
+        <div class="next-label">NEXT</div>
+        <canvas id="next" width="88" height="88" aria-label="Next piece"></canvas>
       </div>
     </section>
 
@@ -158,17 +188,24 @@
       <button id="spare" class="ghost" type="button" disabled>KEY: P</button>
     </section>
 
-    <p class="hint">キーボードでも操作可: ← → ↓ ↑ / Space / P</p>
+    <p class="hint">タッチ操作: ◀ ▶ 移動 / ⟳ 回転 / ▼ 落下 / DROP 即落下</p>
   </main>
 
   <script>
     const COLS = 10;
     const ROWS = 20;
     const BLOCK = 30;
+    const NEXT_GRID = 4;
+    const NEXT_CANVAS_PX = 88;
+    const NEXT_BLOCK = NEXT_CANVAS_PX / NEXT_GRID;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
     ctx.scale(BLOCK, BLOCK);
+
+    const nextCanvas = document.getElementById("next");
+    const nextCtx = nextCanvas.getContext("2d");
+    nextCtx.scale(NEXT_BLOCK, NEXT_BLOCK);
 
     const scoreEl = document.getElementById("score");
     const linesEl = document.getElementById("lines");
@@ -266,9 +303,13 @@
       }
     }
 
-    function randomPiece() {
+    function randomPieceTemplate() {
       const type = Math.floor(Math.random() * 7) + 1;
-      const matrix = cloneMatrix(SHAPES[type]);
+      return { matrix: cloneMatrix(SHAPES[type]) };
+    }
+
+    function createActivePiece(template) {
+      const matrix = cloneMatrix(template.matrix);
       return {
         matrix,
         pos: {
@@ -278,45 +319,60 @@
       };
     }
 
-    function drawMatrix(matrix, offset) {
+    function drawMatrix(targetCtx, matrix, offset) {
       matrix.forEach((row, y) => {
         row.forEach((value, x) => {
           if (!value) return;
-          ctx.fillStyle = COLORS[value];
-          ctx.fillRect(x + offset.x, y + offset.y, 1, 1);
-          ctx.strokeStyle = "rgba(2,6,23,0.45)";
-          ctx.lineWidth = 0.05;
-          ctx.strokeRect(x + offset.x, y + offset.y, 1, 1);
+          targetCtx.fillStyle = COLORS[value];
+          targetCtx.fillRect(x + offset.x, y + offset.y, 1, 1);
+          targetCtx.strokeStyle = "rgba(2, 6, 23, 0.45)";
+          targetCtx.lineWidth = 0.05;
+          targetCtx.strokeRect(x + offset.x, y + offset.y, 1, 1);
         });
       });
     }
 
-    function drawGrid() {
-      ctx.strokeStyle = "rgba(148,163,184,0.13)";
-      ctx.lineWidth = 0.03;
-      for (let x = 0; x <= COLS; x++) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, ROWS);
-        ctx.stroke();
+    function drawGrid(targetCtx, cols, rows) {
+      targetCtx.strokeStyle = "rgba(148, 163, 184, 0.13)";
+      targetCtx.lineWidth = 0.03;
+      for (let x = 0; x <= cols; x++) {
+        targetCtx.beginPath();
+        targetCtx.moveTo(x, 0);
+        targetCtx.lineTo(x, rows);
+        targetCtx.stroke();
       }
-      for (let y = 0; y <= ROWS; y++) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(COLS, y);
-        ctx.stroke();
+      for (let y = 0; y <= rows; y++) {
+        targetCtx.beginPath();
+        targetCtx.moveTo(0, y);
+        targetCtx.lineTo(cols, y);
+        targetCtx.stroke();
       }
+    }
+
+    function drawNext(state) {
+      nextCtx.clearRect(0, 0, NEXT_GRID, NEXT_GRID);
+      nextCtx.fillStyle = "#020617";
+      nextCtx.fillRect(0, 0, NEXT_GRID, NEXT_GRID);
+      drawGrid(nextCtx, NEXT_GRID, NEXT_GRID);
+
+      const matrix = state.nextPiece.matrix;
+      const offset = {
+        x: (NEXT_GRID - matrix[0].length) / 2,
+        y: (NEXT_GRID - matrix.length) / 2
+      };
+      drawMatrix(nextCtx, matrix, offset);
     }
 
     function draw(state) {
       ctx.fillStyle = "#020617";
       ctx.fillRect(0, 0, COLS, ROWS);
-      drawGrid();
-      drawMatrix(state.board, { x: 0, y: 0 });
-      drawMatrix(state.piece.matrix, state.piece.pos);
+      drawGrid(ctx, COLS, ROWS);
+      drawMatrix(ctx, state.board, { x: 0, y: 0 });
+      drawMatrix(ctx, state.piece.matrix, state.piece.pos);
+      drawNext(state);
 
       if (state.gameOver || state.paused) {
-        ctx.fillStyle = "rgba(0,0,0,0.56)";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.56)";
         ctx.fillRect(0, 0, COLS, ROWS);
         ctx.fillStyle = "#f8fafc";
         ctx.font = "0.82px sans-serif";
@@ -332,7 +388,8 @@
     }
 
     function spawnNext(state) {
-      state.piece = randomPiece();
+      state.piece = createActivePiece(state.nextPiece);
+      state.nextPiece = randomPieceTemplate();
       if (collide(state.board, state.piece)) state.gameOver = true;
     }
 
@@ -385,9 +442,12 @@
     }
 
     function createState() {
+      const first = randomPieceTemplate();
+      const second = randomPieceTemplate();
       return {
         board: createBoard(),
-        piece: randomPiece(),
+        piece: createActivePiece(first),
+        nextPiece: second,
         score: 0,
         lines: 0,
         level: 1,
@@ -461,5 +521,3 @@
   </script>
 </body>
 </html>
-
-
