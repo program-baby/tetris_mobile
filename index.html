@@ -13,11 +13,14 @@
       --accent: #22d3ee;
       --btn: #0ea5b5;
       --btn-active: #0b7c89;
+      --danger: #475569;
+      --danger-active: #334155;
     }
 
     * {
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
 
     body {
@@ -28,61 +31,81 @@
       background: linear-gradient(rgba(2, 6, 23, 0.62), rgba(2, 6, 23, 0.62)), url("./bg.png") center / cover no-repeat;
       display: grid;
       place-items: center;
-      padding: 8px;
+      padding: 6px;
       overflow: hidden;
     }
 
     .app {
-      width: min(100%, 430px);
+      width: min(100%, 440px);
       max-height: 100dvh;
       display: grid;
-      grid-template-rows: auto auto auto;
+      grid-template-rows: auto auto;
       gap: 6px;
+      align-content: start;
+    }
+
+    .arena {
+      display: grid;
+      grid-template-columns: 64px 1fr 92px;
+      gap: 6px;
+      align-items: start;
     }
 
     .panel {
       background: linear-gradient(180deg, #16233f, var(--panel));
       border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 8px;
+      border-radius: 10px;
+      padding: 6px;
     }
 
-    .top {
+    .left-tools {
       display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: start;
+      gap: 6px;
+      align-content: start;
+    }
+
+    .right-info {
+      display: grid;
+      gap: 6px;
+      align-content: start;
     }
 
     .title {
-      margin: 0 0 6px;
-      font-size: 1rem;
+      margin: 0;
+      font-size: 0.72rem;
       color: var(--accent);
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
+      text-align: center;
     }
 
-    .stats {
+    .stat-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
       gap: 4px;
-      font-size: 0.9rem;
+      font-size: 0.76rem;
+      line-height: 1.2;
     }
 
-    .stats span {
+    .stat-grid span {
       display: block;
       color: var(--muted);
-      font-size: 0.75rem;
-    }
-
-    .next-box {
-      display: grid;
-      gap: 5px;
-      justify-items: center;
+      font-size: 0.66rem;
     }
 
     .next-label {
-      font-size: 0.75rem;
       color: var(--muted);
+      font-size: 0.66rem;
+      text-align: center;
+      margin-top: 2px;
+    }
+
+    #next {
+      width: 76px;
+      height: 76px;
+      border: 2px solid var(--line);
+      background: rgba(2, 6, 23, 0.25);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+      display: block;
+      margin: 0 auto;
     }
 
     .board-wrap {
@@ -91,20 +114,12 @@
     }
 
     #game {
-      width: min(300px, calc((100dvh - 330px) / 2), calc(100vw - 20px));
+      width: min(300px, calc((100dvh - 178px) / 2), calc(100vw - 188px));
       height: auto;
       aspect-ratio: 1 / 2;
       border: 3px solid var(--line);
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-    }
-
-    #next {
-      width: 88px;
-      height: 88px;
-      border: 2px solid var(--line);
-      background: rgba(2, 6, 23, 0.25);
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
     }
 
     .controls {
@@ -115,12 +130,12 @@
 
     button {
       border: 0;
-      border-radius: 10px;
+      border-radius: 9px;
       background: var(--btn);
       color: #ecfeff;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 700;
-      padding: 7px 8px;
+      padding: 8px 6px;
       touch-action: manipulation;
     }
 
@@ -129,20 +144,34 @@
       transform: translateY(1px);
     }
 
+    .tool-btn {
+      width: 100%;
+      min-height: 40px;
+      font-size: 0.75rem;
+      line-height: 1.2;
+    }
+
     .ghost {
       background: #334155;
     }
 
-    .mini-btn {
-      width: 88px;
-      padding: 6px 8px;
-      font-size: 0.8rem;
+    .danger {
+      background: var(--danger);
+    }
+
+    .danger:active {
+      background: var(--danger-active);
+    }
+
+    .holding {
+      outline: 2px solid #f59e0b;
+      outline-offset: -2px;
     }
 
     .hint {
       text-align: center;
       color: var(--muted);
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       margin: 0;
     }
 
@@ -151,36 +180,31 @@
         display: none;
       }
     }
-
-    @media (max-height: 860px) {
-      .hint {
-        display: none;
-      }
-    }
   </style>
 </head>
 <body>
   <main class="app">
-    <section class="panel top">
-      <div>
-        <h1 class="title">TETRIS MOBILE</h1>
-        <div class="stats">
+    <section class="arena">
+      <aside class="panel left-tools">
+        <button id="pause" class="ghost tool-btn" type="button">Pause</button>
+        <button id="restart" class="danger tool-btn" type="button">Hold Reset</button>
+      </aside>
+
+      <div class="board-wrap">
+        <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
+      </div>
+
+      <aside class="panel right-info">
+        <h1 class="title">TETRIS</h1>
+        <div class="stat-grid">
           <div><span>Score</span><strong id="score">0</strong></div>
           <div><span>Lines</span><strong id="lines">0</strong></div>
           <div><span>Level</span><strong id="level">1</strong></div>
         </div>
-      </div>
-      <div class="next-box">
         <div class="next-label">NEXT</div>
-        <canvas id="next" width="88" height="88" aria-label="Next piece"></canvas>
-        <button id="pause" class="ghost mini-btn" type="button">Pause</button>
-        <button id="restart" class="ghost mini-btn" type="button">Reset</button>
-      </div>
+        <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
+      </aside>
     </section>
-
-    <div class="board-wrap">
-      <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
-    </div>
 
     <section class="panel controls">
       <button id="left" type="button">◀</button>
@@ -191,7 +215,7 @@
       <button id="spare" class="ghost" type="button" disabled>KEY: P</button>
     </section>
 
-    <p class="hint">タッチ操作: ◀ ▶ 移動 / ⟳ 回転 / ▼ 落下 / DROP 即落下</p>
+    <p class="hint">Resetは長押し(0.7秒) / 操作: ◀ ▶ ⟳ ▼ DROP</p>
   </main>
 
   <script>
@@ -199,8 +223,9 @@
     const ROWS = 20;
     const BLOCK = 30;
     const NEXT_GRID = 4;
-    const NEXT_CANVAS_PX = 88;
+    const NEXT_CANVAS_PX = 76;
     const NEXT_BLOCK = NEXT_CANVAS_PX / NEXT_GRID;
+    const RESET_HOLD_MS = 700;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -221,6 +246,8 @@
     const rotateBtn = document.getElementById("rotate");
     const softBtn = document.getElementById("soft");
     const hardBtn = document.getElementById("hard");
+
+    let resetTimer = null;
 
     const COLORS = [
       null,
@@ -504,21 +531,48 @@
       }, { passive: false });
     }
 
+    function startResetHold(e) {
+      e.preventDefault();
+      if (resetTimer) return;
+      restartBtn.classList.add("holding");
+      restartBtn.textContent = "Keep Holding";
+      resetTimer = setTimeout(() => {
+        state = createState();
+        updateHUD(state);
+        restartBtn.classList.remove("holding");
+        restartBtn.textContent = "Hold Reset";
+        resetTimer = null;
+      }, RESET_HOLD_MS);
+    }
+
+    function cancelResetHold(e) {
+      if (e) e.preventDefault();
+      if (resetTimer) {
+        clearTimeout(resetTimer);
+        resetTimer = null;
+      }
+      restartBtn.classList.remove("holding");
+      restartBtn.textContent = "Hold Reset";
+    }
+
     bindTap(leftBtn, () => move(state, -1));
     bindTap(rightBtn, () => move(state, 1));
     bindTap(rotateBtn, () => rotatePiece(state));
     bindTap(softBtn, () => drop(state));
     bindTap(hardBtn, () => hardDrop(state));
 
-    bindTap(restartBtn, () => {
-      state = createState();
-      updateHUD(state);
-    });
-
     bindTap(pauseBtn, () => {
       state.paused = !state.paused;
       updateHUD(state);
     });
+
+    restartBtn.addEventListener("click", (e) => e.preventDefault());
+    restartBtn.addEventListener("mousedown", startResetHold);
+    restartBtn.addEventListener("mouseup", cancelResetHold);
+    restartBtn.addEventListener("mouseleave", cancelResetHold);
+    restartBtn.addEventListener("touchstart", startResetHold, { passive: false });
+    restartBtn.addEventListener("touchend", cancelResetHold, { passive: false });
+    restartBtn.addEventListener("touchcancel", cancelResetHold, { passive: false });
 
     requestAnimationFrame(tick);
   </script>
