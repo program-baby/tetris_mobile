@@ -124,8 +124,25 @@
 
     .controls {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 5px;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .control-side {
+      display: grid;
+      gap: 6px;
+    }
+
+    .left-pad {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .right-pad {
+      grid-template-columns: 1fr;
+    }
+
+    .span-2 {
+      grid-column: span 2;
     }
 
     button {
@@ -133,9 +150,9 @@
       border-radius: 9px;
       background: var(--btn);
       color: #ecfeff;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       font-weight: 700;
-      padding: 8px 6px;
+      padding: 10px 6px;
       touch-action: manipulation;
     }
 
@@ -207,12 +224,15 @@
     </section>
 
     <section class="panel controls">
-      <button id="left" type="button">◀</button>
-      <button id="rotate" type="button">⟳</button>
-      <button id="right" type="button">▶</button>
-      <button id="soft" type="button">▼</button>
-      <button id="hard" type="button">DROP</button>
-      <button id="spare" class="ghost" type="button" disabled>KEY: P</button>
+      <div class="control-side left-pad">
+        <button id="left" type="button">◀</button>
+        <button id="right" type="button">▶</button>
+        <button id="soft" class="span-2" type="button">▼</button>
+      </div>
+      <div class="control-side right-pad">
+        <button id="rotate" type="button">⟳</button>
+        <button id="hard" type="button">DROP</button>
+      </div>
     </section>
 
     <p class="hint">Resetは長押し(0.7秒) / 操作: ◀ ▶ ⟳ ▼ DROP</p>
