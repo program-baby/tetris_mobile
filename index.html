@@ -109,7 +109,7 @@
 
     .actions {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 6px;
     }
 
@@ -137,6 +137,12 @@
 
     .ghost {
       background: #334155;
+    }
+
+    .mini-btn {
+      width: 88px;
+      padding: 6px 8px;
+      font-size: 0.8rem;
     }
 
     .hint {
@@ -167,6 +173,7 @@
       <div class="next-box">
         <div class="next-label">NEXT</div>
         <canvas id="next" width="88" height="88" aria-label="Next piece"></canvas>
+        <button id="restart" class="ghost mini-btn" type="button">Reset</button>
       </div>
     </section>
 
@@ -175,7 +182,6 @@
     </div>
 
     <section class="panel actions">
-      <button id="restart" class="ghost" type="button">Restart</button>
       <button id="pause" class="ghost" type="button">Pause</button>
     </section>
 
