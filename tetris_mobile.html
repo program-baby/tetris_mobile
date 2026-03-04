@@ -185,6 +185,11 @@
       outline-offset: -2px;
     }
 
+    .hold-drop {
+      outline: 2px solid #22d3ee;
+      outline-offset: -2px;
+    }
+
     .hint {
       text-align: center;
       color: var(--muted);
@@ -235,7 +240,7 @@
       </div>
     </section>
 
-    <p class="hint">Resetは長押し(0.7秒) / 操作: ◀ ▶ ⟳ ▼ DROP</p>
+    <p class="hint">Reset長押し(0.7秒) / DROP長押し(0.2秒)</p>
   </main>
 
   <script>
@@ -246,6 +251,7 @@
     const NEXT_CANVAS_PX = 76;
     const NEXT_BLOCK = NEXT_CANVAS_PX / NEXT_GRID;
     const RESET_HOLD_MS = 700;
+    const HARD_DROP_HOLD_MS = 200;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -268,6 +274,7 @@
     const hardBtn = document.getElementById("hard");
 
     let resetTimer = null;
+    let hardDropTimer = null;
     let audioCtx = null;
 
     const COLORS = [
@@ -643,16 +650,47 @@
       restartBtn.textContent = "Hold Reset";
     }
 
+    function startHardDropHold(e) {
+      e.preventDefault();
+      unlockAudio();
+      if (state.gameOver || state.paused || hardDropTimer) return;
+      hardBtn.classList.add("hold-drop");
+      hardBtn.textContent = "HOLD...";
+      hardDropTimer = setTimeout(() => {
+        hardDrop(state);
+        hardDropTimer = null;
+        hardBtn.classList.remove("hold-drop");
+        hardBtn.textContent = "DROP";
+      }, HARD_DROP_HOLD_MS);
+    }
+
+    function cancelHardDropHold(e) {
+      if (e) e.preventDefault();
+      if (hardDropTimer) {
+        clearTimeout(hardDropTimer);
+        hardDropTimer = null;
+      }
+      hardBtn.classList.remove("hold-drop");
+      hardBtn.textContent = "DROP";
+    }
+
     bindTap(leftBtn, () => move(state, -1));
     bindTap(rightBtn, () => move(state, 1));
     bindTap(rotateBtn, () => rotatePiece(state));
     bindTap(softBtn, () => drop(state));
-    bindTap(hardBtn, () => hardDrop(state));
 
     bindTap(pauseBtn, () => {
       state.paused = !state.paused;
       updateHUD(state);
     });
+
+    hardBtn.addEventListener("click", (e) => e.preventDefault());
+    hardBtn.addEventListener("mousedown", startHardDropHold);
+    hardBtn.addEventListener("mouseup", cancelHardDropHold);
+    hardBtn.addEventListener("mouseleave", cancelHardDropHold);
+    hardBtn.addEventListener("touchstart", startHardDropHold, { passive: false });
+    hardBtn.addEventListener("touchend", cancelHardDropHold, { passive: false });
+    hardBtn.addEventListener("touchcancel", cancelHardDropHold, { passive: false });
 
     restartBtn.addEventListener("click", (e) => e.preventDefault());
     restartBtn.addEventListener("mousedown", startResetHold);
