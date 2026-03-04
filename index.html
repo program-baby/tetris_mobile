@@ -252,6 +252,7 @@
     const NEXT_BLOCK = NEXT_CANVAS_PX / NEXT_GRID;
     const RESET_HOLD_MS = 700;
     const HARD_DROP_HOLD_MS = 200;
+    const CLEAR_EFFECT_MS = 170;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -458,24 +459,66 @@
       });
     }
 
-    function clearLines(state) {
-      let cleared = 0;
+    function findCompleteRows(board) {
+      const rows = [];
       outer: for (let y = ROWS - 1; y >= 0; y--) {
         for (let x = 0; x < COLS; x++) {
-          if (state.board[y][x] === 0) continue outer;
+          if (board[y][x] === 0) continue outer;
         }
-        state.board.splice(y, 1);
-        state.board.unshift(Array(COLS).fill(0));
-        cleared++;
-        y++;
+        rows.push(y);
       }
+      return rows;
+    }
 
-      if (cleared > 0) {
-        state.lines += cleared;
-        state.score += [0, 100, 300, 500, 800][cleared] * state.level;
-        state.level = Math.floor(state.lines / 10) + 1;
+    function applyClearedRows(state, rows) {
+      rows.sort((a, b) => b - a);
+      for (const rowIndex of rows) {
+        state.board.splice(rowIndex, 1);
+        state.board.unshift(Array(COLS).fill(0));
       }
-      return cleared;
+      const cleared = rows.length;
+      state.lines += cleared;
+      state.score += [0, 100, 300, 500, 800][cleared] * state.level;
+      state.level = Math.floor(state.lines / 10) + 1;
+    }
+
+    function startClearEffect(state, rows) {
+      state.clearing = {
+        rows,
+        startedAt: performance.now()
+      };
+      playClearSound(rows.length);
+    }
+
+    function completeClearEffect(state) {
+      if (!state.clearing) return;
+      applyClearedRows(state, state.clearing.rows);
+      state.clearing = null;
+      spawnNext(state);
+      updateHUD(state);
+    }
+
+    function drawClearEffect(state) {
+      if (!state.clearing) return;
+      const elapsed = performance.now() - state.clearing.startedAt;
+      const p = Math.min(elapsed / CLEAR_EFFECT_MS, 1);
+
+      for (const row of state.clearing.rows) {
+        const flash = (0.15 + 0.55 * (1 - p)) * (0.65 + 0.35 * Math.abs(Math.sin(p * 24)));
+        ctx.fillStyle = `rgba(255, 250, 215, ${flash.toFixed(3)})`;
+        ctx.fillRect(0, row, COLS, 1);
+
+        const sparkCount = 7;
+        for (let i = 0; i < sparkCount; i++) {
+          const base = (i * 1.618 + row * 0.41) % COLS;
+          const sx = (base + p * (1.1 + i * 0.22)) % COLS;
+          const sy = row + ((i % 3) - 1) * 0.03;
+          const size = 0.06 + ((i * 7) % 5) * 0.02;
+          const sparkleAlpha = Math.max(0, 0.9 - p) * (0.5 + (i % 2) * 0.4);
+          ctx.fillStyle = `rgba(255, 255, 255, ${sparkleAlpha.toFixed(3)})`;
+          ctx.fillRect(sx, sy, size, size);
+        }
+      }
     }
 
     function randomPieceTemplate() {
@@ -544,6 +587,7 @@
       drawGrid(ctx, COLS, ROWS);
       drawMatrix(ctx, state.board, { x: 0, y: 0 });
       drawMatrix(ctx, state.piece.matrix, state.piece.pos);
+      drawClearEffect(state);
       drawNext(state);
 
       if (state.gameOver || state.paused) {
@@ -569,44 +613,48 @@
     }
 
     function drop(state) {
-      if (state.gameOver || state.paused) return;
+      if (state.gameOver || state.paused || state.clearing) return;
       state.piece.pos.y++;
       if (collide(state.board, state.piece)) {
         state.piece.pos.y--;
         merge(state.board, state.piece);
-        const cleared = clearLines(state);
-        if (cleared > 0) playClearSound(cleared);
-        else playLockSound();
+        const rows = findCompleteRows(state.board);
+        if (rows.length > 0) startClearEffect(state, rows);
+        else {
+          playLockSound();
+          spawnNext(state);
+          updateHUD(state);
+        }
+      }
+      state.dropCounter = 0;
+    }
+
+    function hardDrop(state) {
+      if (state.gameOver || state.paused || state.clearing) return;
+      while (!collide(state.board, state.piece)) {
+        state.piece.pos.y++;
+      }
+      state.piece.pos.y--;
+      merge(state.board, state.piece);
+      const rows = findCompleteRows(state.board);
+      if (rows.length > 0) startClearEffect(state, rows);
+      else {
+        playLockSound();
         spawnNext(state);
         updateHUD(state);
       }
       state.dropCounter = 0;
     }
 
-    function hardDrop(state) {
-      if (state.gameOver || state.paused) return;
-      while (!collide(state.board, state.piece)) {
-        state.piece.pos.y++;
-      }
-      state.piece.pos.y--;
-      merge(state.board, state.piece);
-      const cleared = clearLines(state);
-      if (cleared > 0) playClearSound(cleared);
-      else playLockSound();
-      spawnNext(state);
-      updateHUD(state);
-      state.dropCounter = 0;
-    }
-
     function move(state, dir) {
-      if (state.gameOver || state.paused) return;
+      if (state.gameOver || state.paused || state.clearing) return;
       state.piece.pos.x += dir;
       if (collide(state.board, state.piece)) state.piece.pos.x -= dir;
       else playMoveSound();
     }
 
     function rotatePiece(state) {
-      if (state.gameOver || state.paused) return;
+      if (state.gameOver || state.paused || state.clearing) return;
       const originalMatrix = state.piece.matrix;
       const originalX = state.piece.pos.x;
       state.piece.matrix = rotate(state.piece.matrix);
@@ -636,6 +684,7 @@
         level: 1,
         dropCounter: 0,
         lastTime: 0,
+        clearing: null,
         paused: false,
         gameOver: false
       };
@@ -649,7 +698,12 @@
       state.lastTime = time;
       const speed = Math.max(1000 - (state.level - 1) * 90, 120);
 
-      if (!state.paused && !state.gameOver) {
+      if (state.clearing) {
+        const elapsed = performance.now() - state.clearing.startedAt;
+        if (elapsed >= CLEAR_EFFECT_MS) {
+          completeClearEffect(state);
+        }
+      } else if (!state.paused && !state.gameOver) {
         state.dropCounter += delta;
         if (state.dropCounter > speed) drop(state);
       }
@@ -665,7 +719,7 @@
         updateHUD(state);
         return;
       }
-      if (state.gameOver || state.paused) return;
+      if (state.gameOver || state.paused || state.clearing) return;
 
       if (e.key === "ArrowLeft") move(state, -1);
       else if (e.key === "ArrowRight") move(state, 1);
