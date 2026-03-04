@@ -316,7 +316,7 @@
       }
     }
 
-    function playTone(freq, duration, type = "square", volume = 0.04, slideTo = null) {
+    function playTone(freq, duration, type = "square", volume = 0.04, slideTo = null, echo = false) {
       const ctx = ensureAudioContext();
       if (!ctx || ctx.state !== "running") return;
 
@@ -335,25 +335,84 @@
 
       osc.connect(gain);
       gain.connect(ctx.destination);
+
+      if (echo) {
+        const delay = ctx.createDelay();
+        const echoGain = ctx.createGain();
+        delay.delayTime.value = 0.09;
+        echoGain.gain.value = 0.28;
+        gain.connect(delay);
+        delay.connect(echoGain);
+        echoGain.connect(ctx.destination);
+      }
+
       osc.start(now);
       osc.stop(now + duration + 0.02);
     }
 
+    function playNoiseBurst(duration = 0.18, volume = 0.08, echo = false) {
+      const ctx = ensureAudioContext();
+      if (!ctx || ctx.state !== "running") return;
+
+      const sampleRate = ctx.sampleRate;
+      const buffer = ctx.createBuffer(1, Math.floor(sampleRate * duration), sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      }
+
+      const source = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
+
+      source.buffer = buffer;
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(1400, now);
+      filter.frequency.exponentialRampToValueAtTime(240, now + duration);
+
+      gain.gain.setValueAtTime(volume, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (echo) {
+        const delay = ctx.createDelay();
+        const echoGain = ctx.createGain();
+        delay.delayTime.value = 0.1;
+        echoGain.gain.value = 0.24;
+        gain.connect(delay);
+        delay.connect(echoGain);
+        echoGain.connect(ctx.destination);
+      }
+
+      source.start(now);
+      source.stop(now + duration + 0.02);
+    }
+
     function playMoveSound() {
-      playTone(520, 0.045, "square", 0.028, 460);
+      playTone(520, 0.05, "square", 0.03, 470, true);
+    }
+
+    function playRotateSound() {
+      playTone(640, 0.06, "square", 0.03, 760, true);
     }
 
     function playLockSound() {
-      playTone(190, 0.07, "square", 0.05, 150);
+      playTone(145, 0.18, "triangle", 0.075, 72, false);
+      playTone(92, 0.22, "sine", 0.06, 55, false);
+      playNoiseBurst(0.1, 0.035, false);
     }
 
     function playClearSound(lines) {
-      const table = [0, 440, 520, 620, 740];
-      const base = table[Math.min(lines, 4)];
-      playTone(base, 0.08, "triangle", 0.06, base * 1.12);
+      const power = 1 + Math.min(lines, 4) * 0.08;
+      playNoiseBurst(0.23, 0.09 * power, true);
+      playTone(125 * power, 0.16, "sawtooth", 0.055, 78, true);
       setTimeout(() => {
-        playTone(base * 1.36, 0.1, "triangle", 0.05, base * 1.75);
-      }, 55);
+        playTone(360 * power, 0.12, "triangle", 0.05, 520 * power, true);
+      }, 40);
     }
 
     function createBoard() {
@@ -555,7 +614,10 @@
       const kicks = [0, -1, 1, -2, 2];
       for (const k of kicks) {
         state.piece.pos.x = originalX + k;
-        if (!collide(state.board, state.piece)) return;
+        if (!collide(state.board, state.piece)) {
+          playRotateSound();
+          return;
+        }
       }
 
       state.piece.matrix = originalMatrix;
