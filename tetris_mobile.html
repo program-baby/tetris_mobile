@@ -268,6 +268,7 @@
     const hardBtn = document.getElementById("hard");
 
     let resetTimer = null;
+    let audioCtx = null;
 
     const COLORS = [
       null,
@@ -290,6 +291,63 @@
       [[0, 6, 0], [6, 6, 6]],
       [[7, 7, 0], [0, 7, 7]]
     ];
+
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return null;
+        audioCtx = new AudioCtx();
+      }
+      return audioCtx;
+    }
+
+    function unlockAudio() {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+    }
+
+    function playTone(freq, duration, type = "square", volume = 0.04, slideTo = null) {
+      const ctx = ensureAudioContext();
+      if (!ctx || ctx.state !== "running") return;
+
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      if (slideTo) {
+        osc.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
+      }
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    }
+
+    function playMoveSound() {
+      playTone(520, 0.045, "square", 0.028, 460);
+    }
+
+    function playLockSound() {
+      playTone(190, 0.07, "square", 0.05, 150);
+    }
+
+    function playClearSound(lines) {
+      const table = [0, 440, 520, 620, 740];
+      const base = table[Math.min(lines, 4)];
+      playTone(base, 0.08, "triangle", 0.06, base * 1.12);
+      setTimeout(() => {
+        playTone(base * 1.36, 0.1, "triangle", 0.05, base * 1.75);
+      }, 55);
+    }
 
     function createBoard() {
       return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
@@ -351,6 +409,7 @@
         state.score += [0, 100, 300, 500, 800][cleared] * state.level;
         state.level = Math.floor(state.lines / 10) + 1;
       }
+      return cleared;
     }
 
     function randomPieceTemplate() {
@@ -449,7 +508,9 @@
       if (collide(state.board, state.piece)) {
         state.piece.pos.y--;
         merge(state.board, state.piece);
-        clearLines(state);
+        const cleared = clearLines(state);
+        if (cleared > 0) playClearSound(cleared);
+        else playLockSound();
         spawnNext(state);
         updateHUD(state);
       }
@@ -463,7 +524,9 @@
       }
       state.piece.pos.y--;
       merge(state.board, state.piece);
-      clearLines(state);
+      const cleared = clearLines(state);
+      if (cleared > 0) playClearSound(cleared);
+      else playLockSound();
       spawnNext(state);
       updateHUD(state);
       state.dropCounter = 0;
@@ -473,6 +536,7 @@
       if (state.gameOver || state.paused) return;
       state.piece.pos.x += dir;
       if (collide(state.board, state.piece)) state.piece.pos.x -= dir;
+      else playMoveSound();
     }
 
     function rotatePiece(state) {
@@ -526,6 +590,7 @@
     }
 
     document.addEventListener("keydown", (e) => {
+      unlockAudio();
       if (e.key === "p" || e.key === "P") {
         state.paused = !state.paused;
         updateHUD(state);
@@ -547,9 +612,12 @@
       btn.addEventListener("click", fn);
       btn.addEventListener("touchstart", (e) => {
         e.preventDefault();
+        unlockAudio();
         fn();
       }, { passive: false });
     }
+
+    document.addEventListener("pointerdown", unlockAudio, { once: true });
 
     function startResetHold(e) {
       e.preventDefault();
