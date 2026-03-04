@@ -98,6 +98,25 @@
       margin-top: 2px;
     }
 
+    .audio-box {
+      display: grid;
+      gap: 2px;
+      margin-top: 2px;
+    }
+
+    .audio-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.64rem;
+    }
+
+    #se-volume {
+      width: 100%;
+      accent-color: #22d3ee;
+    }
+
     #next {
       width: 76px;
       height: 76px;
@@ -220,8 +239,12 @@
         <h1 class="title">TETRIS</h1>
         <div class="stat-grid">
           <div><span>Score</span><strong id="score">0</strong></div>
-          <div><span>Lines</span><strong id="lines">0</strong></div>
-          <div><span>Level</span><strong id="level">1</strong></div>
+        <div><span>Lines</span><strong id="lines">0</strong></div>
+        <div><span>Level</span><strong id="level">1</strong></div>
+        </div>
+        <div class="audio-box">
+          <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">120%</span></div>
+          <input id="se-volume" type="range" min="0" max="200" step="1" value="120" />
         </div>
         <div class="next-label">NEXT</div>
         <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
@@ -265,6 +288,8 @@
     const scoreEl = document.getElementById("score");
     const linesEl = document.getElementById("lines");
     const levelEl = document.getElementById("level");
+    const seVolumeEl = document.getElementById("se-volume");
+    const seVolumeValueEl = document.getElementById("se-volume-value");
 
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
@@ -277,6 +302,7 @@
     let resetTimer = null;
     let hardDropTimer = null;
     let audioCtx = null;
+    let masterSeVolume = 1.2;
 
     const COLORS = [
       null,
@@ -317,6 +343,23 @@
       }
     }
 
+    function setSeVolume(percent) {
+      const safe = Math.max(0, Math.min(200, percent));
+      masterSeVolume = safe / 100;
+      if (seVolumeEl) seVolumeEl.value = String(safe);
+      if (seVolumeValueEl) seVolumeValueEl.textContent = `${safe}%`;
+      localStorage.setItem("tetrisSeVolume", String(safe));
+    }
+
+    function loadSeVolume() {
+      const saved = Number(localStorage.getItem("tetrisSeVolume"));
+      if (Number.isFinite(saved) && saved >= 0 && saved <= 200) {
+        setSeVolume(saved);
+      } else {
+        setSeVolume(120);
+      }
+    }
+
     function playTone(freq, duration, type = "square", volume = 0.04, slideTo = null, echo = false) {
       const ctx = ensureAudioContext();
       if (!ctx || ctx.state !== "running") return;
@@ -331,7 +374,7 @@
       }
 
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(volume * masterSeVolume, now + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       osc.connect(gain);
@@ -372,7 +415,7 @@
       filter.frequency.setValueAtTime(1400, now);
       filter.frequency.exponentialRampToValueAtTime(240, now + duration);
 
-      gain.gain.setValueAtTime(volume, now);
+      gain.gain.setValueAtTime(volume * masterSeVolume, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       source.connect(filter);
@@ -741,6 +784,11 @@
     }
 
     document.addEventListener("pointerdown", unlockAudio, { once: true });
+    seVolumeEl.addEventListener("input", (e) => {
+      setSeVolume(Number(e.target.value));
+    });
+
+    loadSeVolume();
 
     function startResetHold(e) {
       e.preventDefault();
