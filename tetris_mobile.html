@@ -243,8 +243,8 @@
         <div><span>Level</span><strong id="level">1</strong></div>
         </div>
         <div class="audio-box">
-          <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">120%</span></div>
-          <input id="se-volume" type="range" min="0" max="200" step="1" value="120" />
+          <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
+          <input id="se-volume" type="range" min="0" max="260" step="1" value="160" />
         </div>
         <div class="next-label">NEXT</div>
         <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
@@ -275,7 +275,9 @@
     const NEXT_BLOCK = NEXT_CANVAS_PX / NEXT_GRID;
     const RESET_HOLD_MS = 700;
     const HARD_DROP_HOLD_MS = 200;
-    const CLEAR_EFFECT_MS = 170;
+    const MOVE_HOLD_DELAY_MS = 140;
+    const MOVE_HOLD_REPEAT_MS = 85;
+    const CLEAR_EFFECT_MS = 210;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -301,8 +303,12 @@
 
     let resetTimer = null;
     let hardDropTimer = null;
+    let leftHoldStartTimer = null;
+    let rightHoldStartTimer = null;
+    let leftHoldRepeatTimer = null;
+    let rightHoldRepeatTimer = null;
     let audioCtx = null;
-    let masterSeVolume = 1.2;
+    let masterSeVolume = 1.6;
 
     const COLORS = [
       null,
@@ -344,7 +350,7 @@
     }
 
     function setSeVolume(percent) {
-      const safe = Math.max(0, Math.min(200, percent));
+      const safe = Math.max(0, Math.min(260, percent));
       masterSeVolume = safe / 100;
       if (seVolumeEl) seVolumeEl.value = String(safe);
       if (seVolumeValueEl) seVolumeValueEl.textContent = `${safe}%`;
@@ -353,10 +359,10 @@
 
     function loadSeVolume() {
       const saved = Number(localStorage.getItem("tetrisSeVolume"));
-      if (Number.isFinite(saved) && saved >= 0 && saved <= 200) {
+      if (Number.isFinite(saved) && saved >= 0 && saved <= 260) {
         setSeVolume(saved);
       } else {
-        setSeVolume(120);
+        setSeVolume(160);
       }
     }
 
@@ -547,17 +553,28 @@
       const p = Math.min(elapsed / CLEAR_EFFECT_MS, 1);
 
       for (const row of state.clearing.rows) {
-        const flash = (0.15 + 0.55 * (1 - p)) * (0.65 + 0.35 * Math.abs(Math.sin(p * 24)));
-        ctx.fillStyle = `rgba(255, 250, 215, ${flash.toFixed(3)})`;
+        const flash = (0.2 + 0.62 * (1 - p)) * (0.5 + 0.5 * Math.abs(Math.sin(p * 34)));
+        ctx.fillStyle = `rgba(255, 252, 224, ${flash.toFixed(3)})`;
         ctx.fillRect(0, row, COLS, 1);
 
-        const sparkCount = 7;
+        const wipe = Math.min(COLS, Math.max(0, COLS * p * 1.05));
+        if (wipe > 0) {
+          ctx.fillStyle = "rgba(2, 6, 23, 0.9)";
+          ctx.fillRect(0, row, wipe, 1);
+
+          const frontX = Math.min(COLS - 0.04, wipe);
+          ctx.fillStyle = `rgba(255, 255, 255, ${(0.65 * (1 - p)).toFixed(3)})`;
+          ctx.fillRect(frontX, row, 0.08, 1);
+        }
+
+        const sparkCount = 10;
         for (let i = 0; i < sparkCount; i++) {
-          const base = (i * 1.618 + row * 0.41) % COLS;
-          const sx = (base + p * (1.1 + i * 0.22)) % COLS;
-          const sy = row + ((i % 3) - 1) * 0.03;
+          const base = (i * 1.618 + row * 0.53) % COLS;
+          const sx = (base + p * (1.35 + i * 0.18)) % COLS;
+          if (sx < wipe) continue;
+          const sy = row + ((i % 3) - 1) * 0.035;
           const size = 0.06 + ((i * 7) % 5) * 0.02;
-          const sparkleAlpha = Math.max(0, 0.9 - p) * (0.5 + (i % 2) * 0.4);
+          const sparkleAlpha = Math.max(0, 1 - p) * (0.45 + (i % 2) * 0.5);
           ctx.fillStyle = `rgba(255, 255, 255, ${sparkleAlpha.toFixed(3)})`;
           ctx.fillRect(sx, sy, size, size);
         }
@@ -838,8 +855,62 @@
       hardBtn.textContent = "DROP";
     }
 
-    bindTap(leftBtn, () => move(state, -1));
-    bindTap(rightBtn, () => move(state, 1));
+    function clearMoveTimers(side) {
+      if (side === "left") {
+        if (leftHoldStartTimer) clearTimeout(leftHoldStartTimer);
+        if (leftHoldRepeatTimer) clearInterval(leftHoldRepeatTimer);
+        leftHoldStartTimer = null;
+        leftHoldRepeatTimer = null;
+      } else {
+        if (rightHoldStartTimer) clearTimeout(rightHoldStartTimer);
+        if (rightHoldRepeatTimer) clearInterval(rightHoldRepeatTimer);
+        rightHoldStartTimer = null;
+        rightHoldRepeatTimer = null;
+      }
+    }
+
+    function startMoveHold(dir, side, e) {
+      e.preventDefault();
+      unlockAudio();
+      if (state.gameOver || state.paused || state.clearing) return;
+      move(state, dir);
+      clearMoveTimers(side);
+
+      const beginRepeat = () => {
+        const timer = setInterval(() => {
+          if (state.gameOver || state.paused || state.clearing) return;
+          move(state, dir);
+        }, MOVE_HOLD_REPEAT_MS);
+        if (side === "left") leftHoldRepeatTimer = timer;
+        else rightHoldRepeatTimer = timer;
+      };
+
+      const startTimer = setTimeout(beginRepeat, MOVE_HOLD_DELAY_MS);
+      if (side === "left") leftHoldStartTimer = startTimer;
+      else rightHoldStartTimer = startTimer;
+    }
+
+    function stopMoveHold(side, e) {
+      if (e) e.preventDefault();
+      clearMoveTimers(side);
+    }
+
+    leftBtn.addEventListener("click", (e) => e.preventDefault());
+    rightBtn.addEventListener("click", (e) => e.preventDefault());
+    leftBtn.addEventListener("mousedown", (e) => startMoveHold(-1, "left", e));
+    leftBtn.addEventListener("mouseup", (e) => stopMoveHold("left", e));
+    leftBtn.addEventListener("mouseleave", (e) => stopMoveHold("left", e));
+    leftBtn.addEventListener("touchstart", (e) => startMoveHold(-1, "left", e), { passive: false });
+    leftBtn.addEventListener("touchend", (e) => stopMoveHold("left", e), { passive: false });
+    leftBtn.addEventListener("touchcancel", (e) => stopMoveHold("left", e), { passive: false });
+
+    rightBtn.addEventListener("mousedown", (e) => startMoveHold(1, "right", e));
+    rightBtn.addEventListener("mouseup", (e) => stopMoveHold("right", e));
+    rightBtn.addEventListener("mouseleave", (e) => stopMoveHold("right", e));
+    rightBtn.addEventListener("touchstart", (e) => startMoveHold(1, "right", e), { passive: false });
+    rightBtn.addEventListener("touchend", (e) => stopMoveHold("right", e), { passive: false });
+    rightBtn.addEventListener("touchcancel", (e) => stopMoveHold("right", e), { passive: false });
+
     bindTap(rotateBtn, () => rotatePiece(state));
     bindTap(softBtn, () => drop(state));
 
