@@ -156,16 +156,20 @@
 
     .ranking-box {
       margin-top: 2px;
+      cursor: pointer;
     }
 
-    .ranking-list {
-      list-style: none;
-      margin: 4px 0 0;
-      padding: 0;
+    .ranking-ticker {
+      margin-top: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(2, 6, 23, 0.35);
+      min-height: 30px;
       display: grid;
-      gap: 3px;
-      font-size: 0.64rem;
+      place-items: center;
+      font-size: 0.66rem;
       color: #cbd5e1;
+      padding: 4px 6px;
     }
 
     .ranking-item {
@@ -193,10 +197,77 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .rank-1 {
+      color: #facc15;
+    }
+
+    .rank-2 {
+      color: #cbd5e1;
+    }
+
+    .rank-3 {
+      color: #d97706;
+    }
+
     .ranking-empty {
       color: #94a3b8;
       text-align: center;
       padding: 4px 0;
+    }
+
+    .ranking-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(2, 6, 23, 0.86);
+      z-index: 20;
+      padding: 14px;
+    }
+
+    .ranking-modal.is-open {
+      display: grid;
+    }
+
+    .ranking-modal-card {
+      width: min(96vw, 420px);
+      max-height: 86dvh;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #1e293b, #0f172a);
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .ranking-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .ranking-modal-title {
+      margin: 0;
+      font-size: 0.92rem;
+      color: #67e8f9;
+      letter-spacing: 0.03em;
+    }
+
+    .ranking-close {
+      min-height: 38px;
+      padding: 8px 12px;
+      font-size: 0.76rem;
+    }
+
+    .ranking-modal-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 6px;
+      font-size: 0.78rem;
     }
 
     .board-wrap {
@@ -328,9 +399,9 @@
         <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
         <div class="next-label">HOLD</div>
         <canvas id="hold" width="76" height="76" aria-label="Hold piece"></canvas>
-        <div class="ranking-box">
+        <div id="ranking-box" class="ranking-box" role="button" aria-label="Show leaderboard">
           <div class="next-label">LOCAL TOP 10</div>
-          <ol id="ranking-list" class="ranking-list"></ol>
+          <div id="ranking-ticker" class="ranking-ticker"></div>
         </div>
       </aside>
     </section>
@@ -350,6 +421,16 @@
 
     <p class="hint">Reset長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒)</p>
   </main>
+
+  <section id="ranking-modal" class="ranking-modal" aria-hidden="true">
+    <div class="ranking-modal-card">
+      <div class="ranking-modal-head">
+        <h2 class="ranking-modal-title">LOCAL TOP 10</h2>
+        <button id="ranking-close" class="ghost ranking-close" type="button">閉じる</button>
+      </div>
+      <ol id="ranking-modal-list" class="ranking-modal-list"></ol>
+    </div>
+  </section>
 
   <script>
     const COLS = 10;
@@ -393,7 +474,11 @@
     const comboEl = document.getElementById("combo");
     const b2bEl = document.getElementById("b2b");
     const statusEl = document.getElementById("status");
-    const rankingListEl = document.getElementById("ranking-list");
+    const rankingBoxEl = document.getElementById("ranking-box");
+    const rankingTickerEl = document.getElementById("ranking-ticker");
+    const rankingModalEl = document.getElementById("ranking-modal");
+    const rankingModalListEl = document.getElementById("ranking-modal-list");
+    const rankingCloseBtn = document.getElementById("ranking-close");
     const seVolumeValueEl = document.getElementById("se-volume-value");
     const seDownBtn = document.getElementById("se-down");
     const seUpBtn = document.getElementById("se-up");
@@ -418,6 +503,9 @@
     let audioCtx = null;
     let masterSeVolume = 1.6;
     let gameOverHandled = false;
+    let rankingTickerTimer = null;
+    let rankingTickerIndex = 0;
+    let pausedByRankingModal = false;
 
     const RANKING_KEY = "tetrisLocalTop10V1";
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
@@ -501,22 +589,78 @@
       localStorage.setItem(RANKING_KEY, JSON.stringify(list.slice(0, 10)));
     }
 
-    function renderRanking(list = loadRanking()) {
-      rankingListEl.textContent = "";
+    function buildRankingItemHtml(entry, idx) {
+      const rankClass = idx === 0 ? "rank-1" : idx === 1 ? "rank-2" : idx === 2 ? "rank-3" : "";
+      return `<span class="ranking-rank ${rankClass}">${idx + 1}.</span><span class="ranking-name">${entry.name}</span><span class="ranking-score">${entry.score}</span>`;
+    }
+
+    function renderRankingModal(list = loadRanking()) {
+      rankingModalListEl.textContent = "";
       if (list.length === 0) {
         const empty = document.createElement("li");
         empty.className = "ranking-empty";
         empty.textContent = "No scores yet";
-        rankingListEl.appendChild(empty);
+        rankingModalListEl.appendChild(empty);
         return;
       }
-
       list.slice(0, 10).forEach((entry, idx) => {
         const li = document.createElement("li");
         li.className = "ranking-item";
-        li.innerHTML = `<span class="ranking-rank">${idx + 1}.</span><span class="ranking-name">${entry.name}</span><span class="ranking-score">${entry.score}</span>`;
-        rankingListEl.appendChild(li);
+        li.innerHTML = buildRankingItemHtml(entry, idx);
+        rankingModalListEl.appendChild(li);
       });
+    }
+
+    function renderRankingTicker(list = loadRanking()) {
+      if (list.length === 0) {
+        rankingTickerEl.textContent = "No scores yet";
+        return;
+      }
+      rankingTickerIndex = ((rankingTickerIndex % list.length) + list.length) % list.length;
+      const entry = list[rankingTickerIndex];
+      rankingTickerEl.innerHTML = `<div class="ranking-item">${buildRankingItemHtml(entry, rankingTickerIndex)}</div>`;
+    }
+
+    function restartRankingTicker(list = loadRanking()) {
+      if (rankingTickerTimer) clearInterval(rankingTickerTimer);
+      rankingTickerIndex = 0;
+      renderRankingTicker(list);
+      if (list.length > 1) {
+        rankingTickerTimer = setInterval(() => {
+          rankingTickerIndex = (rankingTickerIndex + 1) % list.length;
+          renderRankingTicker(list);
+        }, 2500);
+      } else {
+        rankingTickerTimer = null;
+      }
+    }
+
+    function renderRanking(list = loadRanking()) {
+      renderRankingModal(list);
+      restartRankingTicker(list);
+    }
+
+    function openRankingModal() {
+      renderRankingModal(loadRanking());
+      rankingModalEl.classList.add("is-open");
+      rankingModalEl.setAttribute("aria-hidden", "false");
+      if (!state.paused && !state.gameOver) {
+        pausedByRankingModal = true;
+        state.paused = true;
+      } else {
+        pausedByRankingModal = false;
+      }
+      updateHUD(state);
+    }
+
+    function closeRankingModal() {
+      rankingModalEl.classList.remove("is-open");
+      rankingModalEl.setAttribute("aria-hidden", "true");
+      if (pausedByRankingModal && !state.gameOver) {
+        state.paused = false;
+      }
+      pausedByRankingModal = false;
+      updateHUD(state);
     }
 
     function registerRankingScore(state) {
@@ -1158,6 +1302,10 @@
 
     document.addEventListener("keydown", (e) => {
       unlockAudio();
+      if (rankingModalEl.classList.contains("is-open")) {
+        if (e.key === "Escape") closeRankingModal();
+        return;
+      }
       if (e.key === "p" || e.key === "P") {
         state.paused = !state.paused;
         updateHUD(state);
@@ -1353,6 +1501,16 @@
       unlockAudio();
       hold(state);
     }, { passive: false });
+
+    rankingBoxEl.addEventListener("click", openRankingModal);
+    rankingBoxEl.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      openRankingModal();
+    }, { passive: false });
+    rankingCloseBtn.addEventListener("click", closeRankingModal);
+    rankingModalEl.addEventListener("click", (e) => {
+      if (e.target === rankingModalEl) closeRankingModal();
+    });
 
     seDownBtn.addEventListener("click", (e) => e.preventDefault());
     seUpBtn.addEventListener("click", (e) => e.preventDefault());
