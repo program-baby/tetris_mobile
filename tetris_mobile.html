@@ -594,24 +594,6 @@
       }
     }
 
-    function applyColumnGravity(board) {
-      for (let x = 0; x < COLS; x++) {
-        let writeY = ROWS - 1;
-        for (let y = ROWS - 1; y >= 0; y--) {
-          const value = board[y][x];
-          if (!value) continue;
-          if (writeY !== y) {
-            board[writeY][x] = value;
-            board[y][x] = 0;
-          }
-          writeY--;
-        }
-        for (let y = writeY; y >= 0; y--) {
-          board[y][x] = 0;
-        }
-      }
-    }
-
     function setStatus(state, text, duration = 900) {
       state.statusText = text;
       state.statusUntil = performance.now() + duration;
@@ -661,7 +643,6 @@
 
     function applyClearedRows(state, rows, tspin = false) {
       clearRows(state.board, rows);
-      applyColumnGravity(state.board);
       const cleared = rows.length;
       applyScoring(state, cleared, tspin);
     }
@@ -679,12 +660,6 @@
       if (!state.clearing) return;
       applyClearedRows(state, state.clearing.rows, state.clearing.tspin);
       state.clearing = null;
-      const chainedRows = findCompleteRows(state.board);
-      if (chainedRows.length > 0) {
-        startClearEffect(state, chainedRows, false);
-        updateHUD(state);
-        return;
-      }
       spawnNext(state);
       updateHUD(state);
     }
