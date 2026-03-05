@@ -308,6 +308,111 @@
       font-size: 0.78rem;
     }
 
+    .record-celebration {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(2, 6, 23, 0.82);
+      z-index: 30;
+      padding: 14px;
+      touch-action: none;
+    }
+
+    .record-celebration.is-open {
+      display: grid;
+    }
+
+    .record-card {
+      position: relative;
+      width: min(92vw, 380px);
+      border-radius: 16px;
+      padding: 18px 14px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .record-card::before {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border-radius: 18px;
+      background: conic-gradient(
+        from 0deg,
+        #ff004d,
+        #ff8a00,
+        #ffe600,
+        #00ff99,
+        #00d4ff,
+        #7a5cff,
+        #ff00d4,
+        #ff004d
+      );
+      filter: blur(1px);
+      z-index: 0;
+      animation: record-neon-spin 1.8s linear infinite;
+    }
+
+    .record-card::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border-radius: 13px;
+      background: rgba(15, 23, 42, 0.94);
+      z-index: 1;
+    }
+
+    .record-content {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+    }
+
+    .record-title {
+      margin: 0;
+      color: #67e8f9;
+      font-size: 1rem;
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
+    }
+
+    .record-score {
+      margin: 0;
+      color: #f8fafc;
+      font-size: 2.1rem;
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 14px rgba(248, 250, 252, 0.6);
+    }
+
+    .record-sub {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.82rem;
+    }
+
+    .record-tap {
+      margin-top: 2px;
+      color: #facc15;
+      font-weight: 700;
+      font-size: 0.82rem;
+      animation: record-tap-pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes record-neon-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes record-tap-pulse {
+      0%, 100% { opacity: 0.55; }
+      50% { opacity: 1; }
+    }
+
     .board-wrap {
       display: grid;
       place-items: center;
@@ -500,6 +605,17 @@
     </div>
   </section>
 
+  <section id="record-celebration" class="record-celebration" aria-hidden="true">
+    <div class="record-card">
+      <div class="record-content">
+        <h2 class="record-title">NEW BEST SCORE</h2>
+        <p id="record-score" class="record-score">0</p>
+        <p class="record-sub">過去最高得点を更新しました</p>
+        <p class="record-tap">画面をタップしてください</p>
+      </div>
+    </div>
+  </section>
+
   <script>
     const COLS = 10;
     const ROWS = 20;
@@ -547,6 +663,8 @@
     const rankingModalEl = document.getElementById("ranking-modal");
     const rankingModalListEl = document.getElementById("ranking-modal-list");
     const rankingCloseBtn = document.getElementById("ranking-close");
+    const recordCelebrationEl = document.getElementById("record-celebration");
+    const recordScoreEl = document.getElementById("record-score");
     const seVolumeValueEl = document.getElementById("se-volume-value");
     const seDownBtn = document.getElementById("se-down");
     const seUpBtn = document.getElementById("se-up");
@@ -573,6 +691,8 @@
     let gameOverHandled = false;
     let bestNeonTimer = null;
     let pausedByRankingModal = false;
+    let celebrationOpen = false;
+    let pausedByCelebration = false;
 
     const RANKING_KEY = "tetrisLocalTop10V1";
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
@@ -733,6 +853,31 @@
       updateHUD(state);
     }
 
+    function openRecordCelebration(score) {
+      recordScoreEl.textContent = String(score);
+      recordCelebrationEl.classList.add("is-open");
+      recordCelebrationEl.setAttribute("aria-hidden", "false");
+      celebrationOpen = true;
+      if (!state.paused && !state.gameOver) {
+        pausedByCelebration = true;
+        state.paused = true;
+      } else {
+        pausedByCelebration = false;
+      }
+      updateHUD(state);
+    }
+
+    function closeRecordCelebration() {
+      recordCelebrationEl.classList.remove("is-open");
+      recordCelebrationEl.setAttribute("aria-hidden", "true");
+      if (pausedByCelebration && !state.gameOver) {
+        state.paused = false;
+      }
+      pausedByCelebration = false;
+      celebrationOpen = false;
+      updateHUD(state);
+    }
+
     function registerRankingScore(state) {
       if (!state.gameOver || state.score <= 0) return;
       const ranking = loadRanking();
@@ -763,7 +908,9 @@
       ranking.sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date);
       const top10 = ranking.slice(0, 10);
       saveRanking(top10);
-      renderRanking(top10, state.score > previousBest);
+      const isNewBest = state.score > previousBest;
+      renderRanking(top10, isNewBest);
+      if (isNewBest) openRecordCelebration(state.score);
     }
 
     function playTone(freq, duration, type = "square", volume = 0.04, slideTo = null, echo = false) {
@@ -1373,6 +1520,10 @@
 
     document.addEventListener("keydown", (e) => {
       unlockAudio();
+      if (celebrationOpen) {
+        closeRecordCelebration();
+        return;
+      }
       if (rankingModalEl.classList.contains("is-open")) {
         if (e.key === "Escape") closeRankingModal();
         return;
@@ -1582,6 +1733,12 @@
     rankingModalEl.addEventListener("click", (e) => {
       if (e.target === rankingModalEl) closeRankingModal();
     });
+
+    recordCelebrationEl.addEventListener("click", closeRecordCelebration);
+    recordCelebrationEl.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      closeRecordCelebration();
+    }, { passive: false });
 
     seDownBtn.addEventListener("click", (e) => e.preventDefault());
     seUpBtn.addEventListener("click", (e) => e.preventDefault());
