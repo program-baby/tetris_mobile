@@ -15,6 +15,8 @@
       --btn-active: #0b7c89;
       --danger: #475569;
       --danger-active: #334155;
+      --controls-h: 164px;
+      --top-reserve: clamp(52px, 10dvh, 86px);
     }
 
     * {
@@ -37,11 +39,13 @@
 
     .app {
       width: min(100%, 440px);
-      max-height: 100dvh;
+      min-height: 100dvh;
       display: grid;
-      grid-template-rows: auto auto;
-      gap: 6px;
+      grid-template-rows: auto;
+      gap: 4px;
       align-content: start;
+      padding-top: calc(4px + env(safe-area-inset-top));
+      padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 4px);
     }
 
     .arena {
@@ -135,13 +139,287 @@
       margin: 0 auto;
     }
 
+    #hold {
+      width: 76px;
+      height: 76px;
+      border: 2px solid var(--line);
+      background: rgba(2, 6, 23, 0.25);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+      display: block;
+      margin: 0 auto;
+      cursor: pointer;
+    }
+
+    .status-text {
+      min-height: 1.05em;
+      text-align: center;
+      font-size: 0.68rem;
+      color: #67e8f9;
+      font-weight: 700;
+    }
+
+    .ranking-box {
+      margin-top: 2px;
+      cursor: pointer;
+    }
+
+    .ranking-ticker {
+      margin-top: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(2, 6, 23, 0.35);
+      min-height: 30px;
+      display: grid;
+      place-items: center;
+      font-size: 0.66rem;
+      color: #cbd5e1;
+      padding: 4px 6px;
+    }
+
+    .best-label {
+      color: #67e8f9;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      font-size: 0.62rem;
+    }
+
+    .best-value {
+      color: #f8fafc;
+      font-weight: 800;
+      font-size: 0.86rem;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+    }
+
+    .best-owner {
+      color: #cbd5e1;
+      font-size: 0.62rem;
+      line-height: 1.1;
+    }
+
+    .ranking-ticker.record-updated {
+      border-color: #22d3ee;
+      box-shadow: 0 0 14px rgba(34, 211, 238, 0.68), inset 0 0 10px rgba(56, 189, 248, 0.35);
+      animation: best-neon 1.1s ease-in-out 3;
+    }
+
+    @keyframes best-neon {
+      0% { box-shadow: 0 0 4px rgba(34, 211, 238, 0.25), inset 0 0 4px rgba(56, 189, 248, 0.2); }
+      50% { box-shadow: 0 0 22px rgba(34, 211, 238, 0.95), inset 0 0 16px rgba(56, 189, 248, 0.55); }
+      100% { box-shadow: 0 0 4px rgba(34, 211, 238, 0.25), inset 0 0 4px rgba(56, 189, 248, 0.2); }
+    }
+
+    .ranking-item {
+      display: grid;
+      grid-template-columns: 16px 1fr auto;
+      gap: 4px;
+      align-items: start;
+      line-height: 1.2;
+    }
+
+    .ranking-rank {
+      color: #67e8f9;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .ranking-name {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      white-space: normal;
+    }
+
+    .ranking-score {
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rank-1 {
+      color: #facc15;
+    }
+
+    .rank-2 {
+      color: #cbd5e1;
+    }
+
+    .rank-3 {
+      color: #d97706;
+    }
+
+    .ranking-empty {
+      color: #94a3b8;
+      text-align: center;
+      padding: 4px 0;
+    }
+
+    .ranking-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(2, 6, 23, 0.86);
+      z-index: 20;
+      padding: 14px;
+    }
+
+    .ranking-modal.is-open {
+      display: grid;
+    }
+
+    .ranking-modal-card {
+      width: min(96vw, 420px);
+      max-height: 86dvh;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #1e293b, #0f172a);
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .ranking-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .ranking-modal-title {
+      margin: 0;
+      font-size: 0.92rem;
+      color: #67e8f9;
+      letter-spacing: 0.03em;
+    }
+
+    .ranking-close {
+      min-height: 38px;
+      padding: 8px 12px;
+      font-size: 0.76rem;
+    }
+
+    .ranking-modal-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 6px;
+      font-size: 0.78rem;
+    }
+
+    .record-celebration {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(2, 6, 23, 0.82);
+      z-index: 30;
+      padding: 14px;
+      touch-action: none;
+    }
+
+    .record-celebration.is-open {
+      display: grid;
+    }
+
+    .record-card {
+      position: relative;
+      width: min(92vw, 380px);
+      border-radius: 16px;
+      padding: 18px 14px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .record-card::before {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border-radius: 18px;
+      background: conic-gradient(
+        from 0deg,
+        #ff004d,
+        #ff8a00,
+        #ffe600,
+        #00ff99,
+        #00d4ff,
+        #7a5cff,
+        #ff00d4,
+        #ff004d
+      );
+      filter: blur(1px);
+      z-index: 0;
+      animation: record-neon-spin 1.8s linear infinite;
+    }
+
+    .record-card::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border-radius: 13px;
+      background: rgba(15, 23, 42, 0.94);
+      z-index: 1;
+    }
+
+    .record-content {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+    }
+
+    .record-title {
+      margin: 0;
+      color: #67e8f9;
+      font-size: 1rem;
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
+    }
+
+    .record-score {
+      margin: 0;
+      color: #f8fafc;
+      font-size: 2.1rem;
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 14px rgba(248, 250, 252, 0.6);
+    }
+
+    .record-sub {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.82rem;
+    }
+
+    .record-tap {
+      margin-top: 2px;
+      color: #facc15;
+      font-weight: 700;
+      font-size: 0.82rem;
+      animation: record-tap-pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes record-neon-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes record-tap-pulse {
+      0%, 100% { opacity: 0.55; }
+      50% { opacity: 1; }
+    }
+
     .board-wrap {
       display: grid;
       place-items: center;
     }
 
     #game {
-      width: min(300px, calc((100dvh - 178px) / 2), calc(100vw - 188px));
+      width: min(300px, calc((100dvh - var(--controls-h) - var(--top-reserve)) / 2), calc(100vw - 188px));
       height: auto;
       aspect-ratio: 1 / 2;
       border: 3px solid var(--line);
@@ -153,6 +431,16 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 0;
+      width: min(calc(100vw - 12px), 440px);
+      z-index: 10;
+      padding-bottom: calc(6px + env(safe-area-inset-bottom));
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.3);
     }
 
     .control-side {
@@ -165,7 +453,7 @@
     }
 
     .right-pad {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr 1fr;
     }
 
     .span-2 {
@@ -229,6 +517,26 @@
         display: none;
       }
     }
+
+    @media (max-width: 390px) {
+      :root {
+        --controls-h: 154px;
+        --top-reserve: clamp(44px, 9dvh, 70px);
+      }
+
+      .controls {
+        gap: 6px;
+      }
+
+      .control-side {
+        gap: 5px;
+      }
+
+      button {
+        font-size: 0.9rem;
+        padding: 9px 5px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -247,9 +555,12 @@
         <h1 class="title">TETRIS</h1>
         <div class="stat-grid">
           <div><span>Score</span><strong id="score">0</strong></div>
-        <div><span>Lines</span><strong id="lines">0</strong></div>
-        <div><span>Level</span><strong id="level">1</strong></div>
+          <div><span>Lines</span><strong id="lines">0</strong></div>
+          <div><span>Level</span><strong id="level">1</strong></div>
+          <div><span>Combo</span><strong id="combo">-</strong></div>
+          <div><span>B2B</span><strong id="b2b">-</strong></div>
         </div>
+        <div id="status" class="status-text"></div>
         <div class="audio-box">
           <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
           <div class="volume-buttons">
@@ -259,6 +570,12 @@
         </div>
         <div class="next-label">NEXT</div>
         <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
+        <div class="next-label">HOLD</div>
+        <canvas id="hold" width="76" height="76" aria-label="Hold piece"></canvas>
+        <div id="ranking-box" class="ranking-box" role="button" aria-label="Show leaderboard">
+          <div class="next-label">LOCAL TOP 10</div>
+          <div id="ranking-ticker" class="ranking-ticker"></div>
+        </div>
       </aside>
     </section>
 
@@ -266,16 +583,38 @@
       <div class="control-side left-pad">
         <button id="left" type="button">◀</button>
         <button id="right" type="button">▶</button>
-        <button id="soft" class="span-2" type="button">▼</button>
       </div>
       <div class="control-side right-pad">
+        <button id="rotate-ccw" type="button">⟲</button>
         <button id="rotate" type="button">⟳</button>
-        <button id="hard" type="button">DROP</button>
+        <button id="soft" class="span-2" type="button">▼</button>
+        <button id="hard" class="span-2" type="button">DROP</button>
       </div>
     </section>
 
-    <p class="hint">Reset長押し(0.7秒) / DROP長押し(0.2秒)</p>
+    <p class="hint">Reset長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒)</p>
   </main>
+
+  <section id="ranking-modal" class="ranking-modal" aria-hidden="true">
+    <div class="ranking-modal-card">
+      <div class="ranking-modal-head">
+        <h2 class="ranking-modal-title">LOCAL TOP 10</h2>
+        <button id="ranking-close" class="ghost ranking-close" type="button">閉じる</button>
+      </div>
+      <ol id="ranking-modal-list" class="ranking-modal-list"></ol>
+    </div>
+  </section>
+
+  <section id="record-celebration" class="record-celebration" aria-hidden="true">
+    <div class="record-card">
+      <div class="record-content">
+        <h2 class="record-title">NEW BEST SCORE</h2>
+        <p id="record-score" class="record-score">0</p>
+        <p class="record-sub">過去最高得点を更新しました</p>
+        <p class="record-tap">画面をタップしてください</p>
+      </div>
+    </div>
+  </section>
 
   <script>
     const COLS = 10;
@@ -284,11 +623,23 @@
     const NEXT_GRID = 4;
     const NEXT_CANVAS_PX = 76;
     const NEXT_BLOCK = NEXT_CANVAS_PX / NEXT_GRID;
+    const HOLD_GRID = 4;
+    const HOLD_CANVAS_PX = 76;
+    const HOLD_BLOCK = HOLD_CANVAS_PX / HOLD_GRID;
     const RESET_HOLD_MS = 700;
     const HARD_DROP_HOLD_MS = 200;
     const MOVE_HOLD_DELAY_MS = 140;
     const MOVE_HOLD_REPEAT_MS = 85;
     const CLEAR_EFFECT_MS = 320;
+
+    // Scoring balance (easy to tune later)
+    const SCORE_TABLE = {
+      normal: [0, 100, 300, 500, 800],
+      tspin: [400, 800, 1200, 1600]
+    };
+    const B2B_BONUS_RATE = 0.35;
+    const COMBO_BONUS_STEP = 35;
+    const COMBO_BONUS_MAX = 210;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -297,10 +648,23 @@
     const nextCanvas = document.getElementById("next");
     const nextCtx = nextCanvas.getContext("2d");
     nextCtx.scale(NEXT_BLOCK, NEXT_BLOCK);
+    const holdCanvas = document.getElementById("hold");
+    const holdCtx = holdCanvas.getContext("2d");
+    holdCtx.scale(HOLD_BLOCK, HOLD_BLOCK);
 
     const scoreEl = document.getElementById("score");
     const linesEl = document.getElementById("lines");
     const levelEl = document.getElementById("level");
+    const comboEl = document.getElementById("combo");
+    const b2bEl = document.getElementById("b2b");
+    const statusEl = document.getElementById("status");
+    const rankingBoxEl = document.getElementById("ranking-box");
+    const rankingTickerEl = document.getElementById("ranking-ticker");
+    const rankingModalEl = document.getElementById("ranking-modal");
+    const rankingModalListEl = document.getElementById("ranking-modal-list");
+    const rankingCloseBtn = document.getElementById("ranking-close");
+    const recordCelebrationEl = document.getElementById("record-celebration");
+    const recordScoreEl = document.getElementById("record-score");
     const seVolumeValueEl = document.getElementById("se-volume-value");
     const seDownBtn = document.getElementById("se-down");
     const seUpBtn = document.getElementById("se-up");
@@ -309,6 +673,7 @@
     const pauseBtn = document.getElementById("pause");
     const leftBtn = document.getElementById("left");
     const rightBtn = document.getElementById("right");
+    const rotateCcwBtn = document.getElementById("rotate-ccw");
     const rotateBtn = document.getElementById("rotate");
     const softBtn = document.getElementById("soft");
     const hardBtn = document.getElementById("hard");
@@ -323,6 +688,14 @@
     let volumeRepeatTimer = null;
     let audioCtx = null;
     let masterSeVolume = 1.6;
+    let gameOverHandled = false;
+    let bestNeonTimer = null;
+    let pausedByRankingModal = false;
+    let celebrationOpen = false;
+    let pausedByCelebration = false;
+
+    const RANKING_KEY = "tetrisLocalTop10V1";
+    const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
 
     const COLORS = [
       null,
@@ -377,6 +750,167 @@
       } else {
         setSeVolume(160);
       }
+    }
+
+    function loadRanking() {
+      try {
+        const raw = localStorage.getItem(RANKING_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .filter((r) => Number.isFinite(r.score) && typeof r.name === "string")
+          .map((r) => ({
+            name: r.name.slice(0, 12) || "PLAYER",
+            score: Math.max(0, Math.floor(r.score)),
+            lines: Math.max(0, Math.floor(r.lines || 0)),
+            level: Math.max(1, Math.floor(r.level || 1)),
+            date: Number.isFinite(r.date) ? r.date : Date.now()
+          }));
+      } catch {
+        return [];
+      }
+    }
+
+    function saveRanking(list) {
+      localStorage.setItem(RANKING_KEY, JSON.stringify(list.slice(0, 10)));
+    }
+
+    function buildRankingItemHtml(entry, idx) {
+      const rankClass = idx === 0 ? "rank-1" : idx === 1 ? "rank-2" : idx === 2 ? "rank-3" : "";
+      return `<span class="ranking-rank ${rankClass}">${idx + 1}.</span><span class="ranking-name">${entry.name}</span><span class="ranking-score">${entry.score}</span>`;
+    }
+
+    function getBestEntry(list = loadRanking()) {
+      if (!list.length) return null;
+      return list.reduce((best, entry) => (entry.score > best.score ? entry : best), list[0]);
+    }
+
+    function renderRankingModal(list = loadRanking()) {
+      rankingModalListEl.textContent = "";
+      if (list.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "ranking-empty";
+        empty.textContent = "No scores yet";
+        rankingModalListEl.appendChild(empty);
+        return;
+      }
+      list.slice(0, 10).forEach((entry, idx) => {
+        const li = document.createElement("li");
+        li.className = "ranking-item";
+        li.innerHTML = buildRankingItemHtml(entry, idx);
+        rankingModalListEl.appendChild(li);
+      });
+    }
+
+    function renderBestScore(list = loadRanking(), highlight = false) {
+      const best = getBestEntry(list);
+      if (!best) {
+        rankingTickerEl.innerHTML = `<div class="ranking-empty">No scores yet</div>`;
+        return;
+      }
+      rankingTickerEl.innerHTML = `
+        <div class="best-label">BEST SCORE</div>
+        <div class="best-value">${best.score}</div>
+        <div class="best-owner">${best.name}</div>
+      `;
+      if (highlight) {
+        rankingTickerEl.classList.remove("record-updated");
+        void rankingTickerEl.offsetWidth;
+        rankingTickerEl.classList.add("record-updated");
+        if (bestNeonTimer) clearTimeout(bestNeonTimer);
+        bestNeonTimer = setTimeout(() => {
+          rankingTickerEl.classList.remove("record-updated");
+        }, 3600);
+      }
+    }
+
+    function renderRanking(list = loadRanking(), highlightBest = false) {
+      renderRankingModal(list);
+      renderBestScore(list, highlightBest);
+    }
+
+    function openRankingModal() {
+      renderRankingModal(loadRanking());
+      rankingModalEl.classList.add("is-open");
+      rankingModalEl.setAttribute("aria-hidden", "false");
+      if (!state.paused && !state.gameOver) {
+        pausedByRankingModal = true;
+        state.paused = true;
+      } else {
+        pausedByRankingModal = false;
+      }
+      updateHUD(state);
+    }
+
+    function closeRankingModal() {
+      rankingModalEl.classList.remove("is-open");
+      rankingModalEl.setAttribute("aria-hidden", "true");
+      if (pausedByRankingModal && !state.gameOver) {
+        state.paused = false;
+      }
+      pausedByRankingModal = false;
+      updateHUD(state);
+    }
+
+    function openRecordCelebration(score) {
+      recordScoreEl.textContent = String(score);
+      recordCelebrationEl.classList.add("is-open");
+      recordCelebrationEl.setAttribute("aria-hidden", "false");
+      celebrationOpen = true;
+      if (!state.paused && !state.gameOver) {
+        pausedByCelebration = true;
+        state.paused = true;
+      } else {
+        pausedByCelebration = false;
+      }
+      updateHUD(state);
+    }
+
+    function closeRecordCelebration() {
+      recordCelebrationEl.classList.remove("is-open");
+      recordCelebrationEl.setAttribute("aria-hidden", "true");
+      if (pausedByCelebration && !state.gameOver) {
+        state.paused = false;
+      }
+      pausedByCelebration = false;
+      celebrationOpen = false;
+      updateHUD(state);
+    }
+
+    function registerRankingScore(state) {
+      if (!state.gameOver || state.score <= 0) return;
+      const ranking = loadRanking();
+      const previousBest = getBestEntry(ranking)?.score ?? 0;
+      const cutoff = ranking.length < 10 ? -1 : ranking[9].score;
+      if (state.score <= cutoff) {
+        renderRanking(ranking);
+        return;
+      }
+
+      const suggested = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").slice(0, 12);
+      const input = window.prompt("GAME OVER - 名前を入力してください（12文字まで）", suggested);
+      if (input === null) {
+        renderRanking(ranking);
+        return;
+      }
+
+      const name = (input.trim() || "PLAYER").slice(0, 12);
+      localStorage.setItem(PLAYER_NAME_KEY, name);
+
+      ranking.push({
+        name,
+        score: state.score,
+        lines: state.lines,
+        level: state.level,
+        date: Date.now()
+      });
+      ranking.sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date);
+      const top10 = ranking.slice(0, 10);
+      saveRanking(top10);
+      const isNewBest = state.score > previousBest;
+      renderRanking(top10, isNewBest);
+      if (isNewBest) openRecordCelebration(state.score);
     }
 
     function playTone(freq, duration, type = "square", volume = 0.04, slideTo = null, echo = false) {
@@ -504,6 +1038,10 @@
       return out;
     }
 
+    function rotateCCW(matrix) {
+      return rotate(rotate(rotate(matrix)));
+    }
+
     function collide(board, piece) {
       const { matrix, pos } = piece;
       for (let y = 0; y < matrix.length; y++) {
@@ -527,32 +1065,100 @@
       });
     }
 
+    function isFilledCell(value) {
+      return Number.isInteger(value) && value > 0;
+    }
+
+    function isRowComplete(board, y) {
+      const row = board[y];
+      if (!Array.isArray(row) || row.length !== COLS) return false;
+      for (let x = 0; x < COLS; x++) {
+        if (!isFilledCell(row[x])) return false;
+      }
+      return true;
+    }
+
     function findCompleteRows(board) {
       const rows = [];
-      outer: for (let y = ROWS - 1; y >= 0; y--) {
-        for (let x = 0; x < COLS; x++) {
-          if (board[y][x] === 0) continue outer;
-        }
-        rows.push(y);
+      for (let y = ROWS - 1; y >= 0; y--) {
+        if (isRowComplete(board, y)) rows.push(y);
       }
       return rows;
     }
 
-    function applyClearedRows(state, rows) {
-      rows.sort((a, b) => b - a);
-      for (const rowIndex of rows) {
-        state.board.splice(rowIndex, 1);
-        state.board.unshift(Array(COLS).fill(0));
+    function clearRows(board, rows) {
+      const validRows = rows.filter((y) => isRowComplete(board, y));
+      const rowSet = new Set(validRows);
+      const clearedCount = rowSet.size;
+      if (clearedCount === 0) return 0;
+
+      const keptRows = [];
+      for (let y = 0; y < ROWS; y++) {
+        if (!rowSet.has(y)) keptRows.push([...board[y]]);
       }
-      const cleared = rows.length;
-      state.lines += cleared;
-      state.score += [0, 100, 300, 500, 800][cleared] * state.level;
-      state.level = Math.floor(state.lines / 10) + 1;
+
+      const newRows = Array.from({ length: clearedCount }, () => Array(COLS).fill(0));
+      board.length = 0;
+      board.push(...newRows, ...keptRows);
+      return clearedCount;
     }
 
-    function startClearEffect(state, rows) {
+    function setStatus(state, text, duration = 900) {
+      state.statusText = text;
+      state.statusUntil = performance.now() + duration;
+      statusEl.textContent = text;
+    }
+
+    function applyScoring(state, cleared, tspin) {
+      if (cleared > 0 || tspin) {
+        if (cleared > 0) state.combo++;
+        const base = tspin
+          ? SCORE_TABLE.tspin[cleared] ?? 0
+          : SCORE_TABLE.normal[cleared] ?? 0;
+
+        const b2bEligible = tspin || cleared === 4;
+        let points = base * state.level;
+        if (b2bEligible) {
+          state.backToBack++;
+          if (state.backToBack > 1) {
+            points += Math.floor(base * B2B_BONUS_RATE * state.level);
+          }
+        } else {
+          state.backToBack = 0;
+        }
+
+        if (cleared > 0 && state.combo > 0) {
+          const comboBonus = Math.min(COMBO_BONUS_MAX, state.combo * COMBO_BONUS_STEP);
+          points += comboBonus * state.level;
+        }
+
+        state.lines += cleared;
+        state.score += points;
+        state.level = Math.floor(state.lines / 10) + 1;
+
+        let message = "";
+        if (tspin) message = `T-SPIN ${cleared > 0 ? `${cleared} LINE` : ""}`.trim();
+        else if (cleared === 4) message = "TETRIS!";
+        else if (cleared >= 2) message = `${cleared} LINES`;
+        else if (state.combo > 0) message = `COMBO x${state.combo + 1}`;
+        if (state.backToBack > 1 && (tspin || cleared === 4)) {
+          message = `${message} B2B x${state.backToBack}`.trim();
+        }
+        if (message) setStatus(state, message);
+      } else {
+        state.combo = -1;
+      }
+    }
+
+    function applyClearedRows(state, rows, tspin = false) {
+      const cleared = clearRows(state.board, rows);
+      applyScoring(state, cleared, tspin);
+    }
+
+    function startClearEffect(state, rows, tspin = false) {
       state.clearing = {
         rows,
+        tspin,
         startedAt: performance.now()
       };
       playClearSound(rows.length);
@@ -560,7 +1166,7 @@
 
     function completeClearEffect(state) {
       if (!state.clearing) return;
-      applyClearedRows(state, state.clearing.rows);
+      applyClearedRows(state, state.clearing.rows, state.clearing.tspin);
       state.clearing = null;
       spawnNext(state);
       updateHUD(state);
@@ -596,14 +1202,26 @@
       }
     }
 
-    function randomPieceTemplate() {
-      const type = Math.floor(Math.random() * 7) + 1;
-      return { matrix: cloneMatrix(SHAPES[type]) };
+    function createBag() {
+      const bag = [1, 2, 3, 4, 5, 6, 7];
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bag[i], bag[j]] = [bag[j], bag[i]];
+      }
+      return bag;
+    }
+
+    function takeFromBag(state) {
+      if (state.bag.length === 0) {
+        state.bag = createBag();
+      }
+      return { type: state.bag.pop() };
     }
 
     function createActivePiece(template) {
-      const matrix = cloneMatrix(template.matrix);
+      const matrix = cloneMatrix(SHAPES[template.type]);
       return {
+        type: template.type,
         matrix,
         pos: {
           x: Math.floor((COLS - matrix[0].length) / 2),
@@ -648,7 +1266,7 @@
       nextCtx.fillRect(0, 0, NEXT_GRID, NEXT_GRID);
       drawGrid(nextCtx, NEXT_GRID, NEXT_GRID);
 
-      const matrix = state.nextPiece.matrix;
+      const matrix = SHAPES[state.nextPiece.type];
       const offset = {
         x: (NEXT_GRID - matrix[0].length) / 2,
         y: (NEXT_GRID - matrix.length) / 2
@@ -656,14 +1274,61 @@
       drawMatrix(nextCtx, matrix, offset);
     }
 
+    function drawHold(state) {
+      holdCtx.clearRect(0, 0, HOLD_GRID, HOLD_GRID);
+      holdCtx.fillStyle = "#020617";
+      holdCtx.fillRect(0, 0, HOLD_GRID, HOLD_GRID);
+      drawGrid(holdCtx, HOLD_GRID, HOLD_GRID);
+      if (!state.holdPiece) return;
+
+      const matrix = SHAPES[state.holdPiece.type];
+      const offset = {
+        x: (HOLD_GRID - matrix[0].length) / 2,
+        y: (HOLD_GRID - matrix.length) / 2
+      };
+      drawMatrix(holdCtx, matrix, offset);
+    }
+
+    function getGhostOffset(state) {
+      const ghost = {
+        matrix: state.piece.matrix,
+        pos: { x: state.piece.pos.x, y: state.piece.pos.y }
+      };
+      if (collide(state.board, ghost)) return ghost.pos;
+
+      while (!collide(state.board, ghost)) {
+        ghost.pos.y++;
+      }
+      ghost.pos.y--;
+      return ghost.pos;
+    }
+
+    function drawGhost(state) {
+      const ghostPos = getGhostOffset(state);
+      state.piece.matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (!value) return;
+          const gx = x + ghostPos.x;
+          const gy = y + ghostPos.y;
+          ctx.fillStyle = "rgba(148, 163, 184, 0.22)";
+          ctx.fillRect(gx, gy, 1, 1);
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.42)";
+          ctx.lineWidth = 0.04;
+          ctx.strokeRect(gx, gy, 1, 1);
+        });
+      });
+    }
+
     function draw(state) {
       ctx.fillStyle = "#020617";
       ctx.fillRect(0, 0, COLS, ROWS);
       drawGrid(ctx, COLS, ROWS);
       drawMatrix(ctx, state.board, { x: 0, y: 0 });
+      drawGhost(state);
       drawMatrix(ctx, state.piece.matrix, state.piece.pos);
       drawClearEffect(state);
       drawNext(state);
+      drawHold(state);
 
       if (state.gameOver || state.paused) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.56)";
@@ -678,66 +1343,93 @@
       scoreEl.textContent = state.score;
       linesEl.textContent = state.lines;
       levelEl.textContent = state.level;
+      comboEl.textContent = state.combo > 0 ? `x${state.combo + 1}` : "-";
+      b2bEl.textContent = state.backToBack > 1 ? `x${state.backToBack}` : "-";
+      statusEl.textContent = state.statusText || "";
       pauseBtn.textContent = state.paused ? "Resume" : "Pause";
     }
 
     function spawnNext(state) {
       state.piece = createActivePiece(state.nextPiece);
-      state.nextPiece = randomPieceTemplate();
+      state.nextPiece = takeFromBag(state);
+      state.holdUsed = false;
+      state.lastRotate = false;
       if (collide(state.board, state.piece)) state.gameOver = true;
+    }
+
+    function isBlockedCell(board, x, y) {
+      if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return true;
+      return board[y][x] !== 0;
+    }
+
+    function isTSpin(state) {
+      if (state.piece.type !== 6 || !state.lastRotate) return false;
+      const cx = state.piece.pos.x + 1;
+      const cy = state.piece.pos.y + 1;
+      let corners = 0;
+      if (isBlockedCell(state.board, cx - 1, cy - 1)) corners++;
+      if (isBlockedCell(state.board, cx + 1, cy - 1)) corners++;
+      if (isBlockedCell(state.board, cx - 1, cy + 1)) corners++;
+      if (isBlockedCell(state.board, cx + 1, cy + 1)) corners++;
+      return corners >= 3;
+    }
+
+    function lockPiece(state) {
+      merge(state.board, state.piece);
+      const tspin = isTSpin(state);
+      const rows = findCompleteRows(state.board);
+      if (rows.length > 0) {
+        startClearEffect(state, rows, tspin);
+      } else {
+        applyScoring(state, 0, tspin);
+        state.lastRotate = false;
+        playLockSound();
+        spawnNext(state);
+        updateHUD(state);
+      }
     }
 
     function drop(state) {
       if (state.gameOver || state.paused || state.clearing) return;
+      state.lastRotate = false;
       state.piece.pos.y++;
       if (collide(state.board, state.piece)) {
         state.piece.pos.y--;
-        merge(state.board, state.piece);
-        const rows = findCompleteRows(state.board);
-        if (rows.length > 0) startClearEffect(state, rows);
-        else {
-          playLockSound();
-          spawnNext(state);
-          updateHUD(state);
-        }
+        lockPiece(state);
       }
       state.dropCounter = 0;
     }
 
     function hardDrop(state) {
       if (state.gameOver || state.paused || state.clearing) return;
+      state.lastRotate = false;
       while (!collide(state.board, state.piece)) {
         state.piece.pos.y++;
       }
       state.piece.pos.y--;
-      merge(state.board, state.piece);
-      const rows = findCompleteRows(state.board);
-      if (rows.length > 0) startClearEffect(state, rows);
-      else {
-        playLockSound();
-        spawnNext(state);
-        updateHUD(state);
-      }
+      lockPiece(state);
       state.dropCounter = 0;
     }
 
     function move(state, dir) {
       if (state.gameOver || state.paused || state.clearing) return;
+      state.lastRotate = false;
       state.piece.pos.x += dir;
       if (collide(state.board, state.piece)) state.piece.pos.x -= dir;
       else playMoveSound();
     }
 
-    function rotatePiece(state) {
+    function rotatePiece(state, direction = 1) {
       if (state.gameOver || state.paused || state.clearing) return;
       const originalMatrix = state.piece.matrix;
       const originalX = state.piece.pos.x;
-      state.piece.matrix = rotate(state.piece.matrix);
+      state.piece.matrix = direction === 1 ? rotate(state.piece.matrix) : rotateCCW(state.piece.matrix);
 
       const kicks = [0, -1, 1, -2, 2];
       for (const k of kicks) {
         state.piece.pos.x = originalX + k;
         if (!collide(state.board, state.piece)) {
+          state.lastRotate = true;
           playRotateSound();
           return;
         }
@@ -747,16 +1439,43 @@
       state.piece.pos.x = originalX;
     }
 
+    function hold(state) {
+      if (state.gameOver || state.paused || state.clearing || state.holdUsed) return;
+      const currentTemplate = { type: state.piece.type };
+      if (!state.holdPiece) {
+        state.holdPiece = currentTemplate;
+        spawnNext(state);
+      } else {
+        const swap = state.holdPiece;
+        state.holdPiece = currentTemplate;
+        state.piece = createActivePiece(swap);
+        if (collide(state.board, state.piece)) state.gameOver = true;
+      }
+      state.holdUsed = true;
+      state.lastRotate = false;
+      setStatus(state, "HOLD", 600);
+      updateHUD(state);
+    }
+
     function createState() {
-      const first = randomPieceTemplate();
-      const second = randomPieceTemplate();
+      const bag = createBag();
+      const first = { type: bag.pop() };
+      const second = { type: bag.pop() };
       return {
         board: createBoard(),
         piece: createActivePiece(first),
         nextPiece: second,
+        holdPiece: null,
+        holdUsed: false,
+        bag,
         score: 0,
         lines: 0,
         level: 1,
+        combo: -1,
+        backToBack: 0,
+        lastRotate: false,
+        statusText: "",
+        statusUntil: 0,
         dropCounter: 0,
         lastTime: 0,
         clearing: null,
@@ -767,6 +1486,7 @@
 
     let state = createState();
     updateHUD(state);
+    renderRanking();
 
     function tick(time = 0) {
       const delta = time - state.lastTime;
@@ -782,6 +1502,17 @@
         state.dropCounter += delta;
         if (state.dropCounter > speed) drop(state);
       }
+      if (state.statusText && performance.now() > state.statusUntil) {
+        state.statusText = "";
+        statusEl.textContent = "";
+      }
+
+      if (state.gameOver && !gameOverHandled) {
+        gameOverHandled = true;
+        registerRankingScore(state);
+      } else if (!state.gameOver) {
+        gameOverHandled = false;
+      }
 
       draw(state);
       requestAnimationFrame(tick);
@@ -789,6 +1520,14 @@
 
     document.addEventListener("keydown", (e) => {
       unlockAudio();
+      if (celebrationOpen) {
+        closeRecordCelebration();
+        return;
+      }
+      if (rankingModalEl.classList.contains("is-open")) {
+        if (e.key === "Escape") closeRankingModal();
+        return;
+      }
       if (e.key === "p" || e.key === "P") {
         state.paused = !state.paused;
         updateHUD(state);
@@ -803,6 +1542,8 @@
       else if (e.key === " ") {
         e.preventDefault();
         hardDrop(state);
+      } else if (e.key === "c" || e.key === "C") {
+        hold(state);
       }
     });
 
@@ -858,6 +1599,7 @@
       restartBtn.textContent = "Keep Holding";
       resetTimer = setTimeout(() => {
         state = createState();
+        gameOverHandled = false;
         updateHUD(state);
         restartBtn.classList.remove("holding");
         restartBtn.textContent = "Hold Reset";
@@ -955,7 +1697,8 @@
     rightBtn.addEventListener("touchend", (e) => stopMoveHold("right", e), { passive: false });
     rightBtn.addEventListener("touchcancel", (e) => stopMoveHold("right", e), { passive: false });
 
-    bindTap(rotateBtn, () => rotatePiece(state));
+    bindTap(rotateCcwBtn, () => rotatePiece(state, -1));
+    bindTap(rotateBtn, () => rotatePiece(state, 1));
     bindTap(softBtn, () => drop(state));
 
     bindTap(pauseBtn, () => {
@@ -970,6 +1713,32 @@
     hardBtn.addEventListener("touchstart", startHardDropHold, { passive: false });
     hardBtn.addEventListener("touchend", cancelHardDropHold, { passive: false });
     hardBtn.addEventListener("touchcancel", cancelHardDropHold, { passive: false });
+
+    holdCanvas.addEventListener("click", () => {
+      unlockAudio();
+      hold(state);
+    });
+    holdCanvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      unlockAudio();
+      hold(state);
+    }, { passive: false });
+
+    rankingBoxEl.addEventListener("click", openRankingModal);
+    rankingBoxEl.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      openRankingModal();
+    }, { passive: false });
+    rankingCloseBtn.addEventListener("click", closeRankingModal);
+    rankingModalEl.addEventListener("click", (e) => {
+      if (e.target === rankingModalEl) closeRankingModal();
+    });
+
+    recordCelebrationEl.addEventListener("click", closeRecordCelebration);
+    recordCelebrationEl.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      closeRecordCelebration();
+    }, { passive: false });
 
     seDownBtn.addEventListener("click", (e) => e.preventDefault());
     seUpBtn.addEventListener("click", (e) => e.preventDefault());
