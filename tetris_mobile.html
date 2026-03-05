@@ -575,20 +575,31 @@
       });
     }
 
+    function isFilledCell(value) {
+      return Number.isInteger(value) && value > 0;
+    }
+
+    function isRowComplete(board, y) {
+      const row = board[y];
+      if (!Array.isArray(row) || row.length !== COLS) return false;
+      for (let x = 0; x < COLS; x++) {
+        if (!isFilledCell(row[x])) return false;
+      }
+      return true;
+    }
+
     function findCompleteRows(board) {
       const rows = [];
-      outer: for (let y = ROWS - 1; y >= 0; y--) {
-        for (let x = 0; x < COLS; x++) {
-          if (board[y][x] === 0) continue outer;
-        }
-        rows.push(y);
+      for (let y = ROWS - 1; y >= 0; y--) {
+        if (isRowComplete(board, y)) rows.push(y);
       }
       return rows;
     }
 
     function clearRows(board, rows) {
-      rows.sort((a, b) => b - a);
-      for (const rowIndex of rows) {
+      const validRows = rows.filter((y) => isRowComplete(board, y));
+      validRows.sort((a, b) => b - a);
+      for (const rowIndex of validRows) {
         board.splice(rowIndex, 1);
         board.unshift(Array(COLS).fill(0));
       }
