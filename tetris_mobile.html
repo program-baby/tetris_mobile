@@ -598,11 +598,19 @@
 
     function clearRows(board, rows) {
       const validRows = rows.filter((y) => isRowComplete(board, y));
-      validRows.sort((a, b) => b - a);
-      for (const rowIndex of validRows) {
-        board.splice(rowIndex, 1);
-        board.unshift(Array(COLS).fill(0));
+      const rowSet = new Set(validRows);
+      const clearedCount = rowSet.size;
+      if (clearedCount === 0) return 0;
+
+      const keptRows = [];
+      for (let y = 0; y < ROWS; y++) {
+        if (!rowSet.has(y)) keptRows.push([...board[y]]);
       }
+
+      const newRows = Array.from({ length: clearedCount }, () => Array(COLS).fill(0));
+      board.length = 0;
+      board.push(...newRows, ...keptRows);
+      return clearedCount;
     }
 
     function setStatus(state, text, duration = 900) {
@@ -653,8 +661,7 @@
     }
 
     function applyClearedRows(state, rows, tspin = false) {
-      clearRows(state.board, rows);
-      const cleared = rows.length;
+      const cleared = clearRows(state.board, rows);
       applyScoring(state, cleared, tspin);
     }
 
