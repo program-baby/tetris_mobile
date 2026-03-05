@@ -135,6 +135,24 @@
       margin: 0 auto;
     }
 
+    #hold {
+      width: 76px;
+      height: 76px;
+      border: 2px solid var(--line);
+      background: rgba(2, 6, 23, 0.25);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+      display: block;
+      margin: 0 auto;
+    }
+
+    .status-text {
+      min-height: 1.05em;
+      text-align: center;
+      font-size: 0.68rem;
+      color: #67e8f9;
+      font-weight: 700;
+    }
+
     .board-wrap {
       display: grid;
       place-items: center;
@@ -236,6 +254,7 @@
     <section class="arena">
       <aside class="panel left-tools">
         <button id="pause" class="ghost tool-btn" type="button">Pause</button>
+        <button id="hold-action" class="ghost tool-btn" type="button">Hold (C)</button>
         <button id="restart" class="danger tool-btn" type="button">Hold Reset</button>
       </aside>
 
@@ -247,9 +266,12 @@
         <h1 class="title">TETRIS</h1>
         <div class="stat-grid">
           <div><span>Score</span><strong id="score">0</strong></div>
-        <div><span>Lines</span><strong id="lines">0</strong></div>
-        <div><span>Level</span><strong id="level">1</strong></div>
+          <div><span>Lines</span><strong id="lines">0</strong></div>
+          <div><span>Level</span><strong id="level">1</strong></div>
+          <div><span>Combo</span><strong id="combo">-</strong></div>
+          <div><span>B2B</span><strong id="b2b">-</strong></div>
         </div>
+        <div id="status" class="status-text"></div>
         <div class="audio-box">
           <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
           <div class="volume-buttons">
@@ -259,6 +281,8 @@
         </div>
         <div class="next-label">NEXT</div>
         <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
+        <div class="next-label">HOLD</div>
+        <canvas id="hold" width="76" height="76" aria-label="Hold piece"></canvas>
       </aside>
     </section>
 
@@ -274,7 +298,7 @@
       </div>
     </section>
 
-    <p class="hint">Reset長押し(0.7秒) / DROP長押し(0.2秒)</p>
+    <p class="hint">Reset長押し(0.7秒) / DROP長押し(0.2秒) / Hold: Cキー</p>
   </main>
 
   <script>
@@ -284,11 +308,23 @@
     const NEXT_GRID = 4;
     const NEXT_CANVAS_PX = 76;
     const NEXT_BLOCK = NEXT_CANVAS_PX / NEXT_GRID;
+    const HOLD_GRID = 4;
+    const HOLD_CANVAS_PX = 76;
+    const HOLD_BLOCK = HOLD_CANVAS_PX / HOLD_GRID;
     const RESET_HOLD_MS = 700;
     const HARD_DROP_HOLD_MS = 200;
     const MOVE_HOLD_DELAY_MS = 140;
     const MOVE_HOLD_REPEAT_MS = 85;
     const CLEAR_EFFECT_MS = 320;
+
+    // Scoring balance (easy to tune later)
+    const SCORE_TABLE = {
+      normal: [0, 100, 300, 500, 800],
+      tspin: [400, 800, 1200, 1600]
+    };
+    const B2B_BONUS_RATE = 0.35;
+    const COMBO_BONUS_STEP = 35;
+    const COMBO_BONUS_MAX = 210;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -297,16 +333,23 @@
     const nextCanvas = document.getElementById("next");
     const nextCtx = nextCanvas.getContext("2d");
     nextCtx.scale(NEXT_BLOCK, NEXT_BLOCK);
+    const holdCanvas = document.getElementById("hold");
+    const holdCtx = holdCanvas.getContext("2d");
+    holdCtx.scale(HOLD_BLOCK, HOLD_BLOCK);
 
     const scoreEl = document.getElementById("score");
     const linesEl = document.getElementById("lines");
     const levelEl = document.getElementById("level");
+    const comboEl = document.getElementById("combo");
+    const b2bEl = document.getElementById("b2b");
+    const statusEl = document.getElementById("status");
     const seVolumeValueEl = document.getElementById("se-volume-value");
     const seDownBtn = document.getElementById("se-down");
     const seUpBtn = document.getElementById("se-up");
 
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
+    const holdActionBtn = document.getElementById("hold-action");
     const leftBtn = document.getElementById("left");
     const rightBtn = document.getElementById("right");
     const rotateBtn = document.getElementById("rotate");
@@ -538,21 +581,71 @@
       return rows;
     }
 
-    function applyClearedRows(state, rows) {
+    function clearRows(board, rows) {
       rows.sort((a, b) => b - a);
       for (const rowIndex of rows) {
-        state.board.splice(rowIndex, 1);
-        state.board.unshift(Array(COLS).fill(0));
+        board.splice(rowIndex, 1);
+        board.unshift(Array(COLS).fill(0));
       }
-      const cleared = rows.length;
-      state.lines += cleared;
-      state.score += [0, 100, 300, 500, 800][cleared] * state.level;
-      state.level = Math.floor(state.lines / 10) + 1;
     }
 
-    function startClearEffect(state, rows) {
+    function setStatus(state, text, duration = 900) {
+      state.statusText = text;
+      state.statusUntil = performance.now() + duration;
+      statusEl.textContent = text;
+    }
+
+    function applyScoring(state, cleared, tspin) {
+      if (cleared > 0 || tspin) {
+        if (cleared > 0) state.combo++;
+        const base = tspin
+          ? SCORE_TABLE.tspin[cleared] ?? 0
+          : SCORE_TABLE.normal[cleared] ?? 0;
+
+        const b2bEligible = tspin || cleared === 4;
+        let points = base * state.level;
+        if (b2bEligible) {
+          state.backToBack++;
+          if (state.backToBack > 1) {
+            points += Math.floor(base * B2B_BONUS_RATE * state.level);
+          }
+        } else {
+          state.backToBack = 0;
+        }
+
+        if (cleared > 0 && state.combo > 0) {
+          const comboBonus = Math.min(COMBO_BONUS_MAX, state.combo * COMBO_BONUS_STEP);
+          points += comboBonus * state.level;
+        }
+
+        state.lines += cleared;
+        state.score += points;
+        state.level = Math.floor(state.lines / 10) + 1;
+
+        let message = "";
+        if (tspin) message = `T-SPIN ${cleared > 0 ? `${cleared} LINE` : ""}`.trim();
+        else if (cleared === 4) message = "TETRIS!";
+        else if (cleared >= 2) message = `${cleared} LINES`;
+        else if (state.combo > 0) message = `COMBO x${state.combo + 1}`;
+        if (state.backToBack > 1 && (tspin || cleared === 4)) {
+          message = `${message} B2B x${state.backToBack}`.trim();
+        }
+        if (message) setStatus(state, message);
+      } else {
+        state.combo = -1;
+      }
+    }
+
+    function applyClearedRows(state, rows, tspin = false) {
+      clearRows(state.board, rows);
+      const cleared = rows.length;
+      applyScoring(state, cleared, tspin);
+    }
+
+    function startClearEffect(state, rows, tspin = false) {
       state.clearing = {
         rows,
+        tspin,
         startedAt: performance.now()
       };
       playClearSound(rows.length);
@@ -560,7 +653,7 @@
 
     function completeClearEffect(state) {
       if (!state.clearing) return;
-      applyClearedRows(state, state.clearing.rows);
+      applyClearedRows(state, state.clearing.rows, state.clearing.tspin);
       state.clearing = null;
       spawnNext(state);
       updateHUD(state);
@@ -596,14 +689,26 @@
       }
     }
 
-    function randomPieceTemplate() {
-      const type = Math.floor(Math.random() * 7) + 1;
-      return { matrix: cloneMatrix(SHAPES[type]) };
+    function createBag() {
+      const bag = [1, 2, 3, 4, 5, 6, 7];
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bag[i], bag[j]] = [bag[j], bag[i]];
+      }
+      return bag;
+    }
+
+    function takeFromBag(state) {
+      if (state.bag.length === 0) {
+        state.bag = createBag();
+      }
+      return { type: state.bag.pop() };
     }
 
     function createActivePiece(template) {
-      const matrix = cloneMatrix(template.matrix);
+      const matrix = cloneMatrix(SHAPES[template.type]);
       return {
+        type: template.type,
         matrix,
         pos: {
           x: Math.floor((COLS - matrix[0].length) / 2),
@@ -648,7 +753,7 @@
       nextCtx.fillRect(0, 0, NEXT_GRID, NEXT_GRID);
       drawGrid(nextCtx, NEXT_GRID, NEXT_GRID);
 
-      const matrix = state.nextPiece.matrix;
+      const matrix = SHAPES[state.nextPiece.type];
       const offset = {
         x: (NEXT_GRID - matrix[0].length) / 2,
         y: (NEXT_GRID - matrix.length) / 2
@@ -656,14 +761,61 @@
       drawMatrix(nextCtx, matrix, offset);
     }
 
+    function drawHold(state) {
+      holdCtx.clearRect(0, 0, HOLD_GRID, HOLD_GRID);
+      holdCtx.fillStyle = "#020617";
+      holdCtx.fillRect(0, 0, HOLD_GRID, HOLD_GRID);
+      drawGrid(holdCtx, HOLD_GRID, HOLD_GRID);
+      if (!state.holdPiece) return;
+
+      const matrix = SHAPES[state.holdPiece.type];
+      const offset = {
+        x: (HOLD_GRID - matrix[0].length) / 2,
+        y: (HOLD_GRID - matrix.length) / 2
+      };
+      drawMatrix(holdCtx, matrix, offset);
+    }
+
+    function getGhostOffset(state) {
+      const ghost = {
+        matrix: state.piece.matrix,
+        pos: { x: state.piece.pos.x, y: state.piece.pos.y }
+      };
+      if (collide(state.board, ghost)) return ghost.pos;
+
+      while (!collide(state.board, ghost)) {
+        ghost.pos.y++;
+      }
+      ghost.pos.y--;
+      return ghost.pos;
+    }
+
+    function drawGhost(state) {
+      const ghostPos = getGhostOffset(state);
+      state.piece.matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (!value) return;
+          const gx = x + ghostPos.x;
+          const gy = y + ghostPos.y;
+          ctx.fillStyle = "rgba(148, 163, 184, 0.22)";
+          ctx.fillRect(gx, gy, 1, 1);
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.42)";
+          ctx.lineWidth = 0.04;
+          ctx.strokeRect(gx, gy, 1, 1);
+        });
+      });
+    }
+
     function draw(state) {
       ctx.fillStyle = "#020617";
       ctx.fillRect(0, 0, COLS, ROWS);
       drawGrid(ctx, COLS, ROWS);
       drawMatrix(ctx, state.board, { x: 0, y: 0 });
+      drawGhost(state);
       drawMatrix(ctx, state.piece.matrix, state.piece.pos);
       drawClearEffect(state);
       drawNext(state);
+      drawHold(state);
 
       if (state.gameOver || state.paused) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.56)";
@@ -678,51 +830,77 @@
       scoreEl.textContent = state.score;
       linesEl.textContent = state.lines;
       levelEl.textContent = state.level;
+      comboEl.textContent = state.combo > 0 ? `x${state.combo + 1}` : "-";
+      b2bEl.textContent = state.backToBack > 1 ? `x${state.backToBack}` : "-";
+      statusEl.textContent = state.statusText || "";
       pauseBtn.textContent = state.paused ? "Resume" : "Pause";
     }
 
     function spawnNext(state) {
       state.piece = createActivePiece(state.nextPiece);
-      state.nextPiece = randomPieceTemplate();
+      state.nextPiece = takeFromBag(state);
+      state.holdUsed = false;
+      state.lastRotate = false;
       if (collide(state.board, state.piece)) state.gameOver = true;
+    }
+
+    function isBlockedCell(board, x, y) {
+      if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return true;
+      return board[y][x] !== 0;
+    }
+
+    function isTSpin(state) {
+      if (state.piece.type !== 6 || !state.lastRotate) return false;
+      const cx = state.piece.pos.x + 1;
+      const cy = state.piece.pos.y + 1;
+      let corners = 0;
+      if (isBlockedCell(state.board, cx - 1, cy - 1)) corners++;
+      if (isBlockedCell(state.board, cx + 1, cy - 1)) corners++;
+      if (isBlockedCell(state.board, cx - 1, cy + 1)) corners++;
+      if (isBlockedCell(state.board, cx + 1, cy + 1)) corners++;
+      return corners >= 3;
+    }
+
+    function lockPiece(state) {
+      merge(state.board, state.piece);
+      const tspin = isTSpin(state);
+      const rows = findCompleteRows(state.board);
+      if (rows.length > 0) {
+        startClearEffect(state, rows, tspin);
+      } else {
+        applyScoring(state, 0, tspin);
+        state.lastRotate = false;
+        playLockSound();
+        spawnNext(state);
+        updateHUD(state);
+      }
     }
 
     function drop(state) {
       if (state.gameOver || state.paused || state.clearing) return;
+      state.lastRotate = false;
       state.piece.pos.y++;
       if (collide(state.board, state.piece)) {
         state.piece.pos.y--;
-        merge(state.board, state.piece);
-        const rows = findCompleteRows(state.board);
-        if (rows.length > 0) startClearEffect(state, rows);
-        else {
-          playLockSound();
-          spawnNext(state);
-          updateHUD(state);
-        }
+        lockPiece(state);
       }
       state.dropCounter = 0;
     }
 
     function hardDrop(state) {
       if (state.gameOver || state.paused || state.clearing) return;
+      state.lastRotate = false;
       while (!collide(state.board, state.piece)) {
         state.piece.pos.y++;
       }
       state.piece.pos.y--;
-      merge(state.board, state.piece);
-      const rows = findCompleteRows(state.board);
-      if (rows.length > 0) startClearEffect(state, rows);
-      else {
-        playLockSound();
-        spawnNext(state);
-        updateHUD(state);
-      }
+      lockPiece(state);
       state.dropCounter = 0;
     }
 
     function move(state, dir) {
       if (state.gameOver || state.paused || state.clearing) return;
+      state.lastRotate = false;
       state.piece.pos.x += dir;
       if (collide(state.board, state.piece)) state.piece.pos.x -= dir;
       else playMoveSound();
@@ -738,6 +916,7 @@
       for (const k of kicks) {
         state.piece.pos.x = originalX + k;
         if (!collide(state.board, state.piece)) {
+          state.lastRotate = true;
           playRotateSound();
           return;
         }
@@ -747,16 +926,43 @@
       state.piece.pos.x = originalX;
     }
 
+    function hold(state) {
+      if (state.gameOver || state.paused || state.clearing || state.holdUsed) return;
+      const currentTemplate = { type: state.piece.type };
+      if (!state.holdPiece) {
+        state.holdPiece = currentTemplate;
+        spawnNext(state);
+      } else {
+        const swap = state.holdPiece;
+        state.holdPiece = currentTemplate;
+        state.piece = createActivePiece(swap);
+        if (collide(state.board, state.piece)) state.gameOver = true;
+      }
+      state.holdUsed = true;
+      state.lastRotate = false;
+      setStatus(state, "HOLD", 600);
+      updateHUD(state);
+    }
+
     function createState() {
-      const first = randomPieceTemplate();
-      const second = randomPieceTemplate();
+      const bag = createBag();
+      const first = { type: bag.pop() };
+      const second = { type: bag.pop() };
       return {
         board: createBoard(),
         piece: createActivePiece(first),
         nextPiece: second,
+        holdPiece: null,
+        holdUsed: false,
+        bag,
         score: 0,
         lines: 0,
         level: 1,
+        combo: -1,
+        backToBack: 0,
+        lastRotate: false,
+        statusText: "",
+        statusUntil: 0,
         dropCounter: 0,
         lastTime: 0,
         clearing: null,
@@ -782,6 +988,10 @@
         state.dropCounter += delta;
         if (state.dropCounter > speed) drop(state);
       }
+      if (state.statusText && performance.now() > state.statusUntil) {
+        state.statusText = "";
+        statusEl.textContent = "";
+      }
 
       draw(state);
       requestAnimationFrame(tick);
@@ -803,6 +1013,8 @@
       else if (e.key === " ") {
         e.preventDefault();
         hardDrop(state);
+      } else if (e.key === "c" || e.key === "C") {
+        hold(state);
       }
     });
 
@@ -957,6 +1169,7 @@
 
     bindTap(rotateBtn, () => rotatePiece(state));
     bindTap(softBtn, () => drop(state));
+    bindTap(holdActionBtn, () => hold(state));
 
     bindTap(pauseBtn, () => {
       state.paused = !state.paused;
