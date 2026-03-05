@@ -15,6 +15,7 @@
       --btn-active: #0b7c89;
       --danger: #475569;
       --danger-active: #334155;
+      --controls-h: 164px;
     }
 
     * {
@@ -37,11 +38,12 @@
 
     .app {
       width: min(100%, 440px);
-      max-height: 100dvh;
+      min-height: 100dvh;
       display: grid;
-      grid-template-rows: auto auto;
+      grid-template-rows: auto;
       gap: 6px;
       align-content: start;
+      padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 12px);
     }
 
     .arena {
@@ -276,7 +278,7 @@
     }
 
     #game {
-      width: min(300px, calc((100dvh - 178px) / 2), calc(100vw - 188px));
+      width: min(300px, calc((100dvh - var(--controls-h) - 90px) / 2), calc(100vw - 188px));
       height: auto;
       aspect-ratio: 1 / 2;
       border: 3px solid var(--line);
@@ -288,6 +290,16 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 0;
+      width: min(calc(100vw - 12px), 440px);
+      z-index: 10;
+      padding-bottom: calc(6px + env(safe-area-inset-bottom));
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.3);
     }
 
     .control-side {
@@ -362,6 +374,25 @@
     @media (max-height: 760px) {
       .hint {
         display: none;
+      }
+    }
+
+    @media (max-width: 390px) {
+      :root {
+        --controls-h: 154px;
+      }
+
+      .controls {
+        gap: 6px;
+      }
+
+      .control-side {
+        gap: 5px;
+      }
+
+      button {
+        font-size: 0.9rem;
+        padding: 9px 5px;
       }
     }
   </style>
