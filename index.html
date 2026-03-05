@@ -15,8 +15,11 @@
       --btn-active: #0b7c89;
       --danger: #475569;
       --danger-active: #334155;
+      --viewport-h: 100dvh;
+      --app-w: min(calc(100vw - 12px), 560px);
       --controls-h: 164px;
-      --top-reserve: clamp(52px, 10dvh, 86px);
+      --board-w: 300px;
+      --side-panel-w: 96px;
     }
 
     * {
@@ -27,7 +30,7 @@
 
     body {
       margin: 0;
-      min-height: 100dvh;
+      min-height: var(--viewport-h);
       font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
       color: var(--text);
       background: linear-gradient(rgba(2, 6, 23, 0.62), rgba(2, 6, 23, 0.62)), url("./bg.png") center / cover no-repeat;
@@ -38,21 +41,24 @@
     }
 
     .app {
-      width: min(100%, 440px);
-      min-height: 100dvh;
+      width: var(--app-w);
+      min-height: var(--viewport-h);
       display: grid;
-      grid-template-rows: auto;
+      grid-template-rows: 1fr auto;
       gap: 4px;
-      align-content: start;
+      align-content: stretch;
       padding-top: calc(4px + env(safe-area-inset-top));
-      padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 4px);
+      padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 8px);
     }
 
     .arena {
       display: grid;
-      grid-template-columns: 64px 1fr 92px;
-      gap: 6px;
+      grid-template-columns: minmax(0, 1fr) var(--side-panel-w);
+      grid-template-rows: auto 1fr;
+      gap: 8px;
       align-items: start;
+      align-content: end;
+      min-height: calc(var(--viewport-h) - var(--controls-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 18px);
     }
 
     .panel {
@@ -63,15 +69,27 @@
     }
 
     .left-tools {
+      grid-column: 1 / 3;
+      grid-row: 1;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .right-info {
+      grid-column: 2;
+      grid-row: 2;
+      width: var(--side-panel-w);
       display: grid;
       gap: 6px;
       align-content: start;
     }
 
-    .right-info {
-      display: grid;
-      gap: 6px;
-      align-content: start;
+    .right-info.compact .audio-box,
+    .right-info.compact .ranking-box,
+    .right-info.compact .status-text {
+      display: none;
     }
 
     .title {
@@ -414,30 +432,39 @@
     }
 
     .board-wrap {
-      display: grid;
-      place-items: center;
+      grid-column: 1;
+      grid-row: 2;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      min-height: 0;
     }
 
     #game {
-      width: min(300px, calc((100dvh - var(--controls-h) - var(--top-reserve)) / 2), calc(100vw - 188px));
-      height: auto;
-      aspect-ratio: 1 / 2;
+      width: var(--board-w);
+      height: calc(var(--board-w) * 2);
+      max-width: 100%;
       border: 3px solid var(--line);
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+      touch-action: none;
     }
 
     .controls {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 10;
+      padding-bottom: calc(6px + env(safe-area-inset-bottom));
+    }
+
+    .controls-inner {
+      width: var(--app-w);
+      margin: 0 auto;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
-      position: fixed;
-      left: 50%;
-      transform: translateX(-50%);
-      bottom: 0;
-      width: min(calc(100vw - 12px), 440px);
-      z-index: 10;
-      padding-bottom: calc(6px + env(safe-area-inset-bottom));
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
       box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.3);
@@ -477,10 +504,11 @@
     }
 
     .tool-btn {
-      width: 100%;
-      min-height: 40px;
+      min-height: 36px;
+      min-width: 92px;
       font-size: 0.75rem;
       line-height: 1.2;
+      padding: 8px 10px;
     }
 
     .ghost {
@@ -518,13 +546,51 @@
       }
     }
 
-    @media (max-width: 390px) {
-      :root {
-        --controls-h: 154px;
-        --top-reserve: clamp(44px, 9dvh, 70px);
+    @media (orientation: landscape) {
+      .app {
+        align-content: stretch;
       }
 
-      .controls {
+      .arena {
+        grid-template-columns: minmax(0, 1fr) var(--side-panel-w);
+        grid-template-rows: auto 1fr;
+        align-items: stretch;
+        align-content: stretch;
+        min-height: calc(var(--viewport-h) - var(--controls-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 10px);
+      }
+
+      .left-tools {
+        grid-column: 2;
+        grid-row: 1;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+      }
+
+      .right-info {
+        grid-column: 2;
+        grid-row: 2;
+      }
+
+      .board-wrap {
+        grid-column: 1;
+        grid-row: 1 / 3;
+        align-items: center;
+      }
+
+      .tool-btn {
+        min-width: 0;
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 390px), (max-height: 700px) {
+      :root {
+        --controls-h: 152px;
+        --side-panel-w: 88px;
+      }
+
+      .controls-inner {
         gap: 6px;
       }
 
@@ -537,21 +603,38 @@
         padding: 9px 5px;
       }
     }
+
+    .debug-hud {
+      position: fixed;
+      right: 6px;
+      top: calc(6px + env(safe-area-inset-top));
+      z-index: 40;
+      background: rgba(2, 6, 23, 0.76);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 10px;
+      line-height: 1.25;
+      padding: 6px 7px;
+      pointer-events: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre;
+    }
   </style>
 </head>
 <body>
-  <main class="app">
-    <section class="arena">
-      <aside class="panel left-tools">
+  <main id="app" class="app">
+    <section id="gameArea" class="arena">
+      <aside id="leftTools" class="panel left-tools">
         <button id="pause" class="ghost tool-btn" type="button">Pause</button>
         <button id="restart" class="danger tool-btn" type="button">Hold Reset</button>
       </aside>
 
-      <div class="board-wrap">
+      <div id="board" class="board-wrap">
         <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
       </div>
 
-      <aside class="panel right-info">
+      <aside id="sidePanel" class="panel right-info">
         <h1 class="title">TETRIS</h1>
         <div class="stat-grid">
           <div><span>Score</span><strong id="score">0</strong></div>
@@ -579,16 +662,18 @@
       </aside>
     </section>
 
-    <section class="panel controls">
-      <div class="control-side left-pad">
-        <button id="left" type="button">◀</button>
-        <button id="right" type="button">▶</button>
-      </div>
-      <div class="control-side right-pad">
-        <button id="rotate-ccw" type="button">⟲</button>
-        <button id="rotate" type="button">⟳</button>
-        <button id="soft" class="span-2" type="button">▼</button>
-        <button id="hard" class="span-2" type="button">DROP</button>
+    <section id="controls" class="controls">
+      <div class="panel controls-inner">
+        <div class="control-side left-pad">
+          <button id="left" type="button">◀</button>
+          <button id="right" type="button">▶</button>
+        </div>
+        <div class="control-side right-pad">
+          <button id="rotate-ccw" type="button">⟲</button>
+          <button id="rotate" type="button">⟳</button>
+          <button id="soft" class="span-2" type="button">▼</button>
+          <button id="hard" class="span-2" type="button">DROP</button>
+        </div>
       </div>
     </section>
 
@@ -615,6 +700,9 @@
       </div>
     </div>
   </section>
+
+  <!-- Debug HUD (remove this section if not needed) -->
+  <pre id="debug-hud" class="debug-hud"></pre>
 
   <script>
     const COLS = 10;
@@ -644,6 +732,13 @@
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
     ctx.scale(BLOCK, BLOCK);
+    const appEl = document.getElementById("app");
+    const gameAreaEl = document.getElementById("gameArea");
+    const controlsEl = document.getElementById("controls");
+    const boardEl = document.getElementById("board");
+    const sidePanelEl = document.getElementById("sidePanel");
+    const leftToolsEl = document.getElementById("leftTools");
+    const debugHudEl = document.getElementById("debug-hud");
 
     const nextCanvas = document.getElementById("next");
     const nextCtx = nextCanvas.getContext("2d");
@@ -695,6 +790,9 @@
     let pausedByCelebration = false;
     let wasLandscape = null;
     let forcedRankingByOrientation = false;
+    let layoutRaf = 0;
+    let lastViewportW = 0;
+    let lastViewportH = 0;
 
     const RANKING_KEY = "tetrisLocalTop10V1";
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
@@ -752,6 +850,67 @@
       } else {
         setSeVolume(160);
       }
+    }
+
+    function getViewportSize() {
+      const vv = window.visualViewport;
+      if (vv) return { width: Math.round(vv.width), height: Math.round(vv.height) };
+      return { width: window.innerWidth, height: window.innerHeight };
+    }
+
+    function fitLayout() {
+      const { width: vw, height: vh } = getViewportSize();
+      if (Math.abs(vw - lastViewportW) <= 2 && Math.abs(vh - lastViewportH) <= 2) return;
+      lastViewportW = vw;
+      lastViewportH = vh;
+
+      const isLandscape = vw > vh;
+      const appW = Math.max(320, Math.min(vw - 12, isLandscape ? 920 : 560));
+      document.documentElement.style.setProperty("--viewport-h", `${vh}px`);
+      document.documentElement.style.setProperty("--app-w", `${appW}px`);
+      const compactSide = isLandscape && vh < 460;
+      sidePanelEl.classList.toggle("compact", compactSide);
+
+      const controlsH = Math.ceil(controlsEl.getBoundingClientRect().height);
+      document.documentElement.style.setProperty("--controls-h", `${controlsH}px`);
+
+      const appRect = appEl.getBoundingClientRect();
+      const sideW = sidePanelEl.getBoundingClientRect().width;
+      const leftToolsH = leftToolsEl.getBoundingClientRect().height;
+      const areaStyles = getComputedStyle(gameAreaEl);
+      const colGap = parseFloat(areaStyles.columnGap) || 8;
+      const rowGap = parseFloat(areaStyles.rowGap) || 8;
+
+      const boardMaxWByWidth = Math.max(140, appRect.width - sideW - colGap - 8);
+      const boardMaxHByHeight = Math.max(
+        240,
+        vh - controlsH - leftToolsH - rowGap - 26 - (isLandscape ? 8 : 0)
+      );
+      const boardMaxWByHeight = Math.floor(boardMaxHByHeight / 2);
+      const boardCap = isLandscape ? 520 : 420;
+      const boardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
+      document.documentElement.style.setProperty("--board-w", `${boardW}px`);
+
+      const sidePanelW = Math.max(compactSide ? 78 : 84, Math.min(120, Math.floor((appRect.width - boardW - colGap - 8))));
+      document.documentElement.style.setProperty("--side-panel-w", `${sidePanelW}px`);
+
+      if (debugHudEl) {
+        debugHudEl.textContent =
+          `vw:${vw}\n` +
+          `vh:${vh}\n` +
+          `controls:${controlsH}\n` +
+          `boardW:${boardW}\n` +
+          `sideW:${sidePanelW}\n` +
+          `compact:${compactSide ? "on" : "off"}`;
+      }
+    }
+
+    function scheduleFitLayout() {
+      if (layoutRaf) return;
+      layoutRaf = requestAnimationFrame(() => {
+        layoutRaf = 0;
+        fitLayout();
+      });
     }
 
     function loadRanking() {
@@ -880,20 +1039,14 @@
       updateHUD(state);
     }
 
-    function isLandscapeViewport() {
-      const vv = window.visualViewport;
-      const w = vv ? vv.width : window.innerWidth;
-      const h = vv ? vv.height : window.innerHeight;
-      return w > h;
-    }
-
     function handleOrientationRanking() {
-      const isLandscape = isLandscapeViewport();
+      const { width, height } = getViewportSize();
+      const isLandscape = width > height;
       if (isLandscape === wasLandscape) return;
       wasLandscape = isLandscape;
 
       if (isLandscape) {
-        if (celebrationOpen) return;
+        if (celebrationOpen || rankingModalEl.classList.contains("is-open")) return;
         forcedRankingByOrientation = true;
         openRankingModal();
         return;
@@ -1514,6 +1667,8 @@
     let state = createState();
     updateHUD(state);
     renderRanking();
+    scheduleFitLayout();
+    handleOrientationRanking();
 
     function tick(time = 0) {
       const delta = time - state.lastTime;
@@ -1790,11 +1945,16 @@
     restartBtn.addEventListener("touchend", cancelResetHold, { passive: false });
     restartBtn.addEventListener("touchcancel", cancelResetHold, { passive: false });
 
-    handleOrientationRanking();
-    window.addEventListener("orientationchange", handleOrientationRanking);
-    window.addEventListener("resize", handleOrientationRanking);
+    const handleViewportChange = () => {
+      scheduleFitLayout();
+      handleOrientationRanking();
+    };
+
+    window.addEventListener("resize", handleViewportChange, { passive: true });
+    window.addEventListener("orientationchange", () => setTimeout(handleViewportChange, 120), { passive: true });
     if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", handleOrientationRanking);
+      window.visualViewport.addEventListener("resize", handleViewportChange, { passive: true });
+      window.visualViewport.addEventListener("scroll", handleViewportChange, { passive: true });
     }
 
     requestAnimationFrame(tick);
