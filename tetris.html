@@ -693,6 +693,8 @@
     let pausedByRankingModal = false;
     let celebrationOpen = false;
     let pausedByCelebration = false;
+    let wasLandscape = null;
+    let forcedRankingByOrientation = false;
 
     const RANKING_KEY = "tetrisLocalTop10V1";
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
@@ -876,6 +878,31 @@
       pausedByCelebration = false;
       celebrationOpen = false;
       updateHUD(state);
+    }
+
+    function isLandscapeViewport() {
+      const vv = window.visualViewport;
+      const w = vv ? vv.width : window.innerWidth;
+      const h = vv ? vv.height : window.innerHeight;
+      return w > h;
+    }
+
+    function handleOrientationRanking() {
+      const isLandscape = isLandscapeViewport();
+      if (isLandscape === wasLandscape) return;
+      wasLandscape = isLandscape;
+
+      if (isLandscape) {
+        if (celebrationOpen) return;
+        forcedRankingByOrientation = true;
+        openRankingModal();
+        return;
+      }
+
+      if (forcedRankingByOrientation) {
+        forcedRankingByOrientation = false;
+        closeRankingModal();
+      }
     }
 
     function registerRankingScore(state) {
@@ -1762,6 +1789,13 @@
     restartBtn.addEventListener("touchstart", startResetHold, { passive: false });
     restartBtn.addEventListener("touchend", cancelResetHold, { passive: false });
     restartBtn.addEventListener("touchcancel", cancelResetHold, { passive: false });
+
+    handleOrientationRanking();
+    window.addEventListener("orientationchange", handleOrientationRanking);
+    window.addEventListener("resize", handleOrientationRanking);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleOrientationRanking);
+    }
 
     requestAnimationFrame(tick);
   </script>
