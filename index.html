@@ -143,6 +143,7 @@
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
       display: block;
       margin: 0 auto;
+      cursor: pointer;
     }
 
     .status-text {
@@ -184,10 +185,6 @@
 
     .right-pad {
       grid-template-columns: 1fr 1fr;
-    }
-
-    .hold-offset {
-      margin-top: 8px;
     }
 
     .span-2 {
@@ -298,12 +295,11 @@
         <button id="rotate-ccw" type="button">⟲</button>
         <button id="rotate" type="button">⟳</button>
         <button id="soft" type="button">▼</button>
-        <button id="hold-action" class="hold-offset" type="button">HOLD</button>
         <button id="hard" class="span-2" type="button">DROP</button>
       </div>
     </section>
 
-    <p class="hint">Reset長押し(0.7秒) / HOLD長押し(0.2秒) / DROP長押し(0.2秒)</p>
+    <p class="hint">Reset長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒)</p>
   </main>
 
   <script>
@@ -318,7 +314,6 @@
     const HOLD_BLOCK = HOLD_CANVAS_PX / HOLD_GRID;
     const RESET_HOLD_MS = 700;
     const HARD_DROP_HOLD_MS = 200;
-    const HOLD_ACTION_HOLD_MS = 200;
     const MOVE_HOLD_DELAY_MS = 140;
     const MOVE_HOLD_REPEAT_MS = 85;
     const CLEAR_EFFECT_MS = 320;
@@ -355,7 +350,6 @@
 
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
-    const holdActionBtn = document.getElementById("hold-action");
     const leftBtn = document.getElementById("left");
     const rightBtn = document.getElementById("right");
     const rotateCcwBtn = document.getElementById("rotate-ccw");
@@ -365,7 +359,6 @@
 
     let resetTimer = null;
     let hardDropTimer = null;
-    let holdActionTimer = null;
     let leftHoldStartTimer = null;
     let rightHoldStartTimer = null;
     let leftHoldRepeatTimer = null;
@@ -1123,30 +1116,6 @@
       hardBtn.textContent = "DROP";
     }
 
-    function startHoldActionHold(e) {
-      e.preventDefault();
-      unlockAudio();
-      if (state.gameOver || state.paused || state.clearing || holdActionTimer) return;
-      holdActionBtn.classList.add("hold-drop");
-      holdActionBtn.textContent = "HOLD...";
-      holdActionTimer = setTimeout(() => {
-        hold(state);
-        holdActionTimer = null;
-        holdActionBtn.classList.remove("hold-drop");
-        holdActionBtn.textContent = "HOLD";
-      }, HOLD_ACTION_HOLD_MS);
-    }
-
-    function cancelHoldActionHold(e) {
-      if (e) e.preventDefault();
-      if (holdActionTimer) {
-        clearTimeout(holdActionTimer);
-        holdActionTimer = null;
-      }
-      holdActionBtn.classList.remove("hold-drop");
-      holdActionBtn.textContent = "HOLD";
-    }
-
     function clearMoveTimers(side) {
       if (side === "left") {
         if (leftHoldStartTimer) clearTimeout(leftHoldStartTimer);
@@ -1220,13 +1189,15 @@
     hardBtn.addEventListener("touchend", cancelHardDropHold, { passive: false });
     hardBtn.addEventListener("touchcancel", cancelHardDropHold, { passive: false });
 
-    holdActionBtn.addEventListener("click", (e) => e.preventDefault());
-    holdActionBtn.addEventListener("mousedown", startHoldActionHold);
-    holdActionBtn.addEventListener("mouseup", cancelHoldActionHold);
-    holdActionBtn.addEventListener("mouseleave", cancelHoldActionHold);
-    holdActionBtn.addEventListener("touchstart", startHoldActionHold, { passive: false });
-    holdActionBtn.addEventListener("touchend", cancelHoldActionHold, { passive: false });
-    holdActionBtn.addEventListener("touchcancel", cancelHoldActionHold, { passive: false });
+    holdCanvas.addEventListener("click", () => {
+      unlockAudio();
+      hold(state);
+    });
+    holdCanvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      unlockAudio();
+      hold(state);
+    }, { passive: false });
 
     seDownBtn.addEventListener("click", (e) => e.preventDefault());
     seUpBtn.addEventListener("click", (e) => e.preventDefault());
