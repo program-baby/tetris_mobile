@@ -183,7 +183,7 @@
     }
 
     .right-pad {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr 1fr;
     }
 
     .span-2 {
@@ -254,7 +254,6 @@
     <section class="arena">
       <aside class="panel left-tools">
         <button id="pause" class="ghost tool-btn" type="button">Pause</button>
-        <button id="hold-action" class="ghost tool-btn" type="button">Hold (C)</button>
         <button id="restart" class="danger tool-btn" type="button">Hold Reset</button>
       </aside>
 
@@ -290,15 +289,16 @@
       <div class="control-side left-pad">
         <button id="left" type="button">◀</button>
         <button id="right" type="button">▶</button>
-        <button id="soft" class="span-2" type="button">▼</button>
+        <button id="hold-action" class="span-2" type="button">HOLD</button>
       </div>
       <div class="control-side right-pad">
+        <button id="rotate-ccw" type="button">⟲</button>
         <button id="rotate" type="button">⟳</button>
-        <button id="hard" type="button">DROP</button>
+        <button id="hard" class="span-2" type="button">DROP</button>
       </div>
     </section>
 
-    <p class="hint">Reset長押し(0.7秒) / DROP長押し(0.2秒) / Hold: Cキー</p>
+    <p class="hint">Reset長押し(0.7秒) / HOLD長押し(0.2秒) / DROP長押し(0.2秒)</p>
   </main>
 
   <script>
@@ -313,6 +313,7 @@
     const HOLD_BLOCK = HOLD_CANVAS_PX / HOLD_GRID;
     const RESET_HOLD_MS = 700;
     const HARD_DROP_HOLD_MS = 200;
+    const HOLD_ACTION_HOLD_MS = 200;
     const MOVE_HOLD_DELAY_MS = 140;
     const MOVE_HOLD_REPEAT_MS = 85;
     const CLEAR_EFFECT_MS = 320;
@@ -352,12 +353,13 @@
     const holdActionBtn = document.getElementById("hold-action");
     const leftBtn = document.getElementById("left");
     const rightBtn = document.getElementById("right");
+    const rotateCcwBtn = document.getElementById("rotate-ccw");
     const rotateBtn = document.getElementById("rotate");
-    const softBtn = document.getElementById("soft");
     const hardBtn = document.getElementById("hard");
 
     let resetTimer = null;
     let hardDropTimer = null;
+    let holdActionTimer = null;
     let leftHoldStartTimer = null;
     let rightHoldStartTimer = null;
     let leftHoldRepeatTimer = null;
@@ -545,6 +547,10 @@
         }
       }
       return out;
+    }
+
+    function rotateCCW(matrix) {
+      return rotate(rotate(rotate(matrix)));
     }
 
     function collide(board, piece) {
@@ -906,11 +912,11 @@
       else playMoveSound();
     }
 
-    function rotatePiece(state) {
+    function rotatePiece(state, direction = 1) {
       if (state.gameOver || state.paused || state.clearing) return;
       const originalMatrix = state.piece.matrix;
       const originalX = state.piece.pos.x;
-      state.piece.matrix = rotate(state.piece.matrix);
+      state.piece.matrix = direction === 1 ? rotate(state.piece.matrix) : rotateCCW(state.piece.matrix);
 
       const kicks = [0, -1, 1, -2, 2];
       for (const k of kicks) {
@@ -1111,6 +1117,30 @@
       hardBtn.textContent = "DROP";
     }
 
+    function startHoldActionHold(e) {
+      e.preventDefault();
+      unlockAudio();
+      if (state.gameOver || state.paused || state.clearing || holdActionTimer) return;
+      holdActionBtn.classList.add("hold-drop");
+      holdActionBtn.textContent = "HOLD...";
+      holdActionTimer = setTimeout(() => {
+        hold(state);
+        holdActionTimer = null;
+        holdActionBtn.classList.remove("hold-drop");
+        holdActionBtn.textContent = "HOLD";
+      }, HOLD_ACTION_HOLD_MS);
+    }
+
+    function cancelHoldActionHold(e) {
+      if (e) e.preventDefault();
+      if (holdActionTimer) {
+        clearTimeout(holdActionTimer);
+        holdActionTimer = null;
+      }
+      holdActionBtn.classList.remove("hold-drop");
+      holdActionBtn.textContent = "HOLD";
+    }
+
     function clearMoveTimers(side) {
       if (side === "left") {
         if (leftHoldStartTimer) clearTimeout(leftHoldStartTimer);
@@ -1167,9 +1197,8 @@
     rightBtn.addEventListener("touchend", (e) => stopMoveHold("right", e), { passive: false });
     rightBtn.addEventListener("touchcancel", (e) => stopMoveHold("right", e), { passive: false });
 
-    bindTap(rotateBtn, () => rotatePiece(state));
-    bindTap(softBtn, () => drop(state));
-    bindTap(holdActionBtn, () => hold(state));
+    bindTap(rotateCcwBtn, () => rotatePiece(state, -1));
+    bindTap(rotateBtn, () => rotatePiece(state, 1));
 
     bindTap(pauseBtn, () => {
       state.paused = !state.paused;
@@ -1183,6 +1212,14 @@
     hardBtn.addEventListener("touchstart", startHardDropHold, { passive: false });
     hardBtn.addEventListener("touchend", cancelHardDropHold, { passive: false });
     hardBtn.addEventListener("touchcancel", cancelHardDropHold, { passive: false });
+
+    holdActionBtn.addEventListener("click", (e) => e.preventDefault());
+    holdActionBtn.addEventListener("mousedown", startHoldActionHold);
+    holdActionBtn.addEventListener("mouseup", cancelHoldActionHold);
+    holdActionBtn.addEventListener("mouseleave", cancelHoldActionHold);
+    holdActionBtn.addEventListener("touchstart", startHoldActionHold, { passive: false });
+    holdActionBtn.addEventListener("touchend", cancelHoldActionHold, { passive: false });
+    holdActionBtn.addEventListener("touchcancel", cancelHoldActionHold, { passive: false });
 
     seDownBtn.addEventListener("click", (e) => e.preventDefault());
     seUpBtn.addEventListener("click", (e) => e.preventDefault());
