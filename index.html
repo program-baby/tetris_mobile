@@ -186,6 +186,10 @@
       grid-template-columns: 1fr 1fr;
     }
 
+    .hold-offset {
+      margin-top: 8px;
+    }
+
     .span-2 {
       grid-column: span 2;
     }
@@ -289,11 +293,12 @@
       <div class="control-side left-pad">
         <button id="left" type="button">◀</button>
         <button id="right" type="button">▶</button>
-        <button id="hold-action" class="span-2" type="button">HOLD</button>
       </div>
       <div class="control-side right-pad">
         <button id="rotate-ccw" type="button">⟲</button>
         <button id="rotate" type="button">⟳</button>
+        <button id="soft" type="button">▼</button>
+        <button id="hold-action" class="hold-offset" type="button">HOLD</button>
         <button id="hard" class="span-2" type="button">DROP</button>
       </div>
     </section>
@@ -355,6 +360,7 @@
     const rightBtn = document.getElementById("right");
     const rotateCcwBtn = document.getElementById("rotate-ccw");
     const rotateBtn = document.getElementById("rotate");
+    const softBtn = document.getElementById("soft");
     const hardBtn = document.getElementById("hard");
 
     let resetTimer = null;
@@ -1199,6 +1205,7 @@
 
     bindTap(rotateCcwBtn, () => rotatePiece(state, -1));
     bindTap(rotateBtn, () => rotatePiece(state, 1));
+    bindTap(softBtn, () => drop(state));
 
     bindTap(pauseBtn, () => {
       state.paused = !state.paused;
