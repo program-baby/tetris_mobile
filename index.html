@@ -48,7 +48,7 @@
       gap: 4px;
       align-content: stretch;
       padding-top: calc(4px + env(safe-area-inset-top));
-      padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 8px);
+      padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 14px);
     }
 
     .arena {
@@ -59,6 +59,7 @@
       align-items: start;
       align-content: end;
       min-height: calc(var(--viewport-h) - var(--controls-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 18px);
+      padding-bottom: 6px;
     }
 
     .panel {
@@ -547,8 +548,13 @@
     }
 
     @media (orientation: landscape) {
+      :root {
+        --controls-h: 112px;
+      }
+
       .app {
         align-content: stretch;
+        padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 8px);
       }
 
       .arena {
@@ -581,6 +587,27 @@
       .tool-btn {
         min-width: 0;
         width: 100%;
+        min-height: 30px;
+        padding: 6px 8px;
+      }
+
+      .controls {
+        padding-bottom: calc(2px + env(safe-area-inset-bottom));
+      }
+
+      .controls-inner {
+        gap: 6px;
+        padding: 4px;
+      }
+
+      .control-side {
+        gap: 4px;
+      }
+
+      button {
+        min-height: 44px;
+        padding: 7px 5px;
+        font-size: 0.86rem;
       }
     }
 
@@ -619,6 +646,11 @@
       pointer-events: none;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       white-space: pre;
+      display: none;
+    }
+
+    .debug-hud.is-visible {
+      display: block;
     }
   </style>
 </head>
@@ -773,6 +805,8 @@
     const softBtn = document.getElementById("soft");
     const hardBtn = document.getElementById("hard");
 
+    const DEBUG_LAYOUT = false;
+
     let resetTimer = null;
     let hardDropTimer = null;
     let leftHoldStartTimer = null;
@@ -851,9 +885,22 @@
     }
 
     function getViewportSize() {
+      const innerW = window.innerWidth;
+      const innerH = window.innerHeight;
       const vv = window.visualViewport;
-      if (vv) return { width: Math.round(vv.width), height: Math.round(vv.height) };
-      return { width: window.innerWidth, height: window.innerHeight };
+      if (!vv) return { width: innerW, height: innerH };
+
+      let width = Math.round(vv.width);
+      let height = Math.round(vv.height);
+
+      // Android ChromeなどでvisualViewportが一時的に極端に小さくなる揺れを吸収
+      const tooSmall = height < Math.round(innerH * 0.72);
+      if (tooSmall) {
+        width = innerW;
+        height = innerH;
+      }
+
+      return { width, height };
     }
 
     function fitLayout() {
@@ -892,7 +939,7 @@
       const sidePanelW = Math.max(compactSide ? 78 : 84, Math.min(120, Math.floor((appRect.width - boardW - colGap - 8))));
       document.documentElement.style.setProperty("--side-panel-w", `${sidePanelW}px`);
 
-      if (debugHudEl) {
+      if (DEBUG_LAYOUT && debugHudEl) {
         debugHudEl.textContent =
           `vw:${vw}\n` +
           `vh:${vh}\n` +
@@ -1646,6 +1693,7 @@
     let state = createState();
     updateHUD(state);
     renderRanking();
+    if (debugHudEl) debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
     scheduleFitLayout();
 
     function tick(time = 0) {
