@@ -13,6 +13,7 @@
       --muted: #9ca3af;
       --accent: #22d3ee;
       --control-h: 158px;
+      --hud-h: 62px;
     }
 
     * {
@@ -36,6 +37,7 @@
       max-width: 980px;
       min-height: calc(100dvh - 16px);
       padding: 8px;
+      padding-top: calc(var(--hud-h) + env(safe-area-inset-top) + 6px);
       padding-bottom: calc(var(--control-h) + env(safe-area-inset-bottom));
     }
 
@@ -131,6 +133,67 @@
       background: #475569;
     }
 
+    .top-hud {
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: 0;
+      z-index: 40;
+      padding-top: env(safe-area-inset-top);
+      padding-left: 8px;
+      padding-right: 8px;
+      padding-bottom: 6px;
+      background: linear-gradient(to bottom, rgba(2, 6, 23, 0.92), rgba(2, 6, 23, 0.68));
+    }
+
+    .top-hud-inner {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .hud-stats {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .hud-chip {
+      background: rgba(15, 23, 42, 0.86);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 5px 8px;
+      font-size: 0.83rem;
+      white-space: nowrap;
+    }
+
+    .hud-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .hud-btn {
+      min-height: 38px;
+      width: auto;
+      min-width: 64px;
+      margin: 0;
+      padding: 6px 10px;
+      border-radius: 8px;
+    }
+
+    #pauseTop {
+      background: #334155;
+    }
+
+    #restartTop {
+      background: #475569;
+    }
+
     .controls-bottom {
       position: fixed;
       left: 0;
@@ -194,6 +257,7 @@
     }
 
     body.is-landscape .app {
+      padding-top: 8px;
       padding-bottom: 8px;
     }
 
@@ -238,6 +302,20 @@
       display: none;
     }
 
+    body.is-landscape .top-hud {
+      display: none;
+    }
+
+    .panel-main-stats,
+    .panel-actions {
+      display: none;
+    }
+
+    body.is-landscape .panel-main-stats,
+    body.is-landscape .panel-actions {
+      display: block;
+    }
+
     @media (max-width: 760px) {
       h1 {
         margin-bottom: 6px;
@@ -267,6 +345,20 @@
   </style>
 </head>
 <body>
+  <div id="topHud" class="top-hud" aria-label="Top HUD">
+    <div class="top-hud-inner">
+      <div class="hud-stats">
+        <div class="hud-chip">Score: <span id="scoreTop">0</span></div>
+        <div class="hud-chip">Lines: <span id="linesTop">0</span></div>
+        <div class="hud-chip">Level: <span id="levelTop">1</span></div>
+      </div>
+      <div class="hud-actions">
+        <button id="pauseTop" class="hud-btn" type="button">Pause</button>
+        <button id="restartTop" class="hud-btn" type="button">Reset</button>
+      </div>
+    </div>
+  </div>
+
   <div id="app" class="app">
     <div class="layout">
       <aside id="controlsLeft" class="controls-side" aria-label="Left controls">
@@ -279,11 +371,13 @@
         <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
         <section class="panel">
           <h1>TETRIS</h1>
-          <div class="stat">Score: <span id="score">0</span></div>
-          <div class="stat">Lines: <span id="lines">0</span></div>
-          <div class="stat">Level: <span id="level">1</span></div>
-          <div class="stat">Combo: <span id="combo">-</span></div>
-          <div class="stat">B2B: <span id="b2b">-</span></div>
+          <div class="panel-main-stats">
+            <div class="stat">Score: <span id="score">0</span></div>
+            <div class="stat">Lines: <span id="lines">0</span></div>
+            <div class="stat">Level: <span id="level">1</span></div>
+            <div class="stat">Combo: <span id="combo">-</span></div>
+            <div class="stat">B2B: <span id="b2b">-</span></div>
+          </div>
           <div class="next-wrap">
             <div class="stat">Hold</div>
             <canvas id="hold" width="120" height="120" aria-label="Hold piece"></canvas>
@@ -292,9 +386,11 @@
             <div class="stat">Next</div>
             <canvas id="next" width="120" height="120" aria-label="Next piece"></canvas>
           </div>
-          <div id="status" class="stat" style="color:#67e8f9;min-height:1.2em;"></div>
-          <button id="pause" type="button">Pause</button>
-          <button id="restart" type="button">Restart</button>
+          <div id="status" class="stat panel-main-stats" style="color:#67e8f9;min-height:1.2em;"></div>
+          <div class="panel-actions">
+            <button id="pause" type="button">Pause</button>
+            <button id="restart" type="button">Restart</button>
+          </div>
           <p class="muted">
             ← →: 移動<br>
             ↓: ソフトドロップ<br>
@@ -331,7 +427,6 @@
   <script>
     const COLS = 10;
     const ROWS = 20;
-    const BLOCK = 30;
     const NEXT_GRID = 4;
     const NEXT_SIZE = 120;
     const NEXT_BLOCK = NEXT_SIZE / NEXT_GRID;
@@ -341,7 +436,6 @@
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
-    ctx.scale(BLOCK, BLOCK);
     const nextCanvas = document.getElementById("next");
     const nextCtx = nextCanvas.getContext("2d");
     nextCtx.scale(NEXT_BLOCK, NEXT_BLOCK);
@@ -352,15 +446,21 @@
     const appEl = document.getElementById("app");
     const gameAreaEl = document.getElementById("gameArea");
     const controlsBottomEl = document.getElementById("controlsBottom");
+    const topHudEl = document.getElementById("topHud");
 
     const scoreEl = document.getElementById("score");
     const linesEl = document.getElementById("lines");
     const levelEl = document.getElementById("level");
+    const scoreTopEl = document.getElementById("scoreTop");
+    const linesTopEl = document.getElementById("linesTop");
+    const levelTopEl = document.getElementById("levelTop");
     const comboEl = document.getElementById("combo");
     const b2bEl = document.getElementById("b2b");
     const statusEl = document.getElementById("status");
     const pauseBtn = document.getElementById("pause");
     const restartBtn = document.getElementById("restart");
+    const pauseTopBtn = document.getElementById("pauseTop");
+    const restartTopBtn = document.getElementById("restartTop");
 
     const COLORS = [
       null,
@@ -541,6 +641,19 @@
       drawMatrix(holdCtx, matrix, offset);
     }
 
+    function updateBoardCanvasSize(boardPx) {
+      const cssW = Math.max(140, Math.floor(boardPx));
+      const cssH = cssW * 2;
+      const dpr = window.devicePixelRatio || 1;
+      const unitScale = (cssW / COLS) * dpr;
+
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      ctx.setTransform(unitScale, 0, 0, unitScale, 0, 0);
+    }
+
     function getGhostOffset(state) {
       const ghost = {
         matrix: state.piece.matrix,
@@ -603,10 +716,15 @@
       scoreEl.textContent = state.score;
       linesEl.textContent = state.lines;
       levelEl.textContent = state.level;
+      scoreTopEl.textContent = state.score;
+      linesTopEl.textContent = state.lines;
+      levelTopEl.textContent = state.level;
       comboEl.textContent = state.combo > 0 ? `x${state.combo + 1}` : "-";
       b2bEl.textContent = state.backToBack > 1 ? `x${state.backToBack}` : "-";
       statusEl.textContent = state.statusText || "";
-      pauseBtn.textContent = state.paused ? "Resume" : "Pause";
+      const pauseLabel = state.paused ? "Resume" : "Pause";
+      pauseBtn.textContent = pauseLabel;
+      pauseTopBtn.textContent = pauseLabel;
     }
 
     function spawnNext(state) {
@@ -834,22 +952,37 @@
     }
 
     function fitLayout(vw, vh, isLandscape) {
+      const safeTop = 0;
+      const safeBottom = 0;
+      const safeLeft = 0;
+      const safeRight = 0;
       const bottomControlsH = controlsBottomEl.offsetHeight || 0;
+      const topHudH = topHudEl.offsetHeight || 0;
+      let boardW;
+
       if (isLandscape) {
         appEl.style.paddingBottom = "8px";
-        const maxByH = Math.floor((vh - 28) / 2);
-        const maxByW = Math.floor((vw - 240) / 10);
-        const nextW = Math.max(170, Math.min(320, maxByH, maxByW));
-        canvas.style.width = `${nextW}px`;
+        appEl.style.paddingTop = "8px";
+        const sideColsW = 92 * 2 + 28 + safeLeft + safeRight;
+        const panelW = Math.min(220, Math.floor(vw * 0.32));
+        const centerPadding = 36;
+        const availableW = Math.max(140, vw - sideColsW - panelW - centerPadding);
+        const availableH = Math.max(280, vh - 32 - safeTop - safeBottom);
+        const maxByW = Math.floor(availableW);
+        const maxByH = Math.floor(availableH / 2);
+        boardW = Math.max(140, Math.min(320, maxByW, maxByH));
       } else {
         const reserve = bottomControlsH + 10;
         appEl.style.paddingBottom = `${reserve}px`;
-        const maxByH = Math.floor((vh - reserve - 36) / 2);
-        const maxByW = Math.floor(vw - 32);
-        const nextW = Math.max(170, Math.min(320, maxByH, maxByW));
-        canvas.style.width = `${nextW}px`;
+        appEl.style.paddingTop = `${topHudH + 8}px`;
+        const availableH = Math.max(280, vh - reserve - topHudH - 24 - safeBottom - safeTop);
+        const maxByH = Math.floor(availableH / 2);
+        const maxByW = Math.floor(vw - 28 - safeLeft - safeRight);
+        boardW = Math.max(140, Math.min(320, maxByH, maxByW));
       }
+      updateBoardCanvasSize(boardW);
       gameAreaEl.style.minHeight = "0";
+      draw(state);
     }
 
     let rafId = 0;
@@ -942,12 +1075,22 @@
       updateHUD(state);
     });
 
+    pauseTopBtn.addEventListener("click", () => {
+      state.paused = !state.paused;
+      updateHUD(state);
+    });
+
     holdCanvas.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       hold(state);
     });
 
     restartBtn.addEventListener("click", () => {
+      state = createState();
+      updateHUD(state);
+    });
+
+    restartTopBtn.addEventListener("click", () => {
       state = createState();
       updateHUD(state);
     });
