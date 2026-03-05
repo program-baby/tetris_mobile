@@ -12,6 +12,7 @@
       --text: #e5e7eb;
       --muted: #9ca3af;
       --accent: #22d3ee;
+      --control-h: 158px;
     }
 
     * {
@@ -24,53 +25,49 @@
       background: linear-gradient(rgba(2, 6, 23, 0.62), rgba(2, 6, 23, 0.62)), url("./bg.png") center / cover no-repeat;
       color: var(--text);
       min-height: 100dvh;
+      padding: 8px;
+      overflow: hidden;
       display: grid;
       place-items: center;
-      padding: 12px;
-      overflow: hidden;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 980px;
+      min-height: calc(100dvh - 16px);
+      padding: 8px;
+      padding-bottom: calc(var(--control-h) + env(safe-area-inset-bottom));
     }
 
     .layout {
       display: flex;
-      gap: 14px;
+      gap: 12px;
+      justify-content: center;
       align-items: flex-start;
       flex-wrap: wrap;
+    }
+
+    .game-center {
+      display: flex;
+      gap: 12px;
       justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
       width: 100%;
-      max-width: 760px;
     }
 
     #game {
-      width: min(300px, calc((100dvh - 190px) / 2), calc(100vw - 24px));
+      width: min(300px, calc((100dvh - 220px) / 2), calc(100vw - 24px));
       height: auto;
       aspect-ratio: 1 / 2;
       border: 3px solid #334155;
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-    }
-
-    .next-wrap {
-      margin-top: 10px;
-    }
-
-    #next {
-      width: 120px;
-      height: 120px;
-      border: 2px solid #334155;
-      background: rgba(2, 6, 23, 0.25);
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
-    }
-
-    #hold {
-      width: 120px;
-      height: 120px;
-      border: 2px solid #334155;
-      background: rgba(2, 6, 23, 0.25);
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+      touch-action: none;
     }
 
     .panel {
-      width: min(100%, 300px);
+      width: min(260px, 100%);
       background: linear-gradient(160deg, #0f172a, #111827);
       border: 1px solid #334155;
       border-radius: 10px;
@@ -88,6 +85,20 @@
       font-size: 0.95rem;
     }
 
+    .next-wrap {
+      margin-top: 10px;
+    }
+
+    #next,
+    #hold {
+      width: 120px;
+      height: 120px;
+      border: 2px solid #334155;
+      background: rgba(2, 6, 23, 0.25);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+      touch-action: manipulation;
+    }
+
     .muted {
       color: var(--muted);
       font-size: 0.8rem;
@@ -95,35 +106,139 @@
       margin-top: 10px;
     }
 
-    button {
-      margin-top: 8px;
+    button,
+    .ctrl-btn {
       width: 100%;
       padding: 9px 12px;
       border: 0;
-      border-radius: 8px;
+      border-radius: 10px;
       background: #0891b2;
       color: #ecfeff;
       font-weight: 700;
       cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
     }
 
-    button:hover {
-      background: #0e7490;
+    #pause {
+      margin-top: 8px;
+      background: #334155;
+    }
+
+    #restart {
+      margin-top: 8px;
+      background: #475569;
+    }
+
+    .controls-bottom {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+      padding: 8px;
+      padding-bottom: calc(8px + env(safe-area-inset-bottom));
+      background: linear-gradient(to top, rgba(2, 6, 23, 0.92), rgba(2, 6, 23, 0.72));
+    }
+
+    .controls-bottom-inner {
+      width: min(620px, 100%);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(56px, 1fr));
+      gap: 10px;
+    }
+
+    .ctrl-btn {
+      min-height: 56px;
+      font-size: 1.02rem;
+    }
+
+    .ctrl-move {
+      background: #0ea5e9;
+    }
+
+    .ctrl-rot {
+      background: #16a34a;
+    }
+
+    .ctrl-drop {
+      background: #f59e0b;
+    }
+
+    .ctrl-hard {
+      background: #dc2626;
+    }
+
+    .ctrl-hold {
+      background: #64748b;
+    }
+
+    #controlsLeft,
+    #controlsRight {
+      display: none;
+    }
+
+    .controls-side {
+      width: 84px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-top: 8px;
+    }
+
+    .controls-side .ctrl-btn {
+      min-height: 56px;
+      padding: 6px;
+    }
+
+    body.is-landscape .app {
+      padding-bottom: 8px;
+    }
+
+    body.is-landscape .layout {
+      display: grid;
+      grid-template-columns: minmax(74px, 92px) minmax(0, 1fr) minmax(74px, 92px);
+      align-items: stretch;
+      gap: 12px;
+      max-width: 980px;
+      margin: 0 auto;
+      height: calc(100dvh - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+
+    body.is-landscape .game-center {
+      align-content: center;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      padding: 4px;
+    }
+
+    body.is-landscape #controlsLeft,
+    body.is-landscape #controlsRight {
+      display: flex;
+      justify-content: center;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    body.is-landscape .controls-bottom {
+      display: none;
+    }
+
+    body.is-landscape .panel {
+      width: min(220px, 35vw);
+      padding: 10px;
+    }
+
+    body.is-landscape .muted {
+      display: none;
     }
 
     @media (max-width: 760px) {
-      body {
-        padding: 8px;
-      }
-
-      .layout {
-        gap: 10px;
-      }
-
-      .panel {
-        padding: 10px;
-      }
-
       h1 {
         margin-bottom: 6px;
       }
@@ -133,42 +248,84 @@
       }
     }
 
-    @media (max-height: 760px) {
-      .muted {
-        display: none;
+    @media (max-height: 430px) and (orientation: landscape) {
+      .controls-side .ctrl-btn {
+        min-height: 46px;
+        font-size: 0.88rem;
+      }
+
+      .panel {
+        font-size: 0.92rem;
+      }
+
+      #next,
+      #hold {
+        width: 92px;
+        height: 92px;
       }
     }
   </style>
 </head>
 <body>
-  <div class="layout">
-    <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
-    <section class="panel">
-      <h1>TETRIS</h1>
-      <div class="stat">Score: <span id="score">0</span></div>
-      <div class="stat">Lines: <span id="lines">0</span></div>
-      <div class="stat">Level: <span id="level">1</span></div>
-      <div class="stat">Combo: <span id="combo">-</span></div>
-      <div class="stat">B2B: <span id="b2b">-</span></div>
-      <div class="next-wrap">
-        <div class="stat">Hold</div>
-        <canvas id="hold" width="120" height="120" aria-label="Hold piece"></canvas>
+  <div id="app" class="app">
+    <div class="layout">
+      <aside id="controlsLeft" class="controls-side" aria-label="Left controls">
+        <button class="ctrl-btn ctrl-move" data-act="left" type="button">◀</button>
+        <button class="ctrl-btn ctrl-move" data-act="right" type="button">▶</button>
+        <button class="ctrl-btn ctrl-drop" data-act="soft" type="button">▼</button>
+      </aside>
+
+      <div id="gameArea" class="game-center">
+        <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
+        <section class="panel">
+          <h1>TETRIS</h1>
+          <div class="stat">Score: <span id="score">0</span></div>
+          <div class="stat">Lines: <span id="lines">0</span></div>
+          <div class="stat">Level: <span id="level">1</span></div>
+          <div class="stat">Combo: <span id="combo">-</span></div>
+          <div class="stat">B2B: <span id="b2b">-</span></div>
+          <div class="next-wrap">
+            <div class="stat">Hold</div>
+            <canvas id="hold" width="120" height="120" aria-label="Hold piece"></canvas>
+          </div>
+          <div class="next-wrap">
+            <div class="stat">Next</div>
+            <canvas id="next" width="120" height="120" aria-label="Next piece"></canvas>
+          </div>
+          <div id="status" class="stat" style="color:#67e8f9;min-height:1.2em;"></div>
+          <button id="pause" type="button">Pause</button>
+          <button id="restart" type="button">Restart</button>
+          <p class="muted">
+            ← →: 移動<br>
+            ↓: ソフトドロップ<br>
+            ↑: 回転<br>
+            Space: ハードドロップ<br>
+            C: Hold<br>
+            P: 一時停止
+          </p>
+        </section>
       </div>
-      <div class="next-wrap">
-        <div class="stat">Next</div>
-        <canvas id="next" width="120" height="120" aria-label="Next piece"></canvas>
-      </div>
-      <div id="status" class="stat" style="color:#67e8f9;min-height:1.2em;"></div>
-      <button id="restart" type="button">Restart</button>
-      <p class="muted">
-        ← →: 移動<br>
-        ↓: ソフトドロップ<br>
-        ↑: 回転<br>
-        Space: ハードドロップ<br>
-        C: Hold<br>
-        P: 一時停止
-      </p>
-    </section>
+
+      <aside id="controlsRight" class="controls-side" aria-label="Right controls">
+        <button class="ctrl-btn ctrl-rot" data-act="rotL" type="button">⟲</button>
+        <button class="ctrl-btn ctrl-rot" data-act="rotR" type="button">⟳</button>
+        <button class="ctrl-btn ctrl-hard" data-act="hard" type="button">DROP</button>
+        <button class="ctrl-btn ctrl-hold" data-act="hold" type="button">HOLD</button>
+      </aside>
+    </div>
+  </div>
+
+  <div id="controlsBottom" class="controls-bottom" aria-label="Bottom controls">
+    <div class="controls-bottom-inner">
+      <button class="ctrl-btn ctrl-move" data-act="left" type="button">◀</button>
+      <button class="ctrl-btn ctrl-move" data-act="right" type="button">▶</button>
+      <button class="ctrl-btn ctrl-rot" data-act="rotL" type="button">⟲</button>
+      <button class="ctrl-btn ctrl-rot" data-act="rotR" type="button">⟳</button>
+      <button class="ctrl-btn ctrl-drop" data-act="soft" type="button">▼</button>
+      <button class="ctrl-btn ctrl-hard" data-act="hard" type="button">DROP</button>
+      <button class="ctrl-btn ctrl-hold" data-act="hold" type="button">HOLD</button>
+      <button class="ctrl-btn" data-act="pause" type="button">PAUSE</button>
+    </div>
   </div>
 
   <script>
@@ -192,12 +349,17 @@
     const holdCtx = holdCanvas.getContext("2d");
     holdCtx.scale(HOLD_BLOCK, HOLD_BLOCK);
 
+    const appEl = document.getElementById("app");
+    const gameAreaEl = document.getElementById("gameArea");
+    const controlsBottomEl = document.getElementById("controlsBottom");
+
     const scoreEl = document.getElementById("score");
     const linesEl = document.getElementById("lines");
     const levelEl = document.getElementById("level");
     const comboEl = document.getElementById("combo");
     const b2bEl = document.getElementById("b2b");
     const statusEl = document.getElementById("status");
+    const pauseBtn = document.getElementById("pause");
     const restartBtn = document.getElementById("restart");
 
     const COLORS = [
@@ -444,6 +606,7 @@
       comboEl.textContent = state.combo > 0 ? `x${state.combo + 1}` : "-";
       b2bEl.textContent = state.backToBack > 1 ? `x${state.backToBack}` : "-";
       statusEl.textContent = state.statusText || "";
+      pauseBtn.textContent = state.paused ? "Resume" : "Pause";
     }
 
     function spawnNext(state) {
@@ -564,11 +727,15 @@
       }
     }
 
-    function rotatePiece(state) {
+    function rotatePiece(state, dir = 1) {
       if (state.gameOver || state.paused) return;
       const original = state.piece.matrix;
-      const rotated = rotate(state.piece.matrix);
       const originalX = state.piece.pos.x;
+      const turns = dir < 0 ? 3 : 1;
+      let rotated = state.piece.matrix;
+      for (let i = 0; i < turns; i++) {
+        rotated = rotate(rotated);
+      }
       state.piece.matrix = rotated;
 
       const kicks = [0, -1, 1, -2, 2];
@@ -657,9 +824,99 @@
       requestAnimationFrame(tick);
     }
 
+    function setLandscapeClass() {
+      const vv = window.visualViewport;
+      const w = vv ? vv.width : window.innerWidth;
+      const h = vv ? vv.height : window.innerHeight;
+      const isLandscape = w > h;
+      document.body.classList.toggle("is-landscape", isLandscape);
+      fitLayout(w, h, isLandscape);
+    }
+
+    function fitLayout(vw, vh, isLandscape) {
+      const bottomControlsH = controlsBottomEl.offsetHeight || 0;
+      if (isLandscape) {
+        appEl.style.paddingBottom = "8px";
+        const maxByH = Math.floor((vh - 28) / 2);
+        const maxByW = Math.floor((vw - 240) / 10);
+        const nextW = Math.max(170, Math.min(320, maxByH, maxByW));
+        canvas.style.width = `${nextW}px`;
+      } else {
+        const reserve = bottomControlsH + 10;
+        appEl.style.paddingBottom = `${reserve}px`;
+        const maxByH = Math.floor((vh - reserve - 36) / 2);
+        const maxByW = Math.floor(vw - 32);
+        const nextW = Math.max(170, Math.min(320, maxByH, maxByW));
+        canvas.style.width = `${nextW}px`;
+      }
+      gameAreaEl.style.minHeight = "0";
+    }
+
+    let rafId = 0;
+    function queueFitLayout() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        setLandscapeClass();
+        rafId = 0;
+      });
+    }
+
+    function runAction(action) {
+      if (action === "left") {
+        move(state, -1);
+      } else if (action === "right") {
+        move(state, 1);
+      } else if (action === "soft") {
+        drop(state);
+      } else if (action === "hard") {
+        hardDrop(state);
+      } else if (action === "rotL") {
+        rotatePiece(state, -1);
+      } else if (action === "rotR") {
+        rotatePiece(state, 1);
+      } else if (action === "hold") {
+        hold(state);
+      } else if (action === "pause") {
+        state.paused = !state.paused;
+        updateHUD(state);
+      }
+    }
+
+    const holdIntervals = new Map();
+    function bindControlButtons() {
+      const buttons = document.querySelectorAll("[data-act]");
+      const repeatable = new Set(["left", "right", "soft"]);
+
+      buttons.forEach((button) => {
+        const action = button.dataset.act;
+
+        const start = (e) => {
+          e.preventDefault();
+          runAction(action);
+          if (!repeatable.has(action)) return;
+          const timer = setInterval(() => runAction(action), 110);
+          holdIntervals.set(button, timer);
+        };
+
+        const stop = () => {
+          const timer = holdIntervals.get(button);
+          if (timer) {
+            clearInterval(timer);
+            holdIntervals.delete(button);
+          }
+        };
+
+        button.addEventListener("pointerdown", start);
+        button.addEventListener("pointerup", stop);
+        button.addEventListener("pointerleave", stop);
+        button.addEventListener("pointercancel", stop);
+      });
+    }
+
     document.addEventListener("keydown", (e) => {
       if (e.key === "p" || e.key === "P") {
         state.paused = !state.paused;
+        updateHUD(state);
         return;
       }
       if (state.gameOver || state.paused) return;
@@ -671,7 +928,7 @@
       } else if (e.key === "ArrowDown") {
         drop(state);
       } else if (e.key === "ArrowUp") {
-        rotatePiece(state);
+        rotatePiece(state, 1);
       } else if (e.key === " ") {
         e.preventDefault();
         hardDrop(state);
@@ -680,17 +937,30 @@
       }
     });
 
+    pauseBtn.addEventListener("click", () => {
+      state.paused = !state.paused;
+      updateHUD(state);
+    });
+
+    holdCanvas.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      hold(state);
+    });
+
     restartBtn.addEventListener("click", () => {
       state = createState();
       updateHUD(state);
     });
 
+    bindControlButtons();
+    queueFitLayout();
+    window.addEventListener("resize", queueFitLayout);
+    window.addEventListener("orientationchange", queueFitLayout);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", queueFitLayout);
+    }
+
     requestAnimationFrame(tick);
   </script>
 </body>
 </html>
-
-
-
-
-
