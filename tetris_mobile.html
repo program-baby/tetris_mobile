@@ -112,9 +112,17 @@
       font-size: 0.64rem;
     }
 
-    #se-volume {
-      width: 100%;
-      accent-color: #22d3ee;
+    .volume-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+    }
+
+    .volume-btn {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 5px 0;
+      border-radius: 7px;
     }
 
     #next {
@@ -244,7 +252,10 @@
         </div>
         <div class="audio-box">
           <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
-          <input id="se-volume" type="range" min="0" max="260" step="1" value="160" />
+          <div class="volume-buttons">
+            <button id="se-down" class="ghost volume-btn" type="button">VOL-</button>
+            <button id="se-up" class="ghost volume-btn" type="button">VOL+</button>
+          </div>
         </div>
         <div class="next-label">NEXT</div>
         <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
@@ -277,7 +288,7 @@
     const HARD_DROP_HOLD_MS = 200;
     const MOVE_HOLD_DELAY_MS = 140;
     const MOVE_HOLD_REPEAT_MS = 85;
-    const CLEAR_EFFECT_MS = 210;
+    const CLEAR_EFFECT_MS = 320;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -290,8 +301,9 @@
     const scoreEl = document.getElementById("score");
     const linesEl = document.getElementById("lines");
     const levelEl = document.getElementById("level");
-    const seVolumeEl = document.getElementById("se-volume");
     const seVolumeValueEl = document.getElementById("se-volume-value");
+    const seDownBtn = document.getElementById("se-down");
+    const seUpBtn = document.getElementById("se-up");
 
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
@@ -307,6 +319,8 @@
     let rightHoldStartTimer = null;
     let leftHoldRepeatTimer = null;
     let rightHoldRepeatTimer = null;
+    let volumeStartTimer = null;
+    let volumeRepeatTimer = null;
     let audioCtx = null;
     let masterSeVolume = 1.6;
 
@@ -352,7 +366,6 @@
     function setSeVolume(percent) {
       const safe = Math.max(0, Math.min(260, percent));
       masterSeVolume = safe / 100;
-      if (seVolumeEl) seVolumeEl.value = String(safe);
       if (seVolumeValueEl) seVolumeValueEl.textContent = `${safe}%`;
       localStorage.setItem("tetrisSeVolume", String(safe));
     }
@@ -553,30 +566,26 @@
       const p = Math.min(elapsed / CLEAR_EFFECT_MS, 1);
 
       for (const row of state.clearing.rows) {
-        const flash = (0.2 + 0.62 * (1 - p)) * (0.5 + 0.5 * Math.abs(Math.sin(p * 34)));
+        const blinkPhase = Math.abs(Math.sin(p * 36));
+        const flash = (0.14 + 0.78 * blinkPhase) * (1 - p * 0.85);
         ctx.fillStyle = `rgba(255, 252, 224, ${flash.toFixed(3)})`;
         ctx.fillRect(0, row, COLS, 1);
-
-        const wipe = Math.min(COLS, Math.max(0, COLS * p * 1.05));
-        if (wipe > 0) {
-          ctx.fillStyle = "rgba(2, 6, 23, 0.9)";
-          ctx.fillRect(0, row, wipe, 1);
-
-          const frontX = Math.min(COLS - 0.04, wipe);
-          ctx.fillStyle = `rgba(255, 255, 255, ${(0.65 * (1 - p)).toFixed(3)})`;
-          ctx.fillRect(frontX, row, 0.08, 1);
-        }
 
         const sparkCount = 10;
         for (let i = 0; i < sparkCount; i++) {
           const base = (i * 1.618 + row * 0.53) % COLS;
-          const sx = (base + p * (1.35 + i * 0.18)) % COLS;
-          if (sx < wipe) continue;
-          const sy = row + ((i % 3) - 1) * 0.035;
+          const sx = (base + p * (1.22 + i * 0.16)) % COLS;
+          const sy = row + ((i % 3) - 1) * 0.03;
           const size = 0.06 + ((i * 7) % 5) * 0.02;
-          const sparkleAlpha = Math.max(0, 1 - p) * (0.45 + (i % 2) * 0.5);
+          const sparkleAlpha = Math.max(0, 1 - p) * (0.35 + 0.65 * blinkPhase);
           ctx.fillStyle = `rgba(255, 255, 255, ${sparkleAlpha.toFixed(3)})`;
           ctx.fillRect(sx, sy, size, size);
+        }
+
+        const fadeAlpha = Math.min(1, Math.max(0, (p - 0.35) / 0.65));
+        if (fadeAlpha > 0) {
+          ctx.fillStyle = `rgba(2, 6, 23, ${(0.9 * fadeAlpha).toFixed(3)})`;
+          ctx.fillRect(0, row, COLS, 1);
         }
       }
     }
@@ -801,11 +810,40 @@
     }
 
     document.addEventListener("pointerdown", unlockAudio, { once: true });
-    seVolumeEl.addEventListener("input", (e) => {
-      setSeVolume(Number(e.target.value));
-    });
 
     loadSeVolume();
+
+    function changeSeVolume(step) {
+      const current = Number(seVolumeValueEl.textContent.replace("%", ""));
+      const base = Number.isFinite(current) ? current : Math.round(masterSeVolume * 100);
+      setSeVolume(base + step);
+    }
+
+    function clearVolumeTimers() {
+      if (volumeStartTimer) clearTimeout(volumeStartTimer);
+      if (volumeRepeatTimer) clearInterval(volumeRepeatTimer);
+      volumeStartTimer = null;
+      volumeRepeatTimer = null;
+    }
+
+    function startVolumeHold(step, e) {
+      e.preventDefault();
+      unlockAudio();
+      changeSeVolume(step);
+      clearVolumeTimers();
+
+      const beginRepeat = () => {
+        volumeRepeatTimer = setInterval(() => {
+          changeSeVolume(step);
+        }, 60);
+      };
+      volumeStartTimer = setTimeout(beginRepeat, 180);
+    }
+
+    function stopVolumeHold(e) {
+      if (e) e.preventDefault();
+      clearVolumeTimers();
+    }
 
     function startResetHold(e) {
       e.preventDefault();
@@ -926,6 +964,21 @@
     hardBtn.addEventListener("touchstart", startHardDropHold, { passive: false });
     hardBtn.addEventListener("touchend", cancelHardDropHold, { passive: false });
     hardBtn.addEventListener("touchcancel", cancelHardDropHold, { passive: false });
+
+    seDownBtn.addEventListener("click", (e) => e.preventDefault());
+    seUpBtn.addEventListener("click", (e) => e.preventDefault());
+    seDownBtn.addEventListener("mousedown", (e) => startVolumeHold(-4, e));
+    seDownBtn.addEventListener("mouseup", stopVolumeHold);
+    seDownBtn.addEventListener("mouseleave", stopVolumeHold);
+    seDownBtn.addEventListener("touchstart", (e) => startVolumeHold(-4, e), { passive: false });
+    seDownBtn.addEventListener("touchend", stopVolumeHold, { passive: false });
+    seDownBtn.addEventListener("touchcancel", stopVolumeHold, { passive: false });
+    seUpBtn.addEventListener("mousedown", (e) => startVolumeHold(4, e));
+    seUpBtn.addEventListener("mouseup", stopVolumeHold);
+    seUpBtn.addEventListener("mouseleave", stopVolumeHold);
+    seUpBtn.addEventListener("touchstart", (e) => startVolumeHold(4, e), { passive: false });
+    seUpBtn.addEventListener("touchend", stopVolumeHold, { passive: false });
+    seUpBtn.addEventListener("touchcancel", stopVolumeHold, { passive: false });
 
     restartBtn.addEventListener("click", (e) => e.preventDefault());
     restartBtn.addEventListener("mousedown", startResetHold);
