@@ -16,6 +16,7 @@
       --danger: #475569;
       --danger-active: #334155;
       --controls-h: 164px;
+      --top-reserve: clamp(52px, 10dvh, 86px);
     }
 
     * {
@@ -41,9 +42,10 @@
       min-height: 100dvh;
       display: grid;
       grid-template-rows: auto;
-      gap: 6px;
+      gap: 4px;
       align-content: start;
-      padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 12px);
+      padding-top: calc(4px + env(safe-area-inset-top));
+      padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 4px);
     }
 
     .arena {
@@ -278,7 +280,7 @@
     }
 
     #game {
-      width: min(300px, calc((100dvh - var(--controls-h) - 90px) / 2), calc(100vw - 188px));
+      width: min(300px, calc((100dvh - var(--controls-h) - var(--top-reserve)) / 2), calc(100vw - 188px));
       height: auto;
       aspect-ratio: 1 / 2;
       border: 3px solid var(--line);
@@ -380,6 +382,7 @@
     @media (max-width: 390px) {
       :root {
         --controls-h: 154px;
+        --top-reserve: clamp(44px, 9dvh, 70px);
       }
 
       .controls {
