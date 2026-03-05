@@ -77,6 +77,19 @@
       justify-content: flex-start;
     }
 
+    .landscape-rules {
+      display: none;
+      margin-top: 4px;
+      padding: 6px 7px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(2, 6, 23, 0.42);
+      color: #cbd5e1;
+      font-size: 0.62rem;
+      line-height: 1.35;
+      white-space: pre-line;
+    }
+
     .right-info {
       grid-column: 2;
       grid-row: 2;
@@ -175,6 +188,11 @@
       color: #67e8f9;
       font-weight: 700;
     }
+
+    .status-text.line-1 { color: #67e8f9; }
+    .status-text.line-2 { color: #22c55e; }
+    .status-text.line-3 { color: #a78bfa; }
+    .status-text.line-4 { color: #facc15; text-shadow: 0 0 8px rgba(250, 204, 21, 0.55); }
 
     .ranking-box {
       margin-top: 2px;
@@ -611,6 +629,10 @@
         justify-content: flex-start;
       }
 
+      .landscape-rules {
+        display: block;
+      }
+
       .right-info {
         grid-column: 2;
         grid-row: 2;
@@ -677,6 +699,10 @@
       <aside id="leftTools" class="panel left-tools">
         <button id="pause" class="ghost tool-btn" type="button">Pause</button>
         <button id="restart" class="danger tool-btn" type="button">Hold Reset</button>
+        <div class="landscape-rules">[横向きルール]
+・画面は自動で一時停止
+・ランキング/ルールを確認
+・縦向きに戻すと再開</div>
       </aside>
 
       <div id="board" class="board-wrap">
@@ -787,6 +813,7 @@
     const B2B_BONUS_RATE = 0.35;
     const COMBO_BONUS_STEP = 35;
     const COMBO_BONUS_MAX = 210;
+    const COMBO_WINDOW_MS = 2600;
     const DEBUG_LAYOUT = false;
 
     const canvas = document.getElementById("game");
@@ -1357,15 +1384,28 @@
       statusEl.textContent = text;
     }
 
+    function setLineStatusClass(cleared) {
+      statusEl.classList.remove("line-1", "line-2", "line-3", "line-4");
+      if (cleared >= 1 && cleared <= 4) {
+        statusEl.classList.add(`line-${cleared}`);
+      }
+    }
+
     function applyScoring(state, cleared, tspin) {
+      const now = performance.now();
       if (cleared > 0 || tspin) {
-        if (cleared > 0) state.combo++;
+        if (cleared > 0) {
+          if (now <= state.comboWindowUntil) state.combo++;
+          else state.combo = 0;
+          state.comboWindowUntil = now + COMBO_WINDOW_MS;
+        }
         const base = tspin
           ? SCORE_TABLE.tspin[cleared] ?? 0
           : SCORE_TABLE.normal[cleared] ?? 0;
 
         const b2bEligible = tspin || cleared === 4;
-        let points = base * state.level;
+        const lineMultiplier = cleared > 0 ? Math.min(4, Math.max(1, cleared)) : 1;
+        let points = base * state.level * lineMultiplier;
         if (b2bEligible) {
           state.backToBack++;
           if (state.backToBack > 1) {
@@ -1386,15 +1426,18 @@
 
         let message = "";
         if (tspin) message = `T-SPIN ${cleared > 0 ? `${cleared} LINE` : ""}`.trim();
-        else if (cleared === 4) message = "TETRIS!";
-        else if (cleared >= 2) message = `${cleared} LINES`;
+        else if (cleared > 0) message = `${cleared} LINE x${lineMultiplier}`;
         else if (state.combo > 0) message = `COMBO x${state.combo + 1}`;
+        setLineStatusClass(cleared);
         if (state.backToBack > 1 && (tspin || cleared === 4)) {
           message = `${message} B2B x${state.backToBack}`.trim();
         }
         if (message) setStatus(state, message);
       } else {
-        state.combo = -1;
+        if (now > state.comboWindowUntil) {
+          state.combo = -1;
+        }
+        setLineStatusClass(0);
       }
     }
 
@@ -1725,6 +1768,7 @@
         lastRotate: false,
         statusText: "",
         statusUntil: 0,
+        comboWindowUntil: 0,
         dropCounter: 0,
         lastTime: 0,
         clearing: null,
@@ -1756,6 +1800,10 @@
       if (state.statusText && performance.now() > state.statusUntil) {
         state.statusText = "";
         statusEl.textContent = "";
+      }
+      if (state.combo > -1 && performance.now() > state.comboWindowUntil) {
+        state.combo = -1;
+        updateHUD(state);
       }
 
       if (state.gameOver && !gameOverHandled) {
