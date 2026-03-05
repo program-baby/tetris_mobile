@@ -434,10 +434,54 @@
     .board-wrap {
       grid-column: 1;
       grid-row: 2;
+      position: relative;
       display: flex;
       justify-content: center;
       align-items: flex-end;
       min-height: 0;
+      padding-top: 26px;
+    }
+
+    .board-score-hud {
+      position: absolute;
+      top: 0;
+      width: var(--board-w);
+      max-width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 3;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .board-score-item {
+      display: grid;
+      gap: 1px;
+      background: rgba(2, 6, 23, 0.52);
+      border: 1px solid rgba(148, 163, 184, 0.38);
+      border-radius: 7px;
+      padding: 3px 6px;
+      min-width: 92px;
+    }
+
+    .board-score-item.right {
+      text-align: right;
+    }
+
+    .board-score-label {
+      color: #94a3b8;
+      font-size: 0.56rem;
+      line-height: 1.1;
+    }
+
+    .board-score-value {
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.74rem;
+      line-height: 1.1;
     }
 
     #game {
@@ -605,6 +649,7 @@
     }
 
     .debug-hud {
+      display: none;
       position: fixed;
       right: 6px;
       top: calc(6px + env(safe-area-inset-top));
@@ -620,6 +665,10 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       white-space: pre;
     }
+
+    .debug-hud.is-visible {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -631,13 +680,23 @@
       </aside>
 
       <div id="board" class="board-wrap">
+        <div class="board-score-hud" aria-label="Board score HUD">
+          <div class="board-score-item">
+            <span class="board-score-label">HIGH</span>
+            <span id="board-best-score" class="board-score-value">0</span>
+          </div>
+          <div class="board-score-item right">
+            <span class="board-score-label">SCORE</span>
+            <span id="board-current-score" class="board-score-value">0</span>
+          </div>
+        </div>
         <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
       </div>
 
       <aside id="sidePanel" class="panel right-info">
         <h1 class="title">TETRIS</h1>
         <div class="stat-grid">
-          <div><span>Score</span><strong id="score">0</strong></div>
+          <div style="display:none;"><span>Score</span><strong id="score">0</strong></div>
           <div><span>Lines</span><strong id="lines">0</strong></div>
           <div><span>Level</span><strong id="level">1</strong></div>
           <div><span>Combo</span><strong id="combo">-</strong></div>
@@ -728,6 +787,7 @@
     const B2B_BONUS_RATE = 0.35;
     const COMBO_BONUS_STEP = 35;
     const COMBO_BONUS_MAX = 210;
+    const DEBUG_LAYOUT = false;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -763,6 +823,8 @@
     const seVolumeValueEl = document.getElementById("se-volume-value");
     const seDownBtn = document.getElementById("se-down");
     const seUpBtn = document.getElementById("se-up");
+    const boardBestScoreEl = document.getElementById("board-best-score");
+    const boardCurrentScoreEl = document.getElementById("board-current-score");
 
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
@@ -793,6 +855,10 @@
     let layoutRaf = 0;
     let lastViewportW = 0;
     let lastViewportH = 0;
+
+    if (debugHudEl) {
+      debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
+    }
 
     const RANKING_KEY = "tetrisLocalTop10V1";
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
@@ -894,7 +960,7 @@
       const sidePanelW = Math.max(compactSide ? 78 : 84, Math.min(120, Math.floor((appRect.width - boardW - colGap - 8))));
       document.documentElement.style.setProperty("--side-panel-w", `${sidePanelW}px`);
 
-      if (debugHudEl) {
+      if (DEBUG_LAYOUT && debugHudEl) {
         debugHudEl.textContent =
           `vw:${vw}\n` +
           `vh:${vh}\n` +
@@ -968,8 +1034,10 @@
       const best = getBestEntry(list);
       if (!best) {
         rankingTickerEl.innerHTML = `<div class="ranking-empty">No scores yet</div>`;
+        boardBestScoreEl.textContent = "0";
         return;
       }
+      boardBestScoreEl.textContent = String(best.score);
       rankingTickerEl.innerHTML = `
         <div class="best-label">BEST SCORE</div>
         <div class="best-value">${best.score}</div>
@@ -1521,6 +1589,7 @@
 
     function updateHUD(state) {
       scoreEl.textContent = state.score;
+      boardCurrentScoreEl.textContent = String(state.score);
       linesEl.textContent = state.lines;
       levelEl.textContent = state.level;
       comboEl.textContent = state.combo > 0 ? `x${state.combo + 1}` : "-";
