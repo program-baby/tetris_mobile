@@ -15,6 +15,16 @@
       --btn-active: #0b7c89;
       --danger: #475569;
       --danger-active: #334155;
+      --move-btn: #2563eb;
+      --move-btn-active: #1d4ed8;
+      --rotate-btn: #16a34a;
+      --rotate-btn-active: #15803d;
+      --drop-btn: #ea580c;
+      --drop-btn-active: #c2410c;
+      --hard-btn: #dc2626;
+      --hard-btn-active: #b91c1c;
+      --assist-btn: #475569;
+      --assist-btn-active: #334155;
     }
 
     * {
@@ -39,15 +49,32 @@
       width: min(100%, 440px);
       max-height: 100dvh;
       display: grid;
-      grid-template-rows: auto auto;
-      gap: 6px;
+      grid-template-rows: auto auto auto;
+      gap: 8px;
       align-content: start;
+    }
+
+    .top-tools {
+      display: flex;
+      justify-content: flex-end;
+      gap: 14px;
+      padding: 0 2px;
+    }
+
+    .top-btn {
+      min-height: 36px;
+      min-width: 88px;
+      font-size: 0.72rem;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.84);
+      border: 1px solid var(--line);
     }
 
     .arena {
       display: grid;
-      grid-template-columns: 64px 1fr 92px;
-      gap: 6px;
+      grid-template-columns: 1fr 92px;
+      gap: 8px;
       align-items: start;
     }
 
@@ -56,12 +83,6 @@
       border: 1px solid var(--line);
       border-radius: 10px;
       padding: 6px;
-    }
-
-    .left-tools {
-      display: grid;
-      gap: 6px;
-      align-content: start;
     }
 
     .right-info {
@@ -159,7 +180,7 @@
     }
 
     #game {
-      width: min(300px, calc((100dvh - 178px) / 2), calc(100vw - 188px));
+      width: min(300px, calc((100dvh - 178px) / 2), calc(100vw - 132px));
       height: auto;
       aspect-ratio: 1 / 2;
       border: 3px solid var(--line);
@@ -169,21 +190,29 @@
 
     .controls {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      grid-template-columns: 1fr 1.35fr;
+      gap: 12px;
     }
 
     .control-side {
       display: grid;
-      gap: 6px;
+      gap: 10px;
     }
 
     .left-pad {
       grid-template-columns: 1fr 1fr;
+      align-content: end;
     }
 
     .right-pad {
       grid-template-columns: 1fr 1fr;
+    }
+
+    .drop-zone {
+      grid-column: span 2;
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
     }
 
     .span-2 {
@@ -192,37 +221,68 @@
 
     button {
       border: 0;
-      border-radius: 9px;
-      background: var(--btn);
+      border-radius: 12px;
+      background: var(--assist-btn);
       color: #ecfeff;
-      font-size: 0.95rem;
+      font-size: 1rem;
       font-weight: 700;
-      padding: 10px 6px;
+      padding: 10px 8px;
       touch-action: manipulation;
     }
 
     button:active {
-      background: var(--btn-active);
+      background: var(--assist-btn-active);
       transform: translateY(1px);
     }
 
-    .tool-btn {
-      width: 100%;
-      min-height: 40px;
-      font-size: 0.75rem;
-      line-height: 1.2;
+    .control-btn {
+      min-height: 64px;
+      min-width: 64px;
+      font-size: 1.06rem;
+    }
+
+    .move-btn {
+      background: var(--move-btn);
+    }
+
+    .move-btn:active {
+      background: var(--move-btn-active);
+    }
+
+    .rotate-btn {
+      background: var(--rotate-btn);
+    }
+
+    .rotate-btn:active {
+      background: var(--rotate-btn-active);
+    }
+
+    .soft-btn {
+      background: var(--drop-btn);
+    }
+
+    .soft-btn:active {
+      background: var(--drop-btn-active);
+    }
+
+    .hard-btn {
+      background: var(--hard-btn);
+    }
+
+    .hard-btn:active {
+      background: var(--hard-btn-active);
+    }
+
+    .hold-btn {
+      background: var(--assist-btn);
+    }
+
+    .hold-btn:active {
+      background: var(--assist-btn-active);
     }
 
     .ghost {
       background: #334155;
-    }
-
-    .danger {
-      background: var(--danger);
-    }
-
-    .danger:active {
-      background: var(--danger-active);
     }
 
     .holding {
@@ -247,16 +307,33 @@
         display: none;
       }
     }
+
+    @media (max-width: 390px) {
+      .controls {
+        grid-template-columns: 1fr 1.28fr;
+        gap: 10px;
+      }
+
+      .control-side {
+        gap: 10px;
+      }
+
+      .control-btn {
+        min-height: 58px;
+        min-width: 58px;
+        font-size: 1rem;
+      }
+    }
   </style>
 </head>
 <body>
   <main class="app">
-    <section class="arena">
-      <aside class="panel left-tools">
-        <button id="pause" class="ghost tool-btn" type="button">Pause</button>
-        <button id="restart" class="danger tool-btn" type="button">Hold Reset</button>
-      </aside>
+    <section class="top-tools">
+      <button id="pause" class="top-btn" type="button">Pause</button>
+      <button id="restart" class="top-btn" type="button">Hold Reset</button>
+    </section>
 
+    <section class="arena">
       <div class="board-wrap">
         <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
       </div>
@@ -287,14 +364,17 @@
 
     <section class="panel controls">
       <div class="control-side left-pad">
-        <button id="left" type="button">◀</button>
-        <button id="right" type="button">▶</button>
-        <button id="hold-action" class="span-2" type="button">HOLD</button>
+        <button id="left" class="control-btn move-btn" type="button">◀</button>
+        <button id="right" class="control-btn move-btn" type="button">▶</button>
       </div>
       <div class="control-side right-pad">
-        <button id="rotate-ccw" type="button">⟲</button>
-        <button id="rotate" type="button">⟳</button>
-        <button id="hard" class="span-2" type="button">DROP</button>
+        <button id="rotate-ccw" class="control-btn rotate-btn" type="button">⟲</button>
+        <button id="rotate" class="control-btn rotate-btn" type="button">⟳</button>
+        <button id="soft" class="control-btn soft-btn" type="button">▼</button>
+        <button id="hold-action" class="control-btn hold-btn" type="button">HOLD</button>
+        <div class="drop-zone">
+          <button id="hard" class="control-btn hard-btn span-2" type="button">DROP</button>
+        </div>
       </div>
     </section>
 
@@ -355,6 +435,7 @@
     const rightBtn = document.getElementById("right");
     const rotateCcwBtn = document.getElementById("rotate-ccw");
     const rotateBtn = document.getElementById("rotate");
+    const softBtn = document.getElementById("soft");
     const hardBtn = document.getElementById("hard");
 
     let resetTimer = null;
@@ -1199,6 +1280,7 @@
 
     bindTap(rotateCcwBtn, () => rotatePiece(state, -1));
     bindTap(rotateBtn, () => rotatePiece(state, 1));
+    bindTap(softBtn, () => drop(state));
 
     bindTap(pauseBtn, () => {
       state.paused = !state.paused;
