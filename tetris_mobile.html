@@ -154,6 +154,51 @@
       font-weight: 700;
     }
 
+    .ranking-box {
+      margin-top: 2px;
+    }
+
+    .ranking-list {
+      list-style: none;
+      margin: 4px 0 0;
+      padding: 0;
+      display: grid;
+      gap: 3px;
+      font-size: 0.64rem;
+      color: #cbd5e1;
+    }
+
+    .ranking-item {
+      display: grid;
+      grid-template-columns: 16px 1fr auto;
+      gap: 4px;
+      align-items: center;
+      line-height: 1.2;
+    }
+
+    .ranking-rank {
+      color: #67e8f9;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .ranking-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ranking-score {
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ranking-empty {
+      color: #94a3b8;
+      text-align: center;
+      padding: 4px 0;
+    }
+
     .board-wrap {
       display: grid;
       place-items: center;
@@ -283,6 +328,10 @@
         <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
         <div class="next-label">HOLD</div>
         <canvas id="hold" width="76" height="76" aria-label="Hold piece"></canvas>
+        <div class="ranking-box">
+          <div class="next-label">LOCAL TOP 10</div>
+          <ol id="ranking-list" class="ranking-list"></ol>
+        </div>
       </aside>
     </section>
 
@@ -344,6 +393,7 @@
     const comboEl = document.getElementById("combo");
     const b2bEl = document.getElementById("b2b");
     const statusEl = document.getElementById("status");
+    const rankingListEl = document.getElementById("ranking-list");
     const seVolumeValueEl = document.getElementById("se-volume-value");
     const seDownBtn = document.getElementById("se-down");
     const seUpBtn = document.getElementById("se-up");
@@ -367,6 +417,10 @@
     let volumeRepeatTimer = null;
     let audioCtx = null;
     let masterSeVolume = 1.6;
+    let gameOverHandled = false;
+
+    const RANKING_KEY = "tetrisLocalTop10V1";
+    const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
 
     const COLORS = [
       null,
@@ -421,6 +475,80 @@
       } else {
         setSeVolume(160);
       }
+    }
+
+    function loadRanking() {
+      try {
+        const raw = localStorage.getItem(RANKING_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .filter((r) => Number.isFinite(r.score) && typeof r.name === "string")
+          .map((r) => ({
+            name: r.name.slice(0, 12) || "PLAYER",
+            score: Math.max(0, Math.floor(r.score)),
+            lines: Math.max(0, Math.floor(r.lines || 0)),
+            level: Math.max(1, Math.floor(r.level || 1)),
+            date: Number.isFinite(r.date) ? r.date : Date.now()
+          }));
+      } catch {
+        return [];
+      }
+    }
+
+    function saveRanking(list) {
+      localStorage.setItem(RANKING_KEY, JSON.stringify(list.slice(0, 10)));
+    }
+
+    function renderRanking(list = loadRanking()) {
+      rankingListEl.textContent = "";
+      if (list.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "ranking-empty";
+        empty.textContent = "No scores yet";
+        rankingListEl.appendChild(empty);
+        return;
+      }
+
+      list.slice(0, 10).forEach((entry, idx) => {
+        const li = document.createElement("li");
+        li.className = "ranking-item";
+        li.innerHTML = `<span class="ranking-rank">${idx + 1}.</span><span class="ranking-name">${entry.name}</span><span class="ranking-score">${entry.score}</span>`;
+        rankingListEl.appendChild(li);
+      });
+    }
+
+    function registerRankingScore(state) {
+      if (!state.gameOver || state.score <= 0) return;
+      const ranking = loadRanking();
+      const cutoff = ranking.length < 10 ? -1 : ranking[9].score;
+      if (state.score <= cutoff) {
+        renderRanking(ranking);
+        return;
+      }
+
+      const suggested = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").slice(0, 12);
+      const input = window.prompt("GAME OVER - 名前を入力してください（12文字まで）", suggested);
+      if (input === null) {
+        renderRanking(ranking);
+        return;
+      }
+
+      const name = (input.trim() || "PLAYER").slice(0, 12);
+      localStorage.setItem(PLAYER_NAME_KEY, name);
+
+      ranking.push({
+        name,
+        score: state.score,
+        lines: state.lines,
+        level: state.level,
+        date: Date.now()
+      });
+      ranking.sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date);
+      const top10 = ranking.slice(0, 10);
+      saveRanking(top10);
+      renderRanking(top10);
     }
 
     function playTone(freq, duration, type = "square", volume = 0.04, slideTo = null, echo = false) {
@@ -996,6 +1124,7 @@
 
     let state = createState();
     updateHUD(state);
+    renderRanking();
 
     function tick(time = 0) {
       const delta = time - state.lastTime;
@@ -1014,6 +1143,13 @@
       if (state.statusText && performance.now() > state.statusUntil) {
         state.statusText = "";
         statusEl.textContent = "";
+      }
+
+      if (state.gameOver && !gameOverHandled) {
+        gameOverHandled = true;
+        registerRankingScore(state);
+      } else if (!state.gameOver) {
+        gameOverHandled = false;
       }
 
       draw(state);
@@ -1093,6 +1229,7 @@
       restartBtn.textContent = "Keep Holding";
       resetTimer = setTimeout(() => {
         state = createState();
+        gameOverHandled = false;
         updateHUD(state);
         restartBtn.classList.remove("holding");
         restartBtn.textContent = "Hold Reset";
