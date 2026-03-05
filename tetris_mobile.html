@@ -2,776 +2,189 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Tetris Mobile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tetris</title>
   <style>
     :root {
-      --panel: #0f1a2f;
-      --line: #334155;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
+      --bg: #0f172a;
+      --panel: #111827;
+      --grid: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
       --accent: #22d3ee;
-      --btn: #0ea5b5;
-      --btn-active: #0b7c89;
-      --danger: #475569;
-      --danger-active: #334155;
-      --viewport-h: 100dvh;
-      --app-w: min(calc(100vw - 12px), 560px);
-      --controls-h: 164px;
-      --board-w: 300px;
-      --side-panel-w: 96px;
     }
 
     * {
       box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
     }
 
     body {
       margin: 0;
-      min-height: var(--viewport-h);
       font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-      color: var(--text);
       background: linear-gradient(rgba(2, 6, 23, 0.62), rgba(2, 6, 23, 0.62)), url("./bg.png") center / cover no-repeat;
+      color: var(--text);
+      min-height: 100dvh;
       display: grid;
       place-items: center;
-      padding: 6px;
-      overflow: hidden;
-    }
-
-    .app {
-      width: var(--app-w);
-      min-height: var(--viewport-h);
-      display: grid;
-      grid-template-rows: 1fr auto;
-      gap: 4px;
-      align-content: stretch;
-      padding-top: calc(4px + env(safe-area-inset-top));
-      padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 14px);
-    }
-
-    .arena {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) var(--side-panel-w);
-      grid-template-rows: auto 1fr;
-      gap: 8px;
-      align-items: start;
-      align-content: end;
-      min-height: calc(var(--viewport-h) - var(--controls-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 18px);
-      padding-bottom: 6px;
-    }
-
-    .panel {
-      background: linear-gradient(180deg, #16233f, var(--panel));
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 6px;
-    }
-
-    .left-tools {
-      grid-column: 1 / 3;
-      grid-row: 1;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      justify-content: flex-start;
-    }
-
-    .right-info {
-      grid-column: 2;
-      grid-row: 2;
-      width: var(--side-panel-w);
-      display: grid;
-      gap: 6px;
-      align-content: start;
-    }
-
-    .right-info.compact .audio-box,
-    .right-info.compact .ranking-box,
-    .right-info.compact .status-text {
-      display: none;
-    }
-
-    .title {
-      margin: 0;
-      font-size: 0.72rem;
-      color: var(--accent);
-      letter-spacing: 0.05em;
-      text-align: center;
-    }
-
-    .stat-grid {
-      display: grid;
-      gap: 4px;
-      font-size: 0.76rem;
-      line-height: 1.2;
-    }
-
-    .stat-grid span {
-      display: block;
-      color: var(--muted);
-      font-size: 0.66rem;
-    }
-
-    .next-label {
-      color: var(--muted);
-      font-size: 0.66rem;
-      text-align: center;
-      margin-top: 2px;
-    }
-
-    .audio-box {
-      display: grid;
-      gap: 2px;
-      margin-top: 2px;
-    }
-
-    .audio-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: var(--muted);
-      font-size: 0.64rem;
-    }
-
-    .volume-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4px;
-    }
-
-    .volume-btn {
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 5px 0;
-      border-radius: 7px;
-    }
-
-    #next {
-      width: 76px;
-      height: 76px;
-      border: 2px solid var(--line);
-      background: rgba(2, 6, 23, 0.25);
-      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
-      display: block;
-      margin: 0 auto;
-    }
-
-    #hold {
-      width: 76px;
-      height: 76px;
-      border: 2px solid var(--line);
-      background: rgba(2, 6, 23, 0.25);
-      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
-      display: block;
-      margin: 0 auto;
-      cursor: pointer;
-    }
-
-    .status-text {
-      min-height: 1.05em;
-      text-align: center;
-      font-size: 0.68rem;
-      color: #67e8f9;
-      font-weight: 700;
-    }
-
-    .ranking-box {
-      margin-top: 2px;
-      cursor: pointer;
-    }
-
-    .ranking-ticker {
-      margin-top: 4px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(2, 6, 23, 0.35);
-      min-height: 30px;
-      display: grid;
-      place-items: center;
-      font-size: 0.66rem;
-      color: #cbd5e1;
-      padding: 4px 6px;
-    }
-
-    .best-label {
-      color: #67e8f9;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      font-size: 0.62rem;
-    }
-
-    .best-value {
-      color: #f8fafc;
-      font-weight: 800;
-      font-size: 0.86rem;
-      line-height: 1.1;
-      font-variant-numeric: tabular-nums;
-      text-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
-    }
-
-    .best-owner {
-      color: #cbd5e1;
-      font-size: 0.62rem;
-      line-height: 1.1;
-    }
-
-    .ranking-ticker.record-updated {
-      border-color: #22d3ee;
-      box-shadow: 0 0 14px rgba(34, 211, 238, 0.68), inset 0 0 10px rgba(56, 189, 248, 0.35);
-      animation: best-neon 1.1s ease-in-out 3;
-    }
-
-    @keyframes best-neon {
-      0% { box-shadow: 0 0 4px rgba(34, 211, 238, 0.25), inset 0 0 4px rgba(56, 189, 248, 0.2); }
-      50% { box-shadow: 0 0 22px rgba(34, 211, 238, 0.95), inset 0 0 16px rgba(56, 189, 248, 0.55); }
-      100% { box-shadow: 0 0 4px rgba(34, 211, 238, 0.25), inset 0 0 4px rgba(56, 189, 248, 0.2); }
-    }
-
-    .ranking-item {
-      display: grid;
-      grid-template-columns: 16px 1fr auto;
-      gap: 4px;
-      align-items: start;
-      line-height: 1.2;
-    }
-
-    .ranking-rank {
-      color: #67e8f9;
-      font-weight: 700;
-      text-align: right;
-    }
-
-    .ranking-name {
-      overflow-wrap: anywhere;
-      word-break: break-word;
-      white-space: normal;
-    }
-
-    .ranking-score {
-      color: #f8fafc;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .rank-1 {
-      color: #facc15;
-    }
-
-    .rank-2 {
-      color: #cbd5e1;
-    }
-
-    .rank-3 {
-      color: #d97706;
-    }
-
-    .ranking-empty {
-      color: #94a3b8;
-      text-align: center;
-      padding: 4px 0;
-    }
-
-    .ranking-modal {
-      position: fixed;
-      inset: 0;
-      display: none;
-      place-items: center;
-      background: rgba(2, 6, 23, 0.86);
-      z-index: 20;
-      padding: 14px;
-    }
-
-    .ranking-modal.is-open {
-      display: grid;
-    }
-
-    .ranking-modal-card {
-      width: min(96vw, 420px);
-      max-height: 86dvh;
-      overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: linear-gradient(180deg, #1e293b, #0f172a);
       padding: 12px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .ranking-modal-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .ranking-modal-title {
-      margin: 0;
-      font-size: 0.92rem;
-      color: #67e8f9;
-      letter-spacing: 0.03em;
-    }
-
-    .ranking-close {
-      min-height: 38px;
-      padding: 8px 12px;
-      font-size: 0.76rem;
-    }
-
-    .ranking-modal-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: 6px;
-      font-size: 0.78rem;
-    }
-
-    .record-celebration {
-      position: fixed;
-      inset: 0;
-      display: none;
-      place-items: center;
-      background: rgba(2, 6, 23, 0.82);
-      z-index: 30;
-      padding: 14px;
-      touch-action: none;
-    }
-
-    .record-celebration.is-open {
-      display: grid;
-    }
-
-    .record-card {
-      position: relative;
-      width: min(92vw, 380px);
-      border-radius: 16px;
-      padding: 18px 14px;
-      background: rgba(15, 23, 42, 0.92);
-      border: 1px solid rgba(148, 163, 184, 0.45);
-      text-align: center;
       overflow: hidden;
     }
 
-    .record-card::before {
-      content: "";
-      position: absolute;
-      inset: -4px;
-      border-radius: 18px;
-      background: conic-gradient(
-        from 0deg,
-        #ff004d,
-        #ff8a00,
-        #ffe600,
-        #00ff99,
-        #00d4ff,
-        #7a5cff,
-        #ff00d4,
-        #ff004d
-      );
-      filter: blur(1px);
-      z-index: 0;
-      animation: record-neon-spin 1.8s linear infinite;
-    }
-
-    .record-card::after {
-      content: "";
-      position: absolute;
-      inset: 3px;
-      border-radius: 13px;
-      background: rgba(15, 23, 42, 0.94);
-      z-index: 1;
-    }
-
-    .record-content {
-      position: relative;
-      z-index: 2;
-      display: grid;
-      gap: 8px;
-      justify-items: center;
-    }
-
-    .record-title {
-      margin: 0;
-      color: #67e8f9;
-      font-size: 1rem;
-      letter-spacing: 0.06em;
-      text-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
-    }
-
-    .record-score {
-      margin: 0;
-      color: #f8fafc;
-      font-size: 2.1rem;
-      font-weight: 900;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
-      text-shadow: 0 0 14px rgba(248, 250, 252, 0.6);
-    }
-
-    .record-sub {
-      margin: 0;
-      color: #cbd5e1;
-      font-size: 0.82rem;
-    }
-
-    .record-tap {
-      margin-top: 2px;
-      color: #facc15;
-      font-weight: 700;
-      font-size: 0.82rem;
-      animation: record-tap-pulse 1s ease-in-out infinite;
-    }
-
-    @keyframes record-neon-spin {
-      to { transform: rotate(360deg); }
-    }
-
-    @keyframes record-tap-pulse {
-      0%, 100% { opacity: 0.55; }
-      50% { opacity: 1; }
-    }
-
-    .board-wrap {
-      grid-column: 1;
-      grid-row: 2;
+    .layout {
       display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      flex-wrap: wrap;
       justify-content: center;
-      align-items: flex-end;
-      min-height: 0;
+      width: 100%;
+      max-width: 760px;
     }
 
     #game {
-      width: var(--board-w);
-      height: calc(var(--board-w) * 2);
-      max-width: 100%;
-      border: 3px solid var(--line);
+      width: min(300px, calc((100dvh - 190px) / 2), calc(100vw - 24px));
+      height: auto;
+      aspect-ratio: 1 / 2;
+      border: 3px solid #334155;
       background: rgba(2, 6, 23, 0.25);
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-      touch-action: none;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
     }
 
-    .controls {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 10;
-      padding-bottom: calc(6px + env(safe-area-inset-bottom));
+    .next-wrap {
+      margin-top: 10px;
     }
 
-    .controls-inner {
-      width: var(--app-w);
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0;
-      box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.3);
+    #next {
+      width: 120px;
+      height: 120px;
+      border: 2px solid #334155;
+      background: rgba(2, 6, 23, 0.25);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
     }
 
-    .control-side {
-      display: grid;
-      gap: 6px;
+    #hold {
+      width: 120px;
+      height: 120px;
+      border: 2px solid #334155;
+      background: rgba(2, 6, 23, 0.25);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
     }
 
-    .left-pad {
-      grid-template-columns: 1fr 1fr;
+    .panel {
+      width: min(100%, 300px);
+      background: linear-gradient(160deg, #0f172a, #111827);
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px;
     }
 
-    .right-pad {
-      grid-template-columns: 1fr 1fr;
+    h1 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+      color: var(--accent);
     }
 
-    .span-2 {
-      grid-column: span 2;
+    .stat {
+      margin: 6px 0;
+      font-size: 0.95rem;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.45;
+      margin-top: 10px;
     }
 
     button {
+      margin-top: 8px;
+      width: 100%;
+      padding: 9px 12px;
       border: 0;
-      border-radius: 9px;
-      background: var(--btn);
+      border-radius: 8px;
+      background: #0891b2;
       color: #ecfeff;
-      font-size: 0.95rem;
       font-weight: 700;
-      padding: 10px 6px;
-      touch-action: manipulation;
+      cursor: pointer;
     }
 
-    button:active {
-      background: var(--btn-active);
-      transform: translateY(1px);
+    button:hover {
+      background: #0e7490;
     }
 
-    .tool-btn {
-      min-height: 36px;
-      min-width: 92px;
-      font-size: 0.75rem;
-      line-height: 1.2;
-      padding: 8px 10px;
-    }
+    @media (max-width: 760px) {
+      body {
+        padding: 8px;
+      }
 
-    .ghost {
-      background: #334155;
-    }
+      .layout {
+        gap: 10px;
+      }
 
-    .danger {
-      background: var(--danger);
-    }
+      .panel {
+        padding: 10px;
+      }
 
-    .danger:active {
-      background: var(--danger-active);
-    }
+      h1 {
+        margin-bottom: 6px;
+      }
 
-    .holding {
-      outline: 2px solid #f59e0b;
-      outline-offset: -2px;
-    }
-
-    .hold-drop {
-      outline: 2px solid #22d3ee;
-      outline-offset: -2px;
-    }
-
-    .hint {
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.72rem;
-      margin: 0;
+      .stat {
+        margin: 4px 0;
+      }
     }
 
     @media (max-height: 760px) {
-      .hint {
+      .muted {
         display: none;
       }
-    }
-
-    @media (orientation: landscape) {
-      :root {
-        --controls-h: 112px;
-      }
-
-      .app {
-        align-content: stretch;
-        padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 8px);
-      }
-
-      .arena {
-        grid-template-columns: minmax(0, 1fr) var(--side-panel-w);
-        grid-template-rows: auto 1fr;
-        align-items: stretch;
-        align-content: stretch;
-        min-height: calc(var(--viewport-h) - var(--controls-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 10px);
-      }
-
-      .left-tools {
-        grid-column: 2;
-        grid-row: 1;
-        flex-direction: column;
-        align-items: stretch;
-        justify-content: flex-start;
-      }
-
-      .right-info {
-        grid-column: 2;
-        grid-row: 2;
-      }
-
-      .board-wrap {
-        grid-column: 1;
-        grid-row: 1 / 3;
-        align-items: center;
-      }
-
-      .tool-btn {
-        min-width: 0;
-        width: 100%;
-        min-height: 30px;
-        padding: 6px 8px;
-      }
-
-      .controls {
-        padding-bottom: calc(2px + env(safe-area-inset-bottom));
-      }
-
-      .controls-inner {
-        gap: 6px;
-        padding: 4px;
-      }
-
-      .control-side {
-        gap: 4px;
-      }
-
-      button {
-        min-height: 44px;
-        padding: 7px 5px;
-        font-size: 0.86rem;
-      }
-    }
-
-    @media (max-width: 390px), (max-height: 700px) {
-      :root {
-        --controls-h: 152px;
-        --side-panel-w: 88px;
-      }
-
-      .controls-inner {
-        gap: 6px;
-      }
-
-      .control-side {
-        gap: 5px;
-      }
-
-      button {
-        font-size: 0.9rem;
-        padding: 9px 5px;
-      }
-    }
-
-    .debug-hud {
-      position: fixed;
-      right: 6px;
-      top: calc(6px + env(safe-area-inset-top));
-      z-index: 40;
-      background: rgba(2, 6, 23, 0.76);
-      border: 1px solid rgba(148, 163, 184, 0.45);
-      border-radius: 8px;
-      color: #cbd5e1;
-      font-size: 10px;
-      line-height: 1.25;
-      padding: 6px 7px;
-      pointer-events: none;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      white-space: pre;
-      display: none;
-    }
-
-    .debug-hud.is-visible {
-      display: block;
     }
   </style>
 </head>
 <body>
-  <main id="app" class="app">
-    <section id="gameArea" class="arena">
-      <aside id="leftTools" class="panel left-tools">
-        <button id="pause" class="ghost tool-btn" type="button">Pause</button>
-        <button id="restart" class="danger tool-btn" type="button">Hold Reset</button>
-      </aside>
-
-      <div id="board" class="board-wrap">
-        <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
+  <div class="layout">
+    <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
+    <section class="panel">
+      <h1>TETRIS</h1>
+      <div class="stat">Score: <span id="score">0</span></div>
+      <div class="stat">Lines: <span id="lines">0</span></div>
+      <div class="stat">Level: <span id="level">1</span></div>
+      <div class="stat">Combo: <span id="combo">-</span></div>
+      <div class="stat">B2B: <span id="b2b">-</span></div>
+      <div class="next-wrap">
+        <div class="stat">Hold</div>
+        <canvas id="hold" width="120" height="120" aria-label="Hold piece"></canvas>
       </div>
-
-      <aside id="sidePanel" class="panel right-info">
-        <h1 class="title">TETRIS</h1>
-        <div class="stat-grid">
-          <div><span>Score</span><strong id="score">0</strong></div>
-          <div><span>Lines</span><strong id="lines">0</strong></div>
-          <div><span>Level</span><strong id="level">1</strong></div>
-          <div><span>Combo</span><strong id="combo">-</strong></div>
-          <div><span>B2B</span><strong id="b2b">-</strong></div>
-        </div>
-        <div id="status" class="status-text"></div>
-        <div class="audio-box">
-          <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
-          <div class="volume-buttons">
-            <button id="se-down" class="ghost volume-btn" type="button">VOL-</button>
-            <button id="se-up" class="ghost volume-btn" type="button">VOL+</button>
-          </div>
-        </div>
-        <div class="next-label">NEXT</div>
-        <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
-        <div class="next-label">HOLD</div>
-        <canvas id="hold" width="76" height="76" aria-label="Hold piece"></canvas>
-        <div id="ranking-box" class="ranking-box" role="button" aria-label="Show leaderboard">
-          <div class="next-label">LOCAL TOP 10</div>
-          <div id="ranking-ticker" class="ranking-ticker"></div>
-        </div>
-      </aside>
+      <div class="next-wrap">
+        <div class="stat">Next</div>
+        <canvas id="next" width="120" height="120" aria-label="Next piece"></canvas>
+      </div>
+      <div id="status" class="stat" style="color:#67e8f9;min-height:1.2em;"></div>
+      <button id="restart" type="button">Restart</button>
+      <p class="muted">
+        ← →: 移動<br>
+        ↓: ソフトドロップ<br>
+        ↑: 回転<br>
+        Space: ハードドロップ<br>
+        C: Hold<br>
+        P: 一時停止
+      </p>
     </section>
-
-    <section id="controls" class="controls">
-      <div class="panel controls-inner">
-        <div class="control-side left-pad">
-          <button id="left" type="button">◀</button>
-          <button id="right" type="button">▶</button>
-        </div>
-        <div class="control-side right-pad">
-          <button id="rotate-ccw" type="button">⟲</button>
-          <button id="rotate" type="button">⟳</button>
-          <button id="soft" class="span-2" type="button">▼</button>
-          <button id="hard" class="span-2" type="button">DROP</button>
-        </div>
-      </div>
-    </section>
-
-    <p class="hint">Reset長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒)</p>
-  </main>
-
-  <section id="ranking-modal" class="ranking-modal" aria-hidden="true">
-    <div class="ranking-modal-card">
-      <div class="ranking-modal-head">
-        <h2 class="ranking-modal-title">LOCAL TOP 10</h2>
-        <button id="ranking-close" class="ghost ranking-close" type="button">閉じる</button>
-      </div>
-      <ol id="ranking-modal-list" class="ranking-modal-list"></ol>
-    </div>
-  </section>
-
-  <section id="record-celebration" class="record-celebration" aria-hidden="true">
-    <div class="record-card">
-      <div class="record-content">
-        <h2 class="record-title">NEW BEST SCORE</h2>
-        <p id="record-score" class="record-score">0</p>
-        <p class="record-sub">過去最高得点を更新しました</p>
-        <p class="record-tap">画面をタップしてください</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Debug HUD (remove this section if not needed) -->
-  <pre id="debug-hud" class="debug-hud"></pre>
+  </div>
 
   <script>
     const COLS = 10;
     const ROWS = 20;
     const BLOCK = 30;
     const NEXT_GRID = 4;
-    const NEXT_CANVAS_PX = 76;
-    const NEXT_BLOCK = NEXT_CANVAS_PX / NEXT_GRID;
+    const NEXT_SIZE = 120;
+    const NEXT_BLOCK = NEXT_SIZE / NEXT_GRID;
     const HOLD_GRID = 4;
-    const HOLD_CANVAS_PX = 76;
-    const HOLD_BLOCK = HOLD_CANVAS_PX / HOLD_GRID;
-    const RESET_HOLD_MS = 700;
-    const HARD_DROP_HOLD_MS = 200;
-    const MOVE_HOLD_DELAY_MS = 140;
-    const MOVE_HOLD_REPEAT_MS = 85;
-    const CLEAR_EFFECT_MS = 320;
-
-    // Scoring balance (easy to tune later)
-    const SCORE_TABLE = {
-      normal: [0, 100, 300, 500, 800],
-      tspin: [400, 800, 1200, 1600]
-    };
-    const B2B_BONUS_RATE = 0.35;
-    const COMBO_BONUS_STEP = 35;
-    const COMBO_BONUS_MAX = 210;
+    const HOLD_SIZE = 120;
+    const HOLD_BLOCK = HOLD_SIZE / HOLD_GRID;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
     ctx.scale(BLOCK, BLOCK);
-    const appEl = document.getElementById("app");
-    const gameAreaEl = document.getElementById("gameArea");
-    const controlsEl = document.getElementById("controls");
-    const boardEl = document.getElementById("board");
-    const sidePanelEl = document.getElementById("sidePanel");
-    const leftToolsEl = document.getElementById("leftTools");
-    const debugHudEl = document.getElementById("debug-hud");
-
     const nextCanvas = document.getElementById("next");
     const nextCtx = nextCanvas.getContext("2d");
     nextCtx.scale(NEXT_BLOCK, NEXT_BLOCK);
@@ -785,49 +198,7 @@
     const comboEl = document.getElementById("combo");
     const b2bEl = document.getElementById("b2b");
     const statusEl = document.getElementById("status");
-    const rankingBoxEl = document.getElementById("ranking-box");
-    const rankingTickerEl = document.getElementById("ranking-ticker");
-    const rankingModalEl = document.getElementById("ranking-modal");
-    const rankingModalListEl = document.getElementById("ranking-modal-list");
-    const rankingCloseBtn = document.getElementById("ranking-close");
-    const recordCelebrationEl = document.getElementById("record-celebration");
-    const recordScoreEl = document.getElementById("record-score");
-    const seVolumeValueEl = document.getElementById("se-volume-value");
-    const seDownBtn = document.getElementById("se-down");
-    const seUpBtn = document.getElementById("se-up");
-
     const restartBtn = document.getElementById("restart");
-    const pauseBtn = document.getElementById("pause");
-    const leftBtn = document.getElementById("left");
-    const rightBtn = document.getElementById("right");
-    const rotateCcwBtn = document.getElementById("rotate-ccw");
-    const rotateBtn = document.getElementById("rotate");
-    const softBtn = document.getElementById("soft");
-    const hardBtn = document.getElementById("hard");
-
-    const DEBUG_LAYOUT = false;
-
-    let resetTimer = null;
-    let hardDropTimer = null;
-    let leftHoldStartTimer = null;
-    let rightHoldStartTimer = null;
-    let leftHoldRepeatTimer = null;
-    let rightHoldRepeatTimer = null;
-    let volumeStartTimer = null;
-    let volumeRepeatTimer = null;
-    let audioCtx = null;
-    let masterSeVolume = 1.6;
-    let gameOverHandled = false;
-    let bestNeonTimer = null;
-    let pausedByRankingModal = false;
-    let celebrationOpen = false;
-    let pausedByCelebration = false;
-    let layoutRaf = 0;
-    let lastViewportW = 0;
-    let lastViewportH = 0;
-
-    const RANKING_KEY = "tetrisLocalTop10V1";
-    const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
 
     const COLORS = [
       null,
@@ -851,379 +222,6 @@
       [[7, 7, 0], [0, 7, 7]]
     ];
 
-    function ensureAudioContext() {
-      if (!audioCtx) {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return null;
-        audioCtx = new AudioCtx();
-      }
-      return audioCtx;
-    }
-
-    function unlockAudio() {
-      const ctx = ensureAudioContext();
-      if (!ctx) return;
-      if (ctx.state === "suspended") {
-        ctx.resume().catch(() => {});
-      }
-    }
-
-    function setSeVolume(percent) {
-      const safe = Math.max(0, Math.min(260, percent));
-      masterSeVolume = safe / 100;
-      if (seVolumeValueEl) seVolumeValueEl.textContent = `${safe}%`;
-      localStorage.setItem("tetrisSeVolume", String(safe));
-    }
-
-    function loadSeVolume() {
-      const saved = Number(localStorage.getItem("tetrisSeVolume"));
-      if (Number.isFinite(saved) && saved >= 0 && saved <= 260) {
-        setSeVolume(saved);
-      } else {
-        setSeVolume(160);
-      }
-    }
-
-    function getViewportSize() {
-      const innerW = window.innerWidth;
-      const innerH = window.innerHeight;
-      const vv = window.visualViewport;
-      if (!vv) return { width: innerW, height: innerH };
-
-      let width = Math.round(vv.width);
-      let height = Math.round(vv.height);
-
-      // Android ChromeなどでvisualViewportが一時的に極端に小さくなる揺れを吸収
-      const tooSmall = height < Math.round(innerH * 0.72);
-      if (tooSmall) {
-        width = innerW;
-        height = innerH;
-      }
-
-      return { width, height };
-    }
-
-    function fitLayout() {
-      const { width: vw, height: vh } = getViewportSize();
-      if (Math.abs(vw - lastViewportW) <= 2 && Math.abs(vh - lastViewportH) <= 2) return;
-      lastViewportW = vw;
-      lastViewportH = vh;
-
-      const isLandscape = vw > vh;
-      const appW = Math.max(320, Math.min(vw - 12, isLandscape ? 920 : 560));
-      document.documentElement.style.setProperty("--viewport-h", `${vh}px`);
-      document.documentElement.style.setProperty("--app-w", `${appW}px`);
-      const compactSide = isLandscape && vh < 460;
-      sidePanelEl.classList.toggle("compact", compactSide);
-
-      const controlsH = Math.ceil(controlsEl.getBoundingClientRect().height);
-      document.documentElement.style.setProperty("--controls-h", `${controlsH}px`);
-
-      const appRect = appEl.getBoundingClientRect();
-      const sideW = sidePanelEl.getBoundingClientRect().width;
-      const leftToolsH = leftToolsEl.getBoundingClientRect().height;
-      const areaStyles = getComputedStyle(gameAreaEl);
-      const colGap = parseFloat(areaStyles.columnGap) || 8;
-      const rowGap = parseFloat(areaStyles.rowGap) || 8;
-
-      const boardMaxWByWidth = Math.max(140, appRect.width - sideW - colGap - 8);
-      const boardMaxHByHeight = Math.max(
-        240,
-        vh - controlsH - leftToolsH - rowGap - 26 - (isLandscape ? 8 : 0)
-      );
-      const boardMaxWByHeight = Math.floor(boardMaxHByHeight / 2);
-      const boardCap = isLandscape ? 520 : 420;
-      const boardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
-      document.documentElement.style.setProperty("--board-w", `${boardW}px`);
-
-      const sidePanelW = Math.max(compactSide ? 78 : 84, Math.min(120, Math.floor((appRect.width - boardW - colGap - 8))));
-      document.documentElement.style.setProperty("--side-panel-w", `${sidePanelW}px`);
-
-      if (DEBUG_LAYOUT && debugHudEl) {
-        debugHudEl.textContent =
-          `vw:${vw}\n` +
-          `vh:${vh}\n` +
-          `controls:${controlsH}\n` +
-          `boardW:${boardW}\n` +
-          `sideW:${sidePanelW}\n` +
-          `compact:${compactSide ? "on" : "off"}`;
-      }
-    }
-
-    function scheduleFitLayout() {
-      if (layoutRaf) return;
-      layoutRaf = requestAnimationFrame(() => {
-        layoutRaf = 0;
-        fitLayout();
-      });
-    }
-
-    function loadRanking() {
-      try {
-        const raw = localStorage.getItem(RANKING_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return [];
-        return parsed
-          .filter((r) => Number.isFinite(r.score) && typeof r.name === "string")
-          .map((r) => ({
-            name: r.name.slice(0, 12) || "PLAYER",
-            score: Math.max(0, Math.floor(r.score)),
-            lines: Math.max(0, Math.floor(r.lines || 0)),
-            level: Math.max(1, Math.floor(r.level || 1)),
-            date: Number.isFinite(r.date) ? r.date : Date.now()
-          }));
-      } catch {
-        return [];
-      }
-    }
-
-    function saveRanking(list) {
-      localStorage.setItem(RANKING_KEY, JSON.stringify(list.slice(0, 10)));
-    }
-
-    function buildRankingItemHtml(entry, idx) {
-      const rankClass = idx === 0 ? "rank-1" : idx === 1 ? "rank-2" : idx === 2 ? "rank-3" : "";
-      return `<span class="ranking-rank ${rankClass}">${idx + 1}.</span><span class="ranking-name">${entry.name}</span><span class="ranking-score">${entry.score}</span>`;
-    }
-
-    function getBestEntry(list = loadRanking()) {
-      if (!list.length) return null;
-      return list.reduce((best, entry) => (entry.score > best.score ? entry : best), list[0]);
-    }
-
-    function renderRankingModal(list = loadRanking()) {
-      rankingModalListEl.textContent = "";
-      if (list.length === 0) {
-        const empty = document.createElement("li");
-        empty.className = "ranking-empty";
-        empty.textContent = "No scores yet";
-        rankingModalListEl.appendChild(empty);
-        return;
-      }
-      list.slice(0, 10).forEach((entry, idx) => {
-        const li = document.createElement("li");
-        li.className = "ranking-item";
-        li.innerHTML = buildRankingItemHtml(entry, idx);
-        rankingModalListEl.appendChild(li);
-      });
-    }
-
-    function renderBestScore(list = loadRanking(), highlight = false) {
-      const best = getBestEntry(list);
-      if (!best) {
-        rankingTickerEl.innerHTML = `<div class="ranking-empty">No scores yet</div>`;
-        return;
-      }
-      rankingTickerEl.innerHTML = `
-        <div class="best-label">BEST SCORE</div>
-        <div class="best-value">${best.score}</div>
-        <div class="best-owner">${best.name}</div>
-      `;
-      if (highlight) {
-        rankingTickerEl.classList.remove("record-updated");
-        void rankingTickerEl.offsetWidth;
-        rankingTickerEl.classList.add("record-updated");
-        if (bestNeonTimer) clearTimeout(bestNeonTimer);
-        bestNeonTimer = setTimeout(() => {
-          rankingTickerEl.classList.remove("record-updated");
-        }, 3600);
-      }
-    }
-
-    function renderRanking(list = loadRanking(), highlightBest = false) {
-      renderRankingModal(list);
-      renderBestScore(list, highlightBest);
-    }
-
-    function openRankingModal() {
-      renderRankingModal(loadRanking());
-      rankingModalEl.classList.add("is-open");
-      rankingModalEl.setAttribute("aria-hidden", "false");
-      if (!state.paused && !state.gameOver) {
-        pausedByRankingModal = true;
-        state.paused = true;
-      } else {
-        pausedByRankingModal = false;
-      }
-      updateHUD(state);
-    }
-
-    function closeRankingModal() {
-      rankingModalEl.classList.remove("is-open");
-      rankingModalEl.setAttribute("aria-hidden", "true");
-      if (pausedByRankingModal && !state.gameOver) {
-        state.paused = false;
-      }
-      pausedByRankingModal = false;
-      updateHUD(state);
-    }
-
-    function openRecordCelebration(score) {
-      recordScoreEl.textContent = String(score);
-      recordCelebrationEl.classList.add("is-open");
-      recordCelebrationEl.setAttribute("aria-hidden", "false");
-      celebrationOpen = true;
-      if (!state.paused && !state.gameOver) {
-        pausedByCelebration = true;
-        state.paused = true;
-      } else {
-        pausedByCelebration = false;
-      }
-      updateHUD(state);
-    }
-
-    function closeRecordCelebration() {
-      recordCelebrationEl.classList.remove("is-open");
-      recordCelebrationEl.setAttribute("aria-hidden", "true");
-      if (pausedByCelebration && !state.gameOver) {
-        state.paused = false;
-      }
-      pausedByCelebration = false;
-      celebrationOpen = false;
-      updateHUD(state);
-    }
-
-    function registerRankingScore(state) {
-      if (!state.gameOver || state.score <= 0) return;
-      const ranking = loadRanking();
-      const previousBest = getBestEntry(ranking)?.score ?? 0;
-      const cutoff = ranking.length < 10 ? -1 : ranking[9].score;
-      if (state.score <= cutoff) {
-        renderRanking(ranking);
-        return;
-      }
-
-      const suggested = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").slice(0, 12);
-      const input = window.prompt("GAME OVER - 名前を入力してください（12文字まで）", suggested);
-      if (input === null) {
-        renderRanking(ranking);
-        return;
-      }
-
-      const name = (input.trim() || "PLAYER").slice(0, 12);
-      localStorage.setItem(PLAYER_NAME_KEY, name);
-
-      ranking.push({
-        name,
-        score: state.score,
-        lines: state.lines,
-        level: state.level,
-        date: Date.now()
-      });
-      ranking.sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date);
-      const top10 = ranking.slice(0, 10);
-      saveRanking(top10);
-      const isNewBest = state.score > previousBest;
-      renderRanking(top10, isNewBest);
-      if (isNewBest) openRecordCelebration(state.score);
-    }
-
-    function playTone(freq, duration, type = "square", volume = 0.04, slideTo = null, echo = false) {
-      const ctx = ensureAudioContext();
-      if (!ctx || ctx.state !== "running") return;
-
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, now);
-      if (slideTo) {
-        osc.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
-      }
-
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(volume * masterSeVolume, now + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      if (echo) {
-        const delay = ctx.createDelay();
-        const echoGain = ctx.createGain();
-        delay.delayTime.value = 0.09;
-        echoGain.gain.value = 0.28;
-        gain.connect(delay);
-        delay.connect(echoGain);
-        echoGain.connect(ctx.destination);
-      }
-
-      osc.start(now);
-      osc.stop(now + duration + 0.02);
-    }
-
-    function playNoiseBurst(duration = 0.18, volume = 0.08, echo = false) {
-      const ctx = ensureAudioContext();
-      if (!ctx || ctx.state !== "running") return;
-
-      const sampleRate = ctx.sampleRate;
-      const buffer = ctx.createBuffer(1, Math.floor(sampleRate * duration), sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < data.length; i++) {
-        data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-      }
-
-      const source = ctx.createBufferSource();
-      const filter = ctx.createBiquadFilter();
-      const gain = ctx.createGain();
-      const now = ctx.currentTime;
-
-      source.buffer = buffer;
-      filter.type = "lowpass";
-      filter.frequency.setValueAtTime(1400, now);
-      filter.frequency.exponentialRampToValueAtTime(240, now + duration);
-
-      gain.gain.setValueAtTime(volume * masterSeVolume, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-      source.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-
-      if (echo) {
-        const delay = ctx.createDelay();
-        const echoGain = ctx.createGain();
-        delay.delayTime.value = 0.1;
-        echoGain.gain.value = 0.24;
-        gain.connect(delay);
-        delay.connect(echoGain);
-        echoGain.connect(ctx.destination);
-      }
-
-      source.start(now);
-      source.stop(now + duration + 0.02);
-    }
-
-    function playMoveSound() {
-      playTone(520, 0.05, "square", 0.03, 470, true);
-    }
-
-    function playRotateSound() {
-      playTone(640, 0.06, "square", 0.03, 760, true);
-    }
-
-    function playLockSound() {
-      playTone(138, 0.24, "triangle", 0.11, 68, true);
-      playTone(86, 0.3, "sine", 0.09, 48, true);
-      playNoiseBurst(0.12, 0.05, true);
-      setTimeout(() => {
-        playTone(116, 0.18, "triangle", 0.045, 70, true);
-      }, 120);
-      setTimeout(() => {
-        playTone(92, 0.2, "sine", 0.035, 55, true);
-      }, 250);
-    }
-
-    function playClearSound(lines) {
-      const power = 1 + Math.min(lines, 4) * 0.08;
-      playNoiseBurst(0.23, 0.09 * power, true);
-      playTone(125 * power, 0.16, "sawtooth", 0.055, 78, true);
-      setTimeout(() => {
-        playTone(360 * power, 0.12, "triangle", 0.05, 520 * power, true);
-      }, 40);
-    }
-
     function createBoard() {
       return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     }
@@ -1236,16 +234,13 @@
       const h = matrix.length;
       const w = matrix[0].length;
       const out = Array.from({ length: w }, () => Array(h).fill(0));
+
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           out[x][h - 1 - y] = matrix[y][x];
         }
       }
       return out;
-    }
-
-    function rotateCCW(matrix) {
-      return rotate(rotate(rotate(matrix)));
     }
 
     function collide(board, piece) {
@@ -1266,145 +261,31 @@
     function merge(board, piece) {
       piece.matrix.forEach((row, y) => {
         row.forEach((value, x) => {
-          if (value) board[y + piece.pos.y][x + piece.pos.x] = value;
+          if (value) {
+            board[y + piece.pos.y][x + piece.pos.x] = value;
+          }
         });
       });
     }
 
-    function isFilledCell(value) {
-      return Number.isInteger(value) && value > 0;
-    }
-
-    function isRowComplete(board, y) {
-      const row = board[y];
-      if (!Array.isArray(row) || row.length !== COLS) return false;
-      for (let x = 0; x < COLS; x++) {
-        if (!isFilledCell(row[x])) return false;
-      }
-      return true;
-    }
-
     function findCompleteRows(board) {
       const rows = [];
-      for (let y = ROWS - 1; y >= 0; y--) {
-        if (isRowComplete(board, y)) rows.push(y);
+      outer: for (let y = ROWS - 1; y >= 0; y--) {
+        for (let x = 0; x < COLS; x++) {
+          if (board[y][x] === 0) {
+            continue outer;
+          }
+        }
+        rows.push(y);
       }
       return rows;
     }
 
     function clearRows(board, rows) {
-      const validRows = rows.filter((y) => isRowComplete(board, y));
-      const rowSet = new Set(validRows);
-      const clearedCount = rowSet.size;
-      if (clearedCount === 0) return 0;
-
-      const keptRows = [];
-      for (let y = 0; y < ROWS; y++) {
-        if (!rowSet.has(y)) keptRows.push([...board[y]]);
-      }
-
-      const newRows = Array.from({ length: clearedCount }, () => Array(COLS).fill(0));
-      board.length = 0;
-      board.push(...newRows, ...keptRows);
-      return clearedCount;
-    }
-
-    function setStatus(state, text, duration = 900) {
-      state.statusText = text;
-      state.statusUntil = performance.now() + duration;
-      statusEl.textContent = text;
-    }
-
-    function applyScoring(state, cleared, tspin) {
-      if (cleared > 0 || tspin) {
-        if (cleared > 0) state.combo++;
-        const base = tspin
-          ? SCORE_TABLE.tspin[cleared] ?? 0
-          : SCORE_TABLE.normal[cleared] ?? 0;
-
-        const b2bEligible = tspin || cleared === 4;
-        let points = base * state.level;
-        if (b2bEligible) {
-          state.backToBack++;
-          if (state.backToBack > 1) {
-            points += Math.floor(base * B2B_BONUS_RATE * state.level);
-          }
-        } else {
-          state.backToBack = 0;
-        }
-
-        if (cleared > 0 && state.combo > 0) {
-          const comboBonus = Math.min(COMBO_BONUS_MAX, state.combo * COMBO_BONUS_STEP);
-          points += comboBonus * state.level;
-        }
-
-        state.lines += cleared;
-        state.score += points;
-        state.level = Math.floor(state.lines / 10) + 1;
-
-        let message = "";
-        if (tspin) message = `T-SPIN ${cleared > 0 ? `${cleared} LINE` : ""}`.trim();
-        else if (cleared === 4) message = "TETRIS!";
-        else if (cleared >= 2) message = `${cleared} LINES`;
-        else if (state.combo > 0) message = `COMBO x${state.combo + 1}`;
-        if (state.backToBack > 1 && (tspin || cleared === 4)) {
-          message = `${message} B2B x${state.backToBack}`.trim();
-        }
-        if (message) setStatus(state, message);
-      } else {
-        state.combo = -1;
-      }
-    }
-
-    function applyClearedRows(state, rows, tspin = false) {
-      const cleared = clearRows(state.board, rows);
-      applyScoring(state, cleared, tspin);
-    }
-
-    function startClearEffect(state, rows, tspin = false) {
-      state.clearing = {
-        rows,
-        tspin,
-        startedAt: performance.now()
-      };
-      playClearSound(rows.length);
-    }
-
-    function completeClearEffect(state) {
-      if (!state.clearing) return;
-      applyClearedRows(state, state.clearing.rows, state.clearing.tspin);
-      state.clearing = null;
-      spawnNext(state);
-      updateHUD(state);
-    }
-
-    function drawClearEffect(state) {
-      if (!state.clearing) return;
-      const elapsed = performance.now() - state.clearing.startedAt;
-      const p = Math.min(elapsed / CLEAR_EFFECT_MS, 1);
-
-      for (const row of state.clearing.rows) {
-        const blinkPhase = Math.abs(Math.sin(p * 36));
-        const flash = (0.14 + 0.78 * blinkPhase) * (1 - p * 0.85);
-        ctx.fillStyle = `rgba(255, 252, 224, ${flash.toFixed(3)})`;
-        ctx.fillRect(0, row, COLS, 1);
-
-        const sparkCount = 10;
-        for (let i = 0; i < sparkCount; i++) {
-          const base = (i * 1.618 + row * 0.53) % COLS;
-          const sx = (base + p * (1.22 + i * 0.16)) % COLS;
-          const sy = row + ((i % 3) - 1) * 0.03;
-          const size = 0.06 + ((i * 7) % 5) * 0.02;
-          const sparkleAlpha = Math.max(0, 1 - p) * (0.35 + 0.65 * blinkPhase);
-          ctx.fillStyle = `rgba(255, 255, 255, ${sparkleAlpha.toFixed(3)})`;
-          ctx.fillRect(sx, sy, size, size);
-        }
-
-        const fadeAlpha = Math.min(1, Math.max(0, (p - 0.35) / 0.65));
-        if (fadeAlpha > 0) {
-          ctx.fillStyle = `rgba(2, 6, 23, ${(0.9 * fadeAlpha).toFixed(3)})`;
-          ctx.fillRect(0, row, COLS, 1);
-        }
+      rows.sort((a, b) => b - a);
+      for (const y of rows) {
+        board.splice(y, 1);
+        board.unshift(Array(COLS).fill(0));
       }
     }
 
@@ -1424,16 +305,19 @@
       return { type: state.bag.pop() };
     }
 
-    function createActivePiece(template) {
-      const matrix = cloneMatrix(SHAPES[template.type]);
+    function createActivePiece(pieceTemplate) {
+      const matrix = cloneMatrix(SHAPES[pieceTemplate.type]);
       return {
-        type: template.type,
+        type: pieceTemplate.type,
         matrix,
-        pos: {
-          x: Math.floor((COLS - matrix[0].length) / 2),
-          y: 0
-        }
+        pos: { x: Math.floor((COLS - matrix[0].length) / 2), y: 0 }
       };
+    }
+
+    function setStatus(state, text, duration = 900) {
+      state.statusText = text;
+      state.statusUntil = performance.now() + duration;
+      statusEl.textContent = text;
     }
 
     function drawMatrix(targetCtx, matrix, offset) {
@@ -1442,7 +326,7 @@
           if (!value) return;
           targetCtx.fillStyle = COLORS[value];
           targetCtx.fillRect(x + offset.x, y + offset.y, 1, 1);
-          targetCtx.strokeStyle = "rgba(2, 6, 23, 0.45)";
+          targetCtx.strokeStyle = "rgba(2, 6, 23, 0.4)";
           targetCtx.lineWidth = 0.05;
           targetCtx.strokeRect(x + offset.x, y + offset.y, 1, 1);
         });
@@ -1450,7 +334,7 @@
     }
 
     function drawGrid(targetCtx, cols, rows) {
-      targetCtx.strokeStyle = "rgba(148, 163, 184, 0.13)";
+      targetCtx.strokeStyle = "rgba(148, 163, 184, 0.15)";
       targetCtx.lineWidth = 0.03;
       for (let x = 0; x <= cols; x++) {
         targetCtx.beginPath();
@@ -1500,8 +384,9 @@
         matrix: state.piece.matrix,
         pos: { x: state.piece.pos.x, y: state.piece.pos.y }
       };
-      if (collide(state.board, ghost)) return ghost.pos;
-
+      if (collide(state.board, ghost)) {
+        return { x: state.piece.pos.x, y: state.piece.pos.y };
+      }
       while (!collide(state.board, ghost)) {
         ghost.pos.y++;
       }
@@ -1532,16 +417,23 @@
       drawMatrix(ctx, state.board, { x: 0, y: 0 });
       drawGhost(state);
       drawMatrix(ctx, state.piece.matrix, state.piece.pos);
-      drawClearEffect(state);
-      drawNext(state);
       drawHold(state);
+      drawNext(state);
 
-      if (state.gameOver || state.paused) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.56)";
+      if (state.gameOver) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
         ctx.fillRect(0, 0, COLS, ROWS);
         ctx.fillStyle = "#f8fafc";
-        ctx.font = "0.82px sans-serif";
-        ctx.fillText(state.gameOver ? "GAME OVER" : "PAUSED", 2.6, 9.7);
+        ctx.font = "0.8px sans-serif";
+        ctx.fillText("GAME OVER", 2.6, 9.5);
+        ctx.font = "0.55px sans-serif";
+        ctx.fillText("Restartを押してください", 1.8, 10.7);
+      } else if (state.paused) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.fillRect(0, 0, COLS, ROWS);
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "0.9px sans-serif";
+        ctx.fillText("PAUSED", 3.2, 10);
       }
     }
 
@@ -1552,7 +444,6 @@
       comboEl.textContent = state.combo > 0 ? `x${state.combo + 1}` : "-";
       b2bEl.textContent = state.backToBack > 1 ? `x${state.backToBack}` : "-";
       statusEl.textContent = state.statusText || "";
-      pauseBtn.textContent = state.paused ? "Resume" : "Pause";
     }
 
     function spawnNext(state) {
@@ -1560,7 +451,9 @@
       state.nextPiece = takeFromBag(state);
       state.holdUsed = false;
       state.lastRotate = false;
-      if (collide(state.board, state.piece)) state.gameOver = true;
+      if (collide(state.board, state.piece)) {
+        state.gameOver = true;
+      }
     }
 
     function isBlockedCell(board, x, y) {
@@ -1580,23 +473,68 @@
       return corners >= 3;
     }
 
+    function scoreLock(state, cleared, tspin) {
+      if (cleared > 0) {
+        state.combo++;
+        const base = tspin
+          ? [0, 800, 1200, 1600][cleared]
+          : [0, 100, 300, 500, 800][cleared];
+
+        const b2bEligible = tspin || cleared === 4;
+        let points = base * state.level;
+
+        if (b2bEligible) {
+          state.backToBack++;
+          if (state.backToBack > 1) {
+            points += Math.floor(base * 0.5 * state.level);
+          }
+        } else {
+          state.backToBack = 0;
+        }
+
+        if (state.combo > 0) {
+          points += state.combo * 50 * state.level;
+        }
+
+        state.lines += cleared;
+        state.score += points;
+        state.level = Math.floor(state.lines / 10) + 1;
+
+        let message = "";
+        if (tspin) {
+          message = `T-SPIN ${cleared > 0 ? `${cleared} LINE` : ""}`.trim();
+        } else if (cleared === 4) {
+          message = "TETRIS!";
+        } else if (cleared >= 2) {
+          message = `${cleared} LINES`;
+        } else if (state.combo > 0) {
+          message = `COMBO x${state.combo + 1}`;
+        }
+        if (state.backToBack > 1 && (tspin || cleared === 4)) {
+          message = `${message} B2B x${state.backToBack}`.trim();
+        }
+        if (message) {
+          setStatus(state, message);
+        }
+      } else {
+        state.combo = -1;
+        state.backToBack = 0;
+        state.lastRotate = false;
+      }
+    }
+
     function lockPiece(state) {
       merge(state.board, state.piece);
       const tspin = isTSpin(state);
       const rows = findCompleteRows(state.board);
-      if (rows.length > 0) {
-        startClearEffect(state, rows, tspin);
-      } else {
-        applyScoring(state, 0, tspin);
-        state.lastRotate = false;
-        playLockSound();
-        spawnNext(state);
-        updateHUD(state);
-      }
+      clearRows(state.board, rows);
+      scoreLock(state, rows.length, tspin);
+      spawnNext(state);
+      updateHUD(state);
     }
 
     function drop(state) {
-      if (state.gameOver || state.paused || state.clearing) return;
+      if (state.gameOver || state.paused) return;
       state.lastRotate = false;
       state.piece.pos.y++;
       if (collide(state.board, state.piece)) {
@@ -1607,7 +545,7 @@
     }
 
     function hardDrop(state) {
-      if (state.gameOver || state.paused || state.clearing) return;
+      if (state.gameOver || state.paused) return;
       state.lastRotate = false;
       while (!collide(state.board, state.piece)) {
         state.piece.pos.y++;
@@ -1618,36 +556,38 @@
     }
 
     function move(state, dir) {
-      if (state.gameOver || state.paused || state.clearing) return;
+      if (state.gameOver || state.paused) return;
       state.lastRotate = false;
       state.piece.pos.x += dir;
-      if (collide(state.board, state.piece)) state.piece.pos.x -= dir;
-      else playMoveSound();
+      if (collide(state.board, state.piece)) {
+        state.piece.pos.x -= dir;
+      }
     }
 
-    function rotatePiece(state, direction = 1) {
-      if (state.gameOver || state.paused || state.clearing) return;
-      const originalMatrix = state.piece.matrix;
+    function rotatePiece(state) {
+      if (state.gameOver || state.paused) return;
+      const original = state.piece.matrix;
+      const rotated = rotate(state.piece.matrix);
       const originalX = state.piece.pos.x;
-      state.piece.matrix = direction === 1 ? rotate(state.piece.matrix) : rotateCCW(state.piece.matrix);
+      state.piece.matrix = rotated;
 
       const kicks = [0, -1, 1, -2, 2];
-      for (const k of kicks) {
-        state.piece.pos.x = originalX + k;
+      for (const kick of kicks) {
+        state.piece.pos.x = originalX + kick;
         if (!collide(state.board, state.piece)) {
           state.lastRotate = true;
-          playRotateSound();
           return;
         }
       }
 
-      state.piece.matrix = originalMatrix;
+      state.piece.matrix = original;
       state.piece.pos.x = originalX;
     }
 
     function hold(state) {
-      if (state.gameOver || state.paused || state.clearing || state.holdUsed) return;
+      if (state.gameOver || state.paused || state.holdUsed) return;
       const currentTemplate = { type: state.piece.type };
+
       if (!state.holdPiece) {
         state.holdPiece = currentTemplate;
         spawnNext(state);
@@ -1655,22 +595,24 @@
         const swap = state.holdPiece;
         state.holdPiece = currentTemplate;
         state.piece = createActivePiece(swap);
-        if (collide(state.board, state.piece)) state.gameOver = true;
+        if (collide(state.board, state.piece)) {
+          state.gameOver = true;
+        }
       }
+
       state.holdUsed = true;
       state.lastRotate = false;
       setStatus(state, "HOLD", 600);
-      updateHUD(state);
     }
 
     function createState() {
       const bag = createBag();
-      const first = { type: bag.pop() };
-      const second = { type: bag.pop() };
+      const firstPiece = { type: bag.pop() };
+      const secondPiece = { type: bag.pop() };
       return {
         board: createBoard(),
-        piece: createActivePiece(first),
-        nextPiece: second,
+        piece: createActivePiece(firstPiece),
+        nextPiece: secondPiece,
         holdPiece: null,
         holdUsed: false,
         bag,
@@ -1684,42 +626,31 @@
         statusUntil: 0,
         dropCounter: 0,
         lastTime: 0,
-        clearing: null,
         paused: false,
         gameOver: false
       };
     }
 
     let state = createState();
+    if (collide(state.board, state.piece)) {
+      state.gameOver = true;
+    }
     updateHUD(state);
-    renderRanking();
-    if (debugHudEl) debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
-    scheduleFitLayout();
 
     function tick(time = 0) {
       const delta = time - state.lastTime;
       state.lastTime = time;
-      const speed = Math.max(1000 - (state.level - 1) * 90, 120);
 
-      if (state.clearing) {
-        const elapsed = performance.now() - state.clearing.startedAt;
-        if (elapsed >= CLEAR_EFFECT_MS) {
-          completeClearEffect(state);
-        }
-      } else if (!state.paused && !state.gameOver) {
+      const speed = Math.max(1000 - (state.level - 1) * 90, 120);
+      if (!state.paused && !state.gameOver) {
         state.dropCounter += delta;
-        if (state.dropCounter > speed) drop(state);
+        if (state.dropCounter > speed) {
+          drop(state);
+        }
       }
       if (state.statusText && performance.now() > state.statusUntil) {
         state.statusText = "";
         statusEl.textContent = "";
-      }
-
-      if (state.gameOver && !gameOverHandled) {
-        gameOverHandled = true;
-        registerRankingScore(state);
-      } else if (!state.gameOver) {
-        gameOverHandled = false;
       }
 
       draw(state);
@@ -1727,27 +658,21 @@
     }
 
     document.addEventListener("keydown", (e) => {
-      unlockAudio();
-      if (celebrationOpen) {
-        closeRecordCelebration();
-        return;
-      }
-      if (rankingModalEl.classList.contains("is-open")) {
-        if (e.key === "Escape") closeRankingModal();
-        return;
-      }
       if (e.key === "p" || e.key === "P") {
         state.paused = !state.paused;
-        updateHUD(state);
         return;
       }
-      if (state.gameOver || state.paused || state.clearing) return;
+      if (state.gameOver || state.paused) return;
 
-      if (e.key === "ArrowLeft") move(state, -1);
-      else if (e.key === "ArrowRight") move(state, 1);
-      else if (e.key === "ArrowDown") drop(state);
-      else if (e.key === "ArrowUp") rotatePiece(state);
-      else if (e.key === " ") {
+      if (e.key === "ArrowLeft") {
+        move(state, -1);
+      } else if (e.key === "ArrowRight") {
+        move(state, 1);
+      } else if (e.key === "ArrowDown") {
+        drop(state);
+      } else if (e.key === "ArrowUp") {
+        rotatePiece(state);
+      } else if (e.key === " ") {
         e.preventDefault();
         hardDrop(state);
       } else if (e.key === "c" || e.key === "C") {
@@ -1755,231 +680,17 @@
       }
     });
 
-    function bindTap(btn, fn) {
-      btn.addEventListener("click", fn);
-      btn.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        unlockAudio();
-        fn();
-      }, { passive: false });
-    }
-
-    document.addEventListener("pointerdown", unlockAudio, { once: true });
-
-    loadSeVolume();
-
-    function changeSeVolume(step) {
-      const current = Number(seVolumeValueEl.textContent.replace("%", ""));
-      const base = Number.isFinite(current) ? current : Math.round(masterSeVolume * 100);
-      setSeVolume(base + step);
-    }
-
-    function clearVolumeTimers() {
-      if (volumeStartTimer) clearTimeout(volumeStartTimer);
-      if (volumeRepeatTimer) clearInterval(volumeRepeatTimer);
-      volumeStartTimer = null;
-      volumeRepeatTimer = null;
-    }
-
-    function startVolumeHold(step, e) {
-      e.preventDefault();
-      unlockAudio();
-      changeSeVolume(step);
-      clearVolumeTimers();
-
-      const beginRepeat = () => {
-        volumeRepeatTimer = setInterval(() => {
-          changeSeVolume(step);
-        }, 60);
-      };
-      volumeStartTimer = setTimeout(beginRepeat, 180);
-    }
-
-    function stopVolumeHold(e) {
-      if (e) e.preventDefault();
-      clearVolumeTimers();
-    }
-
-    function startResetHold(e) {
-      e.preventDefault();
-      if (resetTimer) return;
-      restartBtn.classList.add("holding");
-      restartBtn.textContent = "Keep Holding";
-      resetTimer = setTimeout(() => {
-        state = createState();
-        gameOverHandled = false;
-        updateHUD(state);
-        restartBtn.classList.remove("holding");
-        restartBtn.textContent = "Hold Reset";
-        resetTimer = null;
-      }, RESET_HOLD_MS);
-    }
-
-    function cancelResetHold(e) {
-      if (e) e.preventDefault();
-      if (resetTimer) {
-        clearTimeout(resetTimer);
-        resetTimer = null;
-      }
-      restartBtn.classList.remove("holding");
-      restartBtn.textContent = "Hold Reset";
-    }
-
-    function startHardDropHold(e) {
-      e.preventDefault();
-      unlockAudio();
-      if (state.gameOver || state.paused || hardDropTimer) return;
-      hardBtn.classList.add("hold-drop");
-      hardBtn.textContent = "HOLD...";
-      hardDropTimer = setTimeout(() => {
-        hardDrop(state);
-        hardDropTimer = null;
-        hardBtn.classList.remove("hold-drop");
-        hardBtn.textContent = "DROP";
-      }, HARD_DROP_HOLD_MS);
-    }
-
-    function cancelHardDropHold(e) {
-      if (e) e.preventDefault();
-      if (hardDropTimer) {
-        clearTimeout(hardDropTimer);
-        hardDropTimer = null;
-      }
-      hardBtn.classList.remove("hold-drop");
-      hardBtn.textContent = "DROP";
-    }
-
-    function clearMoveTimers(side) {
-      if (side === "left") {
-        if (leftHoldStartTimer) clearTimeout(leftHoldStartTimer);
-        if (leftHoldRepeatTimer) clearInterval(leftHoldRepeatTimer);
-        leftHoldStartTimer = null;
-        leftHoldRepeatTimer = null;
-      } else {
-        if (rightHoldStartTimer) clearTimeout(rightHoldStartTimer);
-        if (rightHoldRepeatTimer) clearInterval(rightHoldRepeatTimer);
-        rightHoldStartTimer = null;
-        rightHoldRepeatTimer = null;
-      }
-    }
-
-    function startMoveHold(dir, side, e) {
-      e.preventDefault();
-      unlockAudio();
-      if (state.gameOver || state.paused || state.clearing) return;
-      move(state, dir);
-      clearMoveTimers(side);
-
-      const beginRepeat = () => {
-        const timer = setInterval(() => {
-          if (state.gameOver || state.paused || state.clearing) return;
-          move(state, dir);
-        }, MOVE_HOLD_REPEAT_MS);
-        if (side === "left") leftHoldRepeatTimer = timer;
-        else rightHoldRepeatTimer = timer;
-      };
-
-      const startTimer = setTimeout(beginRepeat, MOVE_HOLD_DELAY_MS);
-      if (side === "left") leftHoldStartTimer = startTimer;
-      else rightHoldStartTimer = startTimer;
-    }
-
-    function stopMoveHold(side, e) {
-      if (e) e.preventDefault();
-      clearMoveTimers(side);
-    }
-
-    leftBtn.addEventListener("click", (e) => e.preventDefault());
-    rightBtn.addEventListener("click", (e) => e.preventDefault());
-    leftBtn.addEventListener("mousedown", (e) => startMoveHold(-1, "left", e));
-    leftBtn.addEventListener("mouseup", (e) => stopMoveHold("left", e));
-    leftBtn.addEventListener("mouseleave", (e) => stopMoveHold("left", e));
-    leftBtn.addEventListener("touchstart", (e) => startMoveHold(-1, "left", e), { passive: false });
-    leftBtn.addEventListener("touchend", (e) => stopMoveHold("left", e), { passive: false });
-    leftBtn.addEventListener("touchcancel", (e) => stopMoveHold("left", e), { passive: false });
-
-    rightBtn.addEventListener("mousedown", (e) => startMoveHold(1, "right", e));
-    rightBtn.addEventListener("mouseup", (e) => stopMoveHold("right", e));
-    rightBtn.addEventListener("mouseleave", (e) => stopMoveHold("right", e));
-    rightBtn.addEventListener("touchstart", (e) => startMoveHold(1, "right", e), { passive: false });
-    rightBtn.addEventListener("touchend", (e) => stopMoveHold("right", e), { passive: false });
-    rightBtn.addEventListener("touchcancel", (e) => stopMoveHold("right", e), { passive: false });
-
-    bindTap(rotateCcwBtn, () => rotatePiece(state, -1));
-    bindTap(rotateBtn, () => rotatePiece(state, 1));
-    bindTap(softBtn, () => drop(state));
-
-    bindTap(pauseBtn, () => {
-      state.paused = !state.paused;
+    restartBtn.addEventListener("click", () => {
+      state = createState();
       updateHUD(state);
     });
-
-    hardBtn.addEventListener("click", (e) => e.preventDefault());
-    hardBtn.addEventListener("mousedown", startHardDropHold);
-    hardBtn.addEventListener("mouseup", cancelHardDropHold);
-    hardBtn.addEventListener("mouseleave", cancelHardDropHold);
-    hardBtn.addEventListener("touchstart", startHardDropHold, { passive: false });
-    hardBtn.addEventListener("touchend", cancelHardDropHold, { passive: false });
-    hardBtn.addEventListener("touchcancel", cancelHardDropHold, { passive: false });
-
-    holdCanvas.addEventListener("click", () => {
-      unlockAudio();
-      hold(state);
-    });
-    holdCanvas.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      unlockAudio();
-      hold(state);
-    }, { passive: false });
-
-    rankingBoxEl.addEventListener("click", openRankingModal);
-    rankingBoxEl.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      openRankingModal();
-    }, { passive: false });
-    rankingCloseBtn.addEventListener("click", closeRankingModal);
-    rankingModalEl.addEventListener("click", (e) => {
-      if (e.target === rankingModalEl) closeRankingModal();
-    });
-
-    recordCelebrationEl.addEventListener("click", closeRecordCelebration);
-    recordCelebrationEl.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      closeRecordCelebration();
-    }, { passive: false });
-
-    seDownBtn.addEventListener("click", (e) => e.preventDefault());
-    seUpBtn.addEventListener("click", (e) => e.preventDefault());
-    seDownBtn.addEventListener("mousedown", (e) => startVolumeHold(-4, e));
-    seDownBtn.addEventListener("mouseup", stopVolumeHold);
-    seDownBtn.addEventListener("mouseleave", stopVolumeHold);
-    seDownBtn.addEventListener("touchstart", (e) => startVolumeHold(-4, e), { passive: false });
-    seDownBtn.addEventListener("touchend", stopVolumeHold, { passive: false });
-    seDownBtn.addEventListener("touchcancel", stopVolumeHold, { passive: false });
-    seUpBtn.addEventListener("mousedown", (e) => startVolumeHold(4, e));
-    seUpBtn.addEventListener("mouseup", stopVolumeHold);
-    seUpBtn.addEventListener("mouseleave", stopVolumeHold);
-    seUpBtn.addEventListener("touchstart", (e) => startVolumeHold(4, e), { passive: false });
-    seUpBtn.addEventListener("touchend", stopVolumeHold, { passive: false });
-    seUpBtn.addEventListener("touchcancel", stopVolumeHold, { passive: false });
-
-    restartBtn.addEventListener("click", (e) => e.preventDefault());
-    restartBtn.addEventListener("mousedown", startResetHold);
-    restartBtn.addEventListener("mouseup", cancelResetHold);
-    restartBtn.addEventListener("mouseleave", cancelResetHold);
-    restartBtn.addEventListener("touchstart", startResetHold, { passive: false });
-    restartBtn.addEventListener("touchend", cancelResetHold, { passive: false });
-    restartBtn.addEventListener("touchcancel", cancelResetHold, { passive: false });
-
-    window.addEventListener("resize", scheduleFitLayout, { passive: true });
-    window.addEventListener("orientationchange", () => setTimeout(scheduleFitLayout, 120), { passive: true });
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", scheduleFitLayout, { passive: true });
-      window.visualViewport.addEventListener("scroll", scheduleFitLayout, { passive: true });
-    }
 
     requestAnimationFrame(tick);
   </script>
 </body>
 </html>
+
+
+
+
 
