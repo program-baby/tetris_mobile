@@ -502,6 +502,81 @@
       line-height: 1.1;
     }
 
+    .combo-hud {
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(74%, 210px);
+      pointer-events: none;
+      z-index: 4;
+      display: grid;
+      gap: 4px;
+      justify-items: center;
+    }
+
+    .combo-time {
+      width: 100%;
+      display: grid;
+      gap: 2px;
+      background: rgba(2, 6, 23, 0.64);
+      border: 1px solid rgba(148, 163, 184, 0.42);
+      border-radius: 7px;
+      padding: 4px 6px;
+      opacity: 0;
+      transition: opacity 120ms linear;
+    }
+
+    .combo-time.is-on {
+      opacity: 1;
+    }
+
+    .combo-time-head {
+      display: flex;
+      justify-content: space-between;
+      color: #cbd5e1;
+      font-size: 0.52rem;
+      line-height: 1;
+    }
+
+    .combo-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      overflow: hidden;
+    }
+
+    .combo-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #22c55e, #14b8a6);
+      transition: width 80ms linear, background 120ms linear;
+    }
+
+    .combo-bonus {
+      min-width: 120px;
+      text-align: center;
+      font-size: 1.04rem;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      color: #67e8f9;
+      text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+      opacity: 0;
+      transform: translateY(-2px) scale(0.96);
+      transition: opacity 120ms linear, transform 120ms ease-out;
+      background: rgba(2, 6, 23, 0.58);
+      border: 1px solid rgba(103, 232, 249, 0.45);
+      border-radius: 8px;
+      padding: 2px 8px;
+    }
+
+    .combo-bonus.is-on {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
     #game {
       width: var(--board-w);
       height: calc(var(--board-w) * 2);
@@ -660,6 +735,12 @@
         background: #000;
         border-color: #0b1220;
       }
+
+      .combo-time,
+      .combo-bonus {
+        background: #000;
+        border-color: #0b1220;
+      }
     }
 
     @media (max-width: 390px), (max-height: 700px) {
@@ -727,6 +808,16 @@
             <span class="board-score-label">SCORE</span>
             <span id="board-current-score" class="board-score-value">0</span>
           </div>
+        </div>
+        <div class="combo-hud" aria-label="Combo HUD">
+          <div id="combo-time" class="combo-time">
+            <div class="combo-time-head">
+              <span>COMBO TIME</span>
+              <span id="combo-time-value">0.0s</span>
+            </div>
+            <div class="combo-bar"><div id="combo-bar-fill" class="combo-bar-fill"></div></div>
+          </div>
+          <div id="combo-bonus" class="combo-bonus">+0</div>
         </div>
         <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
       </div>
@@ -826,6 +917,7 @@
     const COMBO_BONUS_STEP = 35;
     const COMBO_BONUS_MAX = 210;
     const COMBO_WINDOW_MS = 2600;
+    const COMBO_FLASH_MS = 1100;
     const DEBUG_LAYOUT = false;
 
     const canvas = document.getElementById("game");
@@ -864,6 +956,10 @@
     const seUpBtn = document.getElementById("se-up");
     const boardBestScoreEl = document.getElementById("board-best-score");
     const boardCurrentScoreEl = document.getElementById("board-current-score");
+    const comboTimeEl = document.getElementById("combo-time");
+    const comboTimeValueEl = document.getElementById("combo-time-value");
+    const comboBarFillEl = document.getElementById("combo-bar-fill");
+    const comboBonusEl = document.getElementById("combo-bonus");
 
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
@@ -1403,6 +1499,23 @@
       }
     }
 
+    function updateComboHud(state, now = performance.now()) {
+      const remaining = Math.max(0, state.comboWindowUntil - now);
+      const comboActive = state.combo > -1 && remaining > 0;
+      const ratio = Math.max(0, Math.min(1, remaining / COMBO_WINDOW_MS));
+
+      comboTimeEl.classList.toggle("is-on", comboActive);
+      comboTimeValueEl.textContent = `${(remaining / 1000).toFixed(1)}s`;
+      comboBarFillEl.style.width = `${Math.round(ratio * 100)}%`;
+      if (ratio > 0.55) comboBarFillEl.style.background = "linear-gradient(90deg, #22c55e, #14b8a6)";
+      else if (ratio > 0.25) comboBarFillEl.style.background = "linear-gradient(90deg, #f59e0b, #f97316)";
+      else comboBarFillEl.style.background = "linear-gradient(90deg, #ef4444, #dc2626)";
+
+      const bonusOn = now <= state.comboFlashUntil && state.lastComboBonus > 0;
+      comboBonusEl.classList.toggle("is-on", bonusOn);
+      comboBonusEl.textContent = `+${state.lastComboBonus}`;
+    }
+
     function applyScoring(state, cleared, tspin) {
       const now = performance.now();
       if (cleared > 0 || tspin) {
@@ -1430,6 +1543,10 @@
         if (cleared > 0 && state.combo > 0) {
           const comboBonus = Math.min(COMBO_BONUS_MAX, state.combo * COMBO_BONUS_STEP);
           points += comboBonus * state.level;
+          state.lastComboBonus = comboBonus * state.level;
+          state.comboFlashUntil = now + COMBO_FLASH_MS;
+        } else {
+          state.lastComboBonus = 0;
         }
 
         state.lines += cleared;
@@ -1449,6 +1566,7 @@
         if (now > state.comboWindowUntil) {
           state.combo = -1;
         }
+        state.lastComboBonus = 0;
         setLineStatusClass(0);
       }
     }
@@ -1651,6 +1769,7 @@
       b2bEl.textContent = state.backToBack > 1 ? `x${state.backToBack}` : "-";
       statusEl.textContent = state.statusText || "";
       pauseBtn.textContent = state.paused ? "Resume" : "Pause";
+      updateComboHud(state);
     }
 
     function spawnNext(state) {
@@ -1781,6 +1900,8 @@
         statusText: "",
         statusUntil: 0,
         comboWindowUntil: 0,
+        comboFlashUntil: 0,
+        lastComboBonus: 0,
         dropCounter: 0,
         lastTime: 0,
         clearing: null,
@@ -1817,6 +1938,7 @@
         state.combo = -1;
         updateHUD(state);
       }
+      updateComboHud(state);
 
       if (state.gameOver && !gameOverHandled) {
         gameOverHandled = true;
