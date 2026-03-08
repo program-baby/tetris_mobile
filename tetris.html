@@ -1423,7 +1423,7 @@
 
     function playTone(freq, duration, type = "square", volume = 0.04, slideTo = null, echo = false) {
       const ctx = ensureAudioContext();
-      if (!ctx || ctx.state !== "running") return;
+      if (!ctx || ctx.state !== "running" || masterSeVolume <= 0 || volume <= 0) return;
 
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
@@ -1434,8 +1434,9 @@
         osc.frequency.exponentialRampToValueAtTime(slideTo, now + duration);
       }
 
+      const attackLevel = Math.max(0.0001, volume * masterSeVolume);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(volume * masterSeVolume, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(attackLevel, now + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       osc.connect(gain);
@@ -1457,7 +1458,7 @@
 
     function playNoiseBurst(duration = 0.18, volume = 0.08, echo = false) {
       const ctx = ensureAudioContext();
-      if (!ctx || ctx.state !== "running") return;
+      if (!ctx || ctx.state !== "running" || masterSeVolume <= 0 || volume <= 0) return;
 
       const sampleRate = ctx.sampleRate;
       const buffer = ctx.createBuffer(1, Math.floor(sampleRate * duration), sampleRate);
@@ -1476,7 +1477,8 @@
       filter.frequency.setValueAtTime(1400, now);
       filter.frequency.exponentialRampToValueAtTime(240, now + duration);
 
-      gain.gain.setValueAtTime(volume * masterSeVolume, now);
+      const noiseLevel = Math.max(0.0001, volume * masterSeVolume);
+      gain.gain.setValueAtTime(noiseLevel, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       source.connect(filter);
@@ -2323,4 +2325,5 @@
   </script>
 </body>
 </html>
+
 
