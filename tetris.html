@@ -1570,13 +1570,14 @@
     function merge(board, piece) {
       piece.matrix.forEach((row, y) => {
         row.forEach((value, x) => {
-          if (value) board[y + piece.pos.y][x + piece.pos.x] = value;
+          if (isFilledCell(value)) board[y + piece.pos.y][x + piece.pos.x] = value;
         });
       });
     }
 
     function isFilledCell(value) {
-      return Number.isInteger(value) && value > 0;
+      // Only canonical tetromino ids are treated as filled cells.
+      return Number.isInteger(value) && value >= 1 && value <= 7;
     }
 
     function isRowComplete(board, y) {
