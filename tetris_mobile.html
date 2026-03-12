@@ -1696,6 +1696,12 @@
       return { width: window.innerWidth, height: window.innerHeight };
     }
 
+    function shouldUseMobileOrientationOverlay() {
+      const { width, height } = getViewportSize();
+      const hasTouch = window.matchMedia ? window.matchMedia("(pointer: coarse)").matches : false;
+      return hasTouch && Math.min(width, height) <= 1024;
+    }
+
     function fitLayout() {
       const { width: vw, height: vh } = getViewportSize();
       if (Math.abs(vw - lastViewportW) <= 2 && Math.abs(vh - lastViewportH) <= 2) return;
@@ -1907,6 +1913,21 @@
     function handleOrientationRanking() {
       const { width, height } = getViewportSize();
       const isLandscape = width > height;
+      const shouldApply = shouldUseMobileOrientationOverlay();
+      if (!shouldApply) {
+        wasLandscape = null;
+        if (forcedRankingByOrientation) {
+          forcedRankingByOrientation = false;
+          if (!state.gameOver && rankingModalEl.classList.contains("is-open")) {
+            closeRankingModal();
+          }
+          if (!state.gameOver) {
+            state.paused = false;
+            updateHUD(state);
+          }
+        }
+        return;
+      }
       if (isLandscape === wasLandscape) return;
       wasLandscape = isLandscape;
 
