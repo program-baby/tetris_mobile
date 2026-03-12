@@ -1179,6 +1179,17 @@
       box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.28);
     }
 
+    .player-name-box {
+      display: grid;
+      gap: 6px;
+    }
+
+    .player-name-label {
+      color: #cbd5e1;
+      font-size: 0.74rem;
+      letter-spacing: 0.04em;
+    }
+
     .title-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1369,6 +1380,10 @@
         </div>
         <input id="join-room-input" class="lobby-input" type="text" inputmode="text" maxlength="8" placeholder="参加する ROOM ID">
       </div>
+      <div class="player-name-box">
+        <label for="player-name-input" class="player-name-label">ユーザー名</label>
+        <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
+      </div>
       <p id="title-mode-note" class="title-note">1人用を選ぶと、すぐに既存のテトリスを開始します。</p>
       <div class="title-actions">
         <button id="title-start" class="title-start-btn" type="button">ゲーム開始</button>
@@ -1471,6 +1486,7 @@
     const lobbyCreateBtn = document.getElementById("lobby-create");
     const lobbyJoinBtn = document.getElementById("lobby-join");
     const joinRoomInputEl = document.getElementById("join-room-input");
+    const playerNameInputEl = document.getElementById("player-name-input");
     const titleModeNoteEl = document.getElementById("title-mode-note");
     const titleStartBtn = document.getElementById("title-start");
     const titleRankingBtn = document.getElementById("title-ranking");
@@ -1864,15 +1880,15 @@
         return;
       }
 
-      const suggested = (localStorage.getItem(PLAYER_NAME_KEY) || "PLAYER").slice(0, 12);
-      const input = window.prompt("GAME OVER - 名前を入力してください（12文字まで）", suggested);
-      if (input === null) {
-        renderRanking(ranking);
-        return;
+      let name = getStoredPlayerName();
+      if (!name || name === "PLAYER") {
+        const input = window.prompt("GAME OVER - 名前を入力してください（12文字まで）", "PLAYER");
+        if (input === null) {
+          renderRanking(ranking);
+          return;
+        }
+        name = savePlayerName(input) || "PLAYER";
       }
-
-      const name = (input.trim() || "PLAYER").slice(0, 12);
-      localStorage.setItem(PLAYER_NAME_KEY, name);
 
       ranking.push({
         name,
@@ -2357,6 +2373,7 @@
     }
 
     function createVersusRoomState() {
+      const playerName = getStoredPlayerName();
       return {
         phase: "lobby",
         eventCount: 0,
@@ -2367,7 +2384,7 @@
         },
         players: {
           local: {
-            name: "YOU",
+            name: playerName,
             ready: true,
             state: "READY",
             garbageSent: 0,
@@ -2382,6 +2399,31 @@
           }
         }
       };
+    }
+
+    function sanitizePlayerName(value) {
+      return (value || "").trim().slice(0, 12);
+    }
+
+    function getStoredPlayerName() {
+      return sanitizePlayerName(localStorage.getItem(PLAYER_NAME_KEY)) || "PLAYER";
+    }
+
+    function syncPlayerNameInput() {
+      if (playerNameInputEl) {
+        playerNameInputEl.value = getStoredPlayerName() === "PLAYER" ? "" : getStoredPlayerName();
+      }
+    }
+
+    function savePlayerName(value) {
+      const name = sanitizePlayerName(value);
+      if (!name) return "";
+      localStorage.setItem(PLAYER_NAME_KEY, name);
+      if (versusRoomState) {
+        versusRoomState.players.local.name = name;
+        renderVersusRoomHud();
+      }
+      return name;
     }
 
     function renderVersusRoomHud() {
@@ -2763,6 +2805,14 @@
 
     function startSelectedMode() {
       unlockAudio();
+      const savedName = savePlayerName(playerNameInputEl.value) || getStoredPlayerName();
+      if (!savedName || savedName === "PLAYER") {
+        titleModeNoteEl.textContent = "先にユーザー名を入力してください。ランキングと対戦相手表示に使います。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        playerNameInputEl.focus();
+        return;
+      }
       if (selectedGameMode === "versus" && !ensureVersusUnlocked()) {
         return;
       }
@@ -2778,7 +2828,7 @@
         }
         setGameMode("versus", {
           roomId: selectedLobbyAction === "join" ? requestedRoomId : createRoomId(),
-          localName: selectedLobbyAction === "join" ? "GUEST" : "HOST",
+          localName: savedName,
           remoteName: selectedLobbyAction === "join" ? "HOST BOT" : "GUEST BOT",
           localState: "READY",
           remoteState: selectedLobbyAction === "join" ? "HOST" : "JOIN",
@@ -2799,6 +2849,7 @@
     function openTitleScreen() {
       titleScreenEl.classList.add("is-open");
       state.paused = true;
+      syncPlayerNameInput();
       updateTitleSelection(selectedGameMode);
       updateHUD(state);
     }
@@ -2810,6 +2861,7 @@
     renderRanking();
     scheduleFitLayout();
     handleOrientationRanking();
+    syncPlayerNameInput();
     updateLobbyAction("create");
     updateTitleSelection("single");
 
@@ -3091,6 +3143,13 @@
     lobbyJoinBtn.addEventListener("click", () => updateLobbyAction("join"));
     joinRoomInputEl.addEventListener("input", () => {
       joinRoomInputEl.value = joinRoomInputEl.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    });
+    playerNameInputEl.addEventListener("input", () => {
+      playerNameInputEl.value = sanitizePlayerName(playerNameInputEl.value);
+    });
+    playerNameInputEl.addEventListener("change", () => {
+      savePlayerName(playerNameInputEl.value);
+      syncPlayerNameInput();
     });
     titleStartBtn.addEventListener("click", startSelectedMode);
     titleRankingBtn.addEventListener("click", () => {
