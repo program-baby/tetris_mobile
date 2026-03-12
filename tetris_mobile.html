@@ -130,6 +130,114 @@
       gap: 6px;
     }
 
+    .versus-box {
+      display: none;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .app.mode-versus .versus-box {
+      display: grid;
+    }
+
+    .versus-room {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border: 1px solid rgba(103, 232, 249, 0.28);
+      border-radius: 8px;
+      background: rgba(8, 15, 31, 0.42);
+    }
+
+    .versus-room-label {
+      color: var(--muted);
+      font-size: 0.58rem;
+      letter-spacing: 0.06em;
+    }
+
+    .versus-room-id {
+      color: #67e8f9;
+      font-size: 0.8rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.08em;
+    }
+
+    .versus-status {
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 8px;
+      background: rgba(2, 6, 23, 0.35);
+      color: #cbd5e1;
+      font-size: 0.62rem;
+      line-height: 1.35;
+      padding: 6px 8px;
+    }
+
+    .versus-opponent {
+      display: grid;
+      gap: 4px;
+      justify-items: center;
+    }
+
+    .versus-head {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.6rem;
+      color: var(--muted);
+    }
+
+    .versus-name {
+      color: #f8fafc;
+      font-weight: 700;
+      font-size: 0.66rem;
+    }
+
+    .versus-sync {
+      color: #67e8f9;
+      font-weight: 700;
+      font-size: 0.56rem;
+    }
+
+    #opponent-board {
+      width: 76px;
+      height: 152px;
+      border: 2px solid var(--line);
+      background: rgba(2, 6, 23, 0.25);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+      display: block;
+      margin: 0 auto;
+    }
+
+    .versus-meta {
+      width: 100%;
+      display: grid;
+      gap: 2px;
+      font-size: 0.6rem;
+      color: #cbd5e1;
+    }
+
+    .versus-meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .versus-log {
+      min-height: 2.8em;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 8px;
+      background: rgba(2, 6, 23, 0.35);
+      padding: 6px 8px;
+      color: #cbd5e1;
+      font-size: 0.58rem;
+      line-height: 1.35;
+    }
+
     .rules-title {
       margin: 0;
       color: #67e8f9;
@@ -858,6 +966,117 @@
     .debug-hud.is-visible {
       display: block;
     }
+
+    .title-screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background:
+        radial-gradient(circle at top, rgba(34, 211, 238, 0.16), transparent 34%),
+        rgba(2, 6, 23, 0.92);
+      z-index: 15;
+      padding: 18px;
+    }
+
+    .title-screen.is-open {
+      display: grid;
+    }
+
+    .title-card {
+      width: min(92vw, 440px);
+      border-radius: 18px;
+      padding: 22px 18px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(12, 18, 34, 0.98));
+      border: 1px solid rgba(103, 232, 249, 0.34);
+      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.45);
+      display: grid;
+      gap: 14px;
+    }
+
+    .title-eyebrow {
+      margin: 0;
+      color: #67e8f9;
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .title-hero {
+      margin: 0;
+      font-size: clamp(1.9rem, 7vw, 2.8rem);
+      line-height: 0.95;
+      letter-spacing: 0.04em;
+    }
+
+    .title-sub {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .mode-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .mode-option {
+      border: 1px solid rgba(71, 85, 105, 0.9);
+      border-radius: 14px;
+      padding: 14px 12px;
+      background: rgba(15, 23, 42, 0.72);
+      color: #e2e8f0;
+      text-align: left;
+      transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+    }
+
+    .mode-option.is-active {
+      border-color: rgba(34, 211, 238, 0.96);
+      box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.32), 0 12px 24px rgba(34, 211, 238, 0.14);
+      transform: translateY(-1px);
+    }
+
+    .mode-option-label {
+      display: block;
+      font-size: 1rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .mode-option-copy {
+      display: block;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      line-height: 1.45;
+    }
+
+    .title-note {
+      min-height: 2.8em;
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .title-note.is-warning {
+      color: #fbbf24;
+    }
+
+    .title-note.is-info {
+      color: #67e8f9;
+    }
+
+    .title-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .title-start-btn {
+      font-size: 0.88rem;
+      padding: 12px 8px;
+    }
   </style>
 </head>
 <body>
@@ -912,6 +1131,26 @@
           <div><span>Combo</span><strong id="combo">-</strong></div>
         </div>
         <div id="status" class="status-text"></div>
+        <div id="versus-box" class="versus-box">
+          <div class="versus-room">
+            <span class="versus-room-label">ROOM</span>
+            <span id="room-id" class="versus-room-id">----</span>
+          </div>
+          <div id="versus-status" class="versus-status">対戦ロビー初期化前です。</div>
+          <div class="versus-opponent">
+            <div class="versus-head">
+              <span id="opponent-name" class="versus-name">OPPONENT</span>
+              <span id="sync-badge" class="versus-sync">LOCAL SYNC</span>
+            </div>
+            <canvas id="opponent-board" width="76" height="152" aria-label="Opponent board"></canvas>
+            <div class="versus-meta">
+              <div class="versus-meta-row"><span>SCORE</span><strong id="opponent-score">0</strong></div>
+              <div class="versus-meta-row"><span>LINES</span><strong id="opponent-lines">0</strong></div>
+              <div class="versus-meta-row"><span>STATE</span><strong id="opponent-state">WAIT</strong></div>
+            </div>
+          </div>
+          <div id="versus-log" class="versus-log">state:update をここに表示します。</div>
+        </div>
         <div class="audio-box">
           <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
           <div class="volume-buttons">
@@ -960,6 +1199,29 @@
     <p class="hint">Reset長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒)</p>
   </main>
 
+  <section id="title-screen" class="title-screen is-open" aria-label="Title screen">
+    <div class="title-card">
+      <p class="title-eyebrow">Arcade Select</p>
+      <h1 class="title-hero">TETRIS<br>DUAL GATE</h1>
+      <p class="title-sub">タイトル画面から 1人用 と 対戦用 を選べるようにしました。現時点では 1人用 が実プレイ対象で、対戦用は次段階の通信対戦に向けた入口です。</p>
+      <div class="mode-grid" role="list" aria-label="Game mode">
+        <button id="mode-single" class="mode-option is-active" type="button" data-mode="single">
+          <span class="mode-option-label">1人用</span>
+          <span class="mode-option-copy">今までのテトリスをそのまま開始します。</span>
+        </button>
+        <button id="mode-versus" class="mode-option" type="button" data-mode="versus">
+          <span class="mode-option-label">対戦用</span>
+          <span class="mode-option-copy">通信対戦用の入口です。現状はロビー準備中です。</span>
+        </button>
+      </div>
+      <p id="title-mode-note" class="title-note">1人用を選ぶと、すぐに既存のテトリスを開始します。</p>
+      <div class="title-actions">
+        <button id="title-start" class="title-start-btn" type="button">ゲーム開始</button>
+        <button id="title-ranking" class="ghost title-start-btn" type="button">ランキング</button>
+      </div>
+    </div>
+  </section>
+
   <section id="ranking-modal" class="ranking-modal" aria-hidden="true">
     <div class="ranking-modal-card">
       <div class="ranking-modal-head">
@@ -994,6 +1256,9 @@
     const HOLD_GRID = 4;
     const HOLD_CANVAS_PX = 76;
     const HOLD_BLOCK = HOLD_CANVAS_PX / HOLD_GRID;
+    const OPPONENT_CANVAS_W = 76;
+    const OPPONENT_CANVAS_H = 152;
+    const OPPONENT_BLOCK = OPPONENT_CANVAS_W / COLS;
     const RESET_HOLD_MS = 700;
     const HARD_DROP_HOLD_MS = 200;
     const MOVE_HOLD_DELAY_MS = 140;
@@ -1010,6 +1275,8 @@
     const COMBO_WINDOW_MS = 6500;
     const COMBO_FLASH_MS = 1100;
     const DEBUG_LAYOUT = false;
+    const VERSUS_DEV_PASSWORD = "dualgate2026";
+    const VERSUS_UNLOCK_KEY = "tetrisVersusUnlockedV1";
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -1028,6 +1295,9 @@
     const holdCanvas = document.getElementById("hold");
     const holdCtx = holdCanvas.getContext("2d");
     holdCtx.scale(HOLD_BLOCK, HOLD_BLOCK);
+    const opponentCanvas = document.getElementById("opponent-board");
+    const opponentCtx = opponentCanvas.getContext("2d");
+    opponentCtx.scale(OPPONENT_BLOCK, OPPONENT_BLOCK);
 
     const scoreEl = document.getElementById("score");
     const linesEl = document.getElementById("lines");
@@ -1039,6 +1309,20 @@
     const rankingModalEl = document.getElementById("ranking-modal");
     const rankingModalListEl = document.getElementById("ranking-modal-list");
     const rankingCloseBtn = document.getElementById("ranking-close");
+    const titleScreenEl = document.getElementById("title-screen");
+    const modeSingleBtn = document.getElementById("mode-single");
+    const modeVersusBtn = document.getElementById("mode-versus");
+    const titleModeNoteEl = document.getElementById("title-mode-note");
+    const titleStartBtn = document.getElementById("title-start");
+    const titleRankingBtn = document.getElementById("title-ranking");
+    const versusBoxEl = document.getElementById("versus-box");
+    const roomIdEl = document.getElementById("room-id");
+    const versusStatusEl = document.getElementById("versus-status");
+    const opponentNameEl = document.getElementById("opponent-name");
+    const opponentScoreEl = document.getElementById("opponent-score");
+    const opponentLinesEl = document.getElementById("opponent-lines");
+    const opponentStateEl = document.getElementById("opponent-state");
+    const versusLogEl = document.getElementById("versus-log");
     const landscapeBestScoreEl = document.getElementById("landscape-best-score");
     const landscapeRankingListEl = document.getElementById("landscape-ranking-list");
     const recordCelebrationEl = document.getElementById("record-celebration");
@@ -1082,6 +1366,11 @@
     let layoutRaf = 0;
     let lastViewportW = 0;
     let lastViewportH = 0;
+    let selectedGameMode = "single";
+    let currentGameMode = "single";
+    let roomId = "----";
+    let remoteState = null;
+    let remoteStateTimer = 0;
 
     if (debugHudEl) {
       debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
@@ -1158,7 +1447,8 @@
       lastViewportH = vh;
 
       const isLandscape = vw > vh;
-      const appW = Math.max(320, Math.min(vw - 12, isLandscape ? 920 : 560));
+      const appCap = isLandscape ? 920 : currentGameMode === "versus" ? 640 : 560;
+      const appW = Math.max(320, Math.min(vw - 12, appCap));
       document.documentElement.style.setProperty("--viewport-h", `${vh}px`);
       document.documentElement.style.setProperty("--app-w", `${appW}px`);
       const compactSide = isLandscape && vh < 460;
@@ -1184,7 +1474,9 @@
       const boardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
       document.documentElement.style.setProperty("--board-w", `${boardW}px`);
 
-      const sidePanelW = Math.max(compactSide ? 78 : 84, Math.min(120, Math.floor((appRect.width - boardW - colGap - 8))));
+      const sideMin = currentGameMode === "versus" ? (compactSide ? 94 : 126) : (compactSide ? 78 : 84);
+      const sideMax = currentGameMode === "versus" ? 148 : 120;
+      const sidePanelW = Math.max(sideMin, Math.min(sideMax, Math.floor((appRect.width - boardW - colGap - 8))));
       document.documentElement.style.setProperty("--side-panel-w", `${sidePanelW}px`);
 
       if (DEBUG_LAYOUT && debugHudEl) {
@@ -1703,10 +1995,12 @@
 
     function completeClearEffect(state) {
       if (!state.clearing) return;
+      emitGameEvent("clear", { rows: state.clearing.rows.length });
       applyClearedRows(state, state.clearing.rows, state.clearing.tspin);
       state.clearing = null;
       spawnNext(state);
       updateHUD(state);
+      syncVersusPreview(true);
     }
 
     function drawClearEffect(state) {
@@ -1826,6 +2120,116 @@
       drawMatrix(holdCtx, matrix, offset);
     }
 
+    function serializeGameState(state) {
+      return {
+        board: state.board.map((row) => [...row]),
+        piece: {
+          type: state.piece.type,
+          matrix: cloneMatrix(state.piece.matrix),
+          pos: { x: state.piece.pos.x, y: state.piece.pos.y }
+        },
+        nextPiece: { type: state.nextPiece.type },
+        holdPiece: state.holdPiece ? { type: state.holdPiece.type } : null,
+        score: state.score,
+        lines: state.lines,
+        level: state.level,
+        combo: state.combo,
+        gameOver: state.gameOver,
+        paused: state.paused
+      };
+    }
+
+    function drawRemoteBoard(remote) {
+      opponentCtx.fillStyle = "#020617";
+      opponentCtx.fillRect(0, 0, COLS, ROWS);
+      drawGrid(opponentCtx, COLS, ROWS);
+      if (!remote) return;
+      drawMatrix(opponentCtx, remote.board, { x: 0, y: 0 });
+      if (!remote.gameOver && remote.piece) {
+        drawMatrix(opponentCtx, remote.piece.matrix, remote.piece.pos);
+      }
+    }
+
+    function updateRemoteHud(remote) {
+      if (!remote) {
+        opponentScoreEl.textContent = "0";
+        opponentLinesEl.textContent = "0";
+        opponentStateEl.textContent = "WAIT";
+        versusLogEl.textContent = "state:update をここに表示します。";
+        drawRemoteBoard(null);
+        return;
+      }
+
+      opponentScoreEl.textContent = String(remote.score);
+      opponentLinesEl.textContent = String(remote.lines);
+      opponentStateEl.textContent = remote.gameOver ? "LOSE?" : remote.paused ? "READY" : "LIVE";
+      drawRemoteBoard(remote);
+    }
+
+    function createRoomId() {
+      return Math.random().toString(36).slice(2, 6).toUpperCase();
+    }
+
+    function isVersusUnlocked() {
+      return sessionStorage.getItem(VERSUS_UNLOCK_KEY) === "1";
+    }
+
+    function ensureVersusUnlocked() {
+      if (isVersusUnlocked()) return true;
+      const input = window.prompt("工事用パスワードを入力してください", "");
+      if (input === null) return false;
+      if (input.trim() !== VERSUS_DEV_PASSWORD) {
+        titleModeNoteEl.textContent = "パスワードが違います。対戦用は工事中です。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        return false;
+      }
+      sessionStorage.setItem(VERSUS_UNLOCK_KEY, "1");
+      titleModeNoteEl.textContent = "工事用パスワードを確認しました。このタブでは対戦用を開始できます。";
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+      return true;
+    }
+
+    function emitGameEvent(type, payload = {}) {
+      if (currentGameMode !== "versus") return;
+      const labelMap = {
+        start: "game:start",
+        state: "state:update",
+        lock: "piece:lock",
+        clear: "line:clear",
+        gameOver: "game:over"
+      };
+      const label = labelMap[type] || type;
+      const detail = Object.keys(payload).length ? ` ${JSON.stringify(payload)}` : "";
+      versusLogEl.textContent = `${label}${detail}`;
+    }
+
+    function syncVersusPreview(force = false) {
+      if (currentGameMode !== "versus") return;
+      const now = performance.now();
+      if (!force && now - remoteStateTimer < 120) return;
+      remoteStateTimer = now;
+      const snapshot = serializeGameState(state);
+      const shifted = snapshot.board.map((row) => [...row]);
+      shifted.push(Array(COLS).fill(0));
+      shifted.shift();
+      remoteState = {
+        ...snapshot,
+        board: shifted,
+        score: Math.max(0, snapshot.score - 120),
+        lines: Math.max(0, snapshot.lines - 1),
+        paused: false,
+        gameOver: false
+      };
+      updateRemoteHud(remoteState);
+      emitGameEvent("state", {
+        score: remoteState.score,
+        lines: remoteState.lines,
+        level: remoteState.level
+      });
+    }
+
     function getGhostOffset(state) {
       const ghost = {
         matrix: state.piece.matrix,
@@ -1916,6 +2320,7 @@
       merge(state.board, state.piece);
       const tspin = isTSpin(state);
       const rows = findCompleteRows(state.board);
+      emitGameEvent("lock", { tspin, rows: rows.length });
       if (rows.length > 0) {
         startClearEffect(state, rows, tspin);
       } else {
@@ -1924,6 +2329,7 @@
         playLockSound();
         spawnNext(state);
         updateHUD(state);
+        syncVersusPreview(true);
       }
     }
 
@@ -2024,11 +2430,73 @@
       };
     }
 
+    function setGameMode(mode) {
+      currentGameMode = mode;
+      appEl.classList.toggle("mode-versus", mode === "versus");
+      if (mode === "versus") {
+        roomId = createRoomId();
+        roomIdEl.textContent = roomId;
+        opponentNameEl.textContent = "RIVAL BOT";
+        versusStatusEl.textContent = "LOCAL ROOM: 状態同期デモです。自分の盤面スナップショットを相手プレビューに流します。";
+        remoteState = serializeGameState(state);
+        updateRemoteHud(remoteState);
+        emitGameEvent("start", { roomId });
+      } else {
+        roomId = "----";
+        roomIdEl.textContent = roomId;
+        versusStatusEl.textContent = "対戦ロビー初期化前です。";
+        remoteState = null;
+        updateRemoteHud(null);
+      }
+      scheduleFitLayout();
+    }
+
+    function updateTitleSelection(mode = selectedGameMode) {
+      selectedGameMode = mode;
+      const isSingle = mode === "single";
+      modeSingleBtn.classList.toggle("is-active", isSingle);
+      modeVersusBtn.classList.toggle("is-active", !isSingle);
+      titleModeNoteEl.classList.remove("is-warning", "is-info");
+      if (isSingle) {
+        titleModeNoteEl.textContent = "1人用を選ぶと、すぐに既存のテトリスを開始します。";
+      } else {
+        titleModeNoteEl.textContent = isVersusUnlocked()
+          ? "対戦用の工事モードは解放済みです。ローカル同期の土台を確認できます。"
+          : "対戦用は工事中です。工事用パスワードを入力した場合のみ入れます。";
+        titleModeNoteEl.classList.add("is-info");
+      }
+    }
+
+    function startSelectedMode() {
+      unlockAudio();
+      if (selectedGameMode === "versus" && !ensureVersusUnlocked()) {
+        return;
+      }
+      state = createState();
+      gameOverHandled = false;
+      setGameMode(selectedGameMode);
+      titleScreenEl.classList.remove("is-open");
+      state.paused = false;
+      updateHUD(state);
+      if (currentGameMode === "versus") syncVersusPreview(true);
+      scheduleFitLayout();
+    }
+
+    function openTitleScreen() {
+      titleScreenEl.classList.add("is-open");
+      state.paused = true;
+      updateTitleSelection(selectedGameMode);
+      updateHUD(state);
+    }
+
     let state = createState();
+    state.paused = true;
+    setGameMode("single");
     updateHUD(state);
     renderRanking();
     scheduleFitLayout();
     handleOrientationRanking();
+    updateTitleSelection("single");
 
     function tick(time = 0) {
       const delta = time - state.lastTime;
@@ -2056,9 +2524,14 @@
 
       if (state.gameOver && !gameOverHandled) {
         gameOverHandled = true;
+        emitGameEvent("gameOver", { score: state.score, lines: state.lines });
         registerRankingScore(state);
       } else if (!state.gameOver) {
         gameOverHandled = false;
+      }
+
+      if (currentGameMode === "versus" && !titleScreenEl.classList.contains("is-open")) {
+        syncVersusPreview();
       }
 
       draw(state);
@@ -2069,6 +2542,22 @@
       unlockAudio();
       if (celebrationOpen) {
         closeRecordCelebration();
+        return;
+      }
+      if (titleScreenEl.classList.contains("is-open")) {
+        if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+          updateTitleSelection("single");
+          return;
+        }
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+          updateTitleSelection("versus");
+          return;
+        }
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          startSelectedMode();
+          return;
+        }
         return;
       }
       if (rankingModalEl.classList.contains("is-open")) {
@@ -2148,6 +2637,10 @@
         state = createState();
         gameOverHandled = false;
         updateHUD(state);
+        if (currentGameMode === "versus") {
+          versusStatusEl.textContent = `LOCAL ROOM ${roomId}: リセットして再同期しました。`;
+          syncVersusPreview(true);
+        }
         restartBtn.classList.remove("holding");
         restartBtn.textContent = "Hold Reset";
         resetTimer = null;
@@ -2270,6 +2763,13 @@
       unlockAudio();
       hold(state);
     }, { passive: false });
+
+    modeSingleBtn.addEventListener("click", () => updateTitleSelection("single"));
+    modeVersusBtn.addEventListener("click", () => updateTitleSelection("versus"));
+    titleStartBtn.addEventListener("click", startSelectedMode);
+    titleRankingBtn.addEventListener("click", () => {
+      openRankingModal();
+    });
 
     rankingBoxEl.addEventListener("click", openRankingModal);
     rankingBoxEl.addEventListener("touchstart", (e) => {
