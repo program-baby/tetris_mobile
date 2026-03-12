@@ -175,6 +175,69 @@
       padding: 6px 8px;
     }
 
+    .versus-room-grid {
+      display: grid;
+      gap: 6px;
+    }
+
+    .versus-player-card {
+      display: grid;
+      gap: 4px;
+      padding: 6px 8px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      background: rgba(2, 6, 23, 0.34);
+    }
+
+    .versus-player-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .versus-player-tag {
+      color: var(--muted);
+      font-size: 0.56rem;
+      letter-spacing: 0.06em;
+    }
+
+    .versus-player-name {
+      color: #f8fafc;
+      font-size: 0.68rem;
+      font-weight: 800;
+    }
+
+    .versus-player-state {
+      color: #67e8f9;
+      font-size: 0.56rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .versus-player-stats {
+      display: grid;
+      gap: 2px;
+      font-size: 0.6rem;
+      color: #cbd5e1;
+    }
+
+    .versus-garbage {
+      display: grid;
+      gap: 4px;
+      padding: 6px 8px;
+      border: 1px solid rgba(249, 115, 22, 0.26);
+      border-radius: 8px;
+      background: rgba(30, 12, 4, 0.26);
+    }
+
+    .versus-garbage-title {
+      color: #fb923c;
+      font-size: 0.58rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+
     .versus-opponent {
       display: grid;
       gap: 4px;
@@ -1137,6 +1200,39 @@
             <span id="room-id" class="versus-room-id">----</span>
           </div>
           <div id="versus-status" class="versus-status">対戦ロビー初期化前です。</div>
+          <div class="versus-room-grid">
+            <div class="versus-player-card">
+              <div class="versus-player-head">
+                <span class="versus-player-tag">P1</span>
+                <span id="versus-local-state" class="versus-player-state">WAIT</span>
+              </div>
+              <div id="versus-local-name" class="versus-player-name">YOU</div>
+              <div class="versus-player-stats">
+                <div class="versus-meta-row"><span>READY</span><strong id="versus-local-ready">YES</strong></div>
+                <div class="versus-meta-row"><span>GARBAGE SENT</span><strong id="versus-local-garbage-sent">0</strong></div>
+                <div class="versus-meta-row"><span>PENDING IN</span><strong id="versus-local-garbage-pending">0</strong></div>
+              </div>
+            </div>
+            <div class="versus-player-card">
+              <div class="versus-player-head">
+                <span class="versus-player-tag">P2</span>
+                <span id="versus-remote-state" class="versus-player-state">WAIT</span>
+              </div>
+              <div id="versus-remote-name" class="versus-player-name">RIVAL BOT</div>
+              <div class="versus-player-stats">
+                <div class="versus-meta-row"><span>READY</span><strong id="versus-remote-ready">YES</strong></div>
+                <div class="versus-meta-row"><span>GARBAGE SENT</span><strong id="versus-remote-garbage-sent">0</strong></div>
+                <div class="versus-meta-row"><span>PENDING IN</span><strong id="versus-remote-garbage-pending">0</strong></div>
+              </div>
+            </div>
+          </div>
+          <div class="versus-garbage">
+            <div class="versus-garbage-title">GARBAGE PIPELINE</div>
+            <div class="versus-meta">
+              <div class="versus-meta-row"><span>LAST EVENT</span><strong id="versus-last-event">none</strong></div>
+              <div class="versus-meta-row"><span>EVENT COUNT</span><strong id="versus-event-count">0</strong></div>
+            </div>
+          </div>
           <div class="versus-opponent">
             <div class="versus-head">
               <span id="opponent-name" class="versus-name">OPPONENT</span>
@@ -1318,6 +1414,18 @@
     const versusBoxEl = document.getElementById("versus-box");
     const roomIdEl = document.getElementById("room-id");
     const versusStatusEl = document.getElementById("versus-status");
+    const versusLocalStateEl = document.getElementById("versus-local-state");
+    const versusLocalNameEl = document.getElementById("versus-local-name");
+    const versusLocalReadyEl = document.getElementById("versus-local-ready");
+    const versusLocalGarbageSentEl = document.getElementById("versus-local-garbage-sent");
+    const versusLocalGarbagePendingEl = document.getElementById("versus-local-garbage-pending");
+    const versusRemoteStateEl = document.getElementById("versus-remote-state");
+    const versusRemoteNameEl = document.getElementById("versus-remote-name");
+    const versusRemoteReadyEl = document.getElementById("versus-remote-ready");
+    const versusRemoteGarbageSentEl = document.getElementById("versus-remote-garbage-sent");
+    const versusRemoteGarbagePendingEl = document.getElementById("versus-remote-garbage-pending");
+    const versusLastEventEl = document.getElementById("versus-last-event");
+    const versusEventCountEl = document.getElementById("versus-event-count");
     const opponentNameEl = document.getElementById("opponent-name");
     const opponentScoreEl = document.getElementById("opponent-score");
     const opponentLinesEl = document.getElementById("opponent-lines");
@@ -1371,6 +1479,7 @@
     let roomId = "----";
     let remoteState = null;
     let remoteStateTimer = 0;
+    let versusRoomState = null;
 
     if (debugHudEl) {
       debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
@@ -1995,7 +2104,9 @@
 
     function completeClearEffect(state) {
       if (!state.clearing) return;
-      emitGameEvent("clear", { rows: state.clearing.rows.length });
+      const clearedRows = state.clearing.rows.length;
+      emitGameEvent("clear", { rows: clearedRows });
+      queueGarbageSend(calculateGarbageLines(clearedRows), "line-clear");
       applyClearedRows(state, state.clearing.rows, state.clearing.tspin);
       state.clearing = null;
       spawnNext(state);
@@ -2163,6 +2274,10 @@
       opponentScoreEl.textContent = String(remote.score);
       opponentLinesEl.textContent = String(remote.lines);
       opponentStateEl.textContent = remote.gameOver ? "LOSE?" : remote.paused ? "READY" : "LIVE";
+      if (versusRoomState) {
+        versusRoomState.players.remote.state = opponentStateEl.textContent;
+        renderVersusRoomHud();
+      }
       drawRemoteBoard(remote);
     }
 
@@ -2172,6 +2287,55 @@
 
     function isVersusUnlocked() {
       return sessionStorage.getItem(VERSUS_UNLOCK_KEY) === "1";
+    }
+
+    function createVersusRoomState() {
+      return {
+        phase: "lobby",
+        eventCount: 0,
+        lastEvent: "none",
+        players: {
+          local: {
+            name: "YOU",
+            ready: true,
+            state: "READY",
+            garbageSent: 0,
+            garbagePending: 0
+          },
+          remote: {
+            name: "RIVAL BOT",
+            ready: true,
+            state: "SYNC",
+            garbageSent: 0,
+            garbagePending: 0
+          }
+        }
+      };
+    }
+
+    function renderVersusRoomHud() {
+      if (!versusRoomState) return;
+      versusLocalNameEl.textContent = versusRoomState.players.local.name;
+      versusLocalStateEl.textContent = versusRoomState.players.local.state;
+      versusLocalReadyEl.textContent = versusRoomState.players.local.ready ? "YES" : "NO";
+      versusLocalGarbageSentEl.textContent = String(versusRoomState.players.local.garbageSent);
+      versusLocalGarbagePendingEl.textContent = String(versusRoomState.players.local.garbagePending);
+
+      versusRemoteNameEl.textContent = versusRoomState.players.remote.name;
+      versusRemoteStateEl.textContent = versusRoomState.players.remote.state;
+      versusRemoteReadyEl.textContent = versusRoomState.players.remote.ready ? "YES" : "NO";
+      versusRemoteGarbageSentEl.textContent = String(versusRoomState.players.remote.garbageSent);
+      versusRemoteGarbagePendingEl.textContent = String(versusRoomState.players.remote.garbagePending);
+
+      versusLastEventEl.textContent = versusRoomState.lastEvent;
+      versusEventCountEl.textContent = String(versusRoomState.eventCount);
+    }
+
+    function calculateGarbageLines(cleared) {
+      if (cleared <= 1) return 0;
+      if (cleared === 2) return 1;
+      if (cleared === 3) return 2;
+      return 4;
     }
 
     function ensureVersusUnlocked() {
@@ -2198,11 +2362,40 @@
         state: "state:update",
         lock: "piece:lock",
         clear: "line:clear",
+        garbage: "garbage:send",
         gameOver: "game:over"
       };
       const label = labelMap[type] || type;
       const detail = Object.keys(payload).length ? ` ${JSON.stringify(payload)}` : "";
       versusLogEl.textContent = `${label}${detail}`;
+      if (versusRoomState) {
+        versusRoomState.eventCount += 1;
+        versusRoomState.lastEvent = label;
+        if (type === "start") {
+          versusRoomState.phase = "playing";
+          versusRoomState.players.local.state = "LIVE";
+          versusRoomState.players.remote.state = "SYNC";
+        } else if (type === "garbage") {
+          versusRoomState.players.local.garbageSent += payload.lines || 0;
+          versusRoomState.players.remote.garbagePending += payload.lines || 0;
+        } else if (type === "gameOver") {
+          versusRoomState.phase = "finished";
+          versusRoomState.players.local.state = "LOSE";
+          versusRoomState.players.remote.state = "WIN?";
+        }
+        renderVersusRoomHud();
+      }
+    }
+
+    function queueGarbageSend(lines, source = "clear") {
+      if (currentGameMode !== "versus" || lines <= 0) return;
+      emitGameEvent("garbage", {
+        roomId,
+        from: "local",
+        to: "remote",
+        lines,
+        source
+      });
     }
 
     function syncVersusPreview(force = false) {
@@ -2211,12 +2404,9 @@
       if (!force && now - remoteStateTimer < 120) return;
       remoteStateTimer = now;
       const snapshot = serializeGameState(state);
-      const shifted = snapshot.board.map((row) => [...row]);
-      shifted.push(Array(COLS).fill(0));
-      shifted.shift();
       remoteState = {
         ...snapshot,
-        board: shifted,
+        board: snapshot.board.map((row) => [...row]),
         score: Math.max(0, snapshot.score - 120),
         lines: Math.max(0, snapshot.lines - 1),
         paused: false,
@@ -2435,14 +2625,17 @@
       appEl.classList.toggle("mode-versus", mode === "versus");
       if (mode === "versus") {
         roomId = createRoomId();
+        versusRoomState = createVersusRoomState();
         roomIdEl.textContent = roomId;
         opponentNameEl.textContent = "RIVAL BOT";
-        versusStatusEl.textContent = "LOCAL ROOM: 状態同期デモです。自分の盤面スナップショットを相手プレビューに流します。";
+        versusStatusEl.textContent = "LOCAL ROOM: 2人ルームHUDと garbage:send イベント設計を先行実装しています。";
         remoteState = serializeGameState(state);
         updateRemoteHud(remoteState);
+        renderVersusRoomHud();
         emitGameEvent("start", { roomId });
       } else {
         roomId = "----";
+        versusRoomState = null;
         roomIdEl.textContent = roomId;
         versusStatusEl.textContent = "対戦ロビー初期化前です。";
         remoteState = null;
@@ -2524,6 +2717,10 @@
 
       if (state.gameOver && !gameOverHandled) {
         gameOverHandled = true;
+        if (versusRoomState) {
+          versusRoomState.players.local.state = "LOSE";
+          renderVersusRoomHud();
+        }
         emitGameEvent("gameOver", { score: state.score, lines: state.lines });
         registerRankingScore(state);
       } else if (!state.gameOver) {
@@ -2638,7 +2835,9 @@
         gameOverHandled = false;
         updateHUD(state);
         if (currentGameMode === "versus") {
+          versusRoomState = createVersusRoomState();
           versusStatusEl.textContent = `LOCAL ROOM ${roomId}: リセットして再同期しました。`;
+          renderVersusRoomHud();
           syncVersusPreview(true);
         }
         restartBtn.classList.remove("holding");
