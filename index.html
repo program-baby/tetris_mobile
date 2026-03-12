@@ -1590,6 +1590,12 @@
     let remoteState = null;
     let remoteStateTimer = 0;
     let versusRoomState = null;
+    let waitingForOpponent = false;
+    let versusMatchStarted = false;
+    let versusCountdownTimer = null;
+    let versusCountdownEndsAt = 0;
+    let versusStartFlashUntil = 0;
+    let versusCountdownLastValue = 0;
     let selectedLobbyAction = "create";
     let firebaseReady = false;
     let firebaseApp = null;
@@ -2047,6 +2053,23 @@
       }, 40);
     }
 
+    function playCountdownBeep(count) {
+      const freqMap = {
+        3: 520,
+        2: 620,
+        1: 760
+      };
+      const freq = freqMap[count] || 520;
+      playTone(freq, 0.08, "square", 0.045, freq * 0.94, true);
+    }
+
+    function playCountdownStartSound() {
+      playTone(820, 0.12, "sawtooth", 0.07, 980, true);
+      setTimeout(() => {
+        playTone(1180, 0.14, "triangle", 0.06, 1460, true);
+      }, 70);
+    }
+
     function createBoard() {
       return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     }
@@ -2426,9 +2449,9 @@
             garbagePending: 0
           },
           remote: {
-            name: "RIVAL BOT",
-            ready: true,
-            state: "SYNC",
+            name: "WAITING...",
+            ready: false,
+            state: "WAIT",
             garbageSent: 0,
             garbagePending: 0
           }
@@ -2667,6 +2690,14 @@
           remoteState = null;
           updateRemoteHud(null);
         }
+        const roomReady = !!local.ready && !!remote.ready && (room.status === "ready" || room.status === "playing");
+        if (roomReady) {
+          beginVersusMatch(`FIREBASE ROOM ${roomId}: 2人そろったので対戦を開始します。`);
+        } else if (!versusMatchStarted) {
+          waitingForOpponent = true;
+          state.paused = true;
+          updateHUD(state);
+        }
       };
       firebaseRoomRef.on("value", firebaseRoomListener);
       return true;
@@ -2781,7 +2812,7 @@
     }
 
     function syncVersusPreview(force = false) {
-      if (currentGameMode !== "versus") return;
+      if (currentGameMode !== "versus" || waitingForOpponent || !versusMatchStarted) return;
       const now = performance.now();
       if (!force && now - remoteStateTimer < 120) return;
       remoteStateTimer = now;
@@ -2801,6 +2832,62 @@
         level: remoteState.level
       });
       sendFirebaseStateUpdate(snapshot).catch(() => {});
+    }
+
+    function getVersusCountdownValue() {
+      if (!versusCountdownEndsAt) return 0;
+      return Math.max(0, Math.ceil((versusCountdownEndsAt - performance.now()) / 1000));
+    }
+
+    function clearVersusCountdown() {
+      if (versusCountdownTimer) {
+        clearTimeout(versusCountdownTimer);
+        versusCountdownTimer = null;
+      }
+      versusCountdownEndsAt = 0;
+      versusCountdownLastValue = 0;
+      versusStartFlashUntil = 0;
+    }
+
+    function beginVersusMatch(statusText = "") {
+      if (currentGameMode !== "versus" || versusMatchStarted) return;
+      waitingForOpponent = false;
+      clearVersusCountdown();
+      versusCountdownEndsAt = performance.now() + 3000;
+      versusCountdownLastValue = 3;
+      playCountdownBeep(3);
+      state.paused = true;
+      if (versusRoomState) {
+        versusRoomState.phase = "countdown";
+        versusRoomState.players.local.state = "COUNT";
+        if (versusRoomState.players.remote.ready) {
+          versusRoomState.players.remote.state = "COUNT";
+        }
+        renderVersusRoomHud();
+      }
+      if (statusText) versusStatusEl.textContent = `${statusText} 3秒後に開始します。`;
+      updateHUD(state);
+      versusCountdownTimer = setTimeout(() => {
+        versusCountdownTimer = null;
+        versusCountdownEndsAt = 0;
+        versusCountdownLastValue = 0;
+        versusMatchStarted = true;
+        versusStartFlashUntil = performance.now() + 700;
+        state.paused = false;
+        if (versusRoomState) {
+          versusRoomState.phase = "playing";
+          versusRoomState.players.local.state = "LIVE";
+          if (versusRoomState.players.remote.ready) {
+            versusRoomState.players.remote.state = "LIVE";
+          }
+          renderVersusRoomHud();
+        }
+        if (statusText) versusStatusEl.textContent = statusText;
+        updateHUD(state);
+        playCountdownStartSound();
+        emitGameEvent("start", { roomId });
+        syncVersusPreview(true);
+      }, 3000);
     }
 
     function getGhostOffset(state) {
@@ -2850,6 +2937,28 @@
         ctx.fillStyle = "#f8fafc";
         ctx.font = "0.82px sans-serif";
         ctx.fillText(state.gameOver ? "GAME OVER" : "PAUSED", 2.6, 9.7);
+      }
+
+      const countdownValue = getVersusCountdownValue();
+      if (countdownValue > 0) {
+        if (countdownValue !== versusCountdownLastValue) {
+          versusCountdownLastValue = countdownValue;
+          playCountdownBeep(countdownValue);
+        }
+        ctx.fillStyle = "rgba(0, 0, 0, 0.78)";
+        ctx.fillRect(0, 0, COLS, ROWS);
+        ctx.fillStyle = "#22d3ee";
+        ctx.font = "bold 2.8px sans-serif";
+        ctx.fillText(String(countdownValue), 4.3, 10.8);
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "0.62px sans-serif";
+        ctx.fillText("MATCH START", 2.9, 13.2);
+      } else if (performance.now() < versusStartFlashUntil) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.52)";
+        ctx.fillRect(0, 0, COLS, ROWS);
+        ctx.fillStyle = "#facc15";
+        ctx.font = "bold 1.7px sans-serif";
+        ctx.fillText("START", 3.2, 11.1);
       }
     }
 
@@ -3007,22 +3116,27 @@
       currentGameMode = mode;
       appEl.classList.toggle("mode-versus", mode === "versus");
       if (mode === "versus") {
+        waitingForOpponent = !!options.waitForOpponent;
+        versusMatchStarted = !!options.matchStarted;
         roomId = options.roomId || createRoomId();
         versusRoomState = createVersusRoomState();
         const localName = options.localName || "YOU";
-        const remoteName = options.remoteName || "RIVAL BOT";
+        const remoteName = options.remoteName || "WAITING...";
         versusRoomState.players.local.name = localName;
         versusRoomState.players.remote.name = remoteName;
         versusRoomState.players.local.state = options.localState || "READY";
-        versusRoomState.players.remote.state = options.remoteState || "SYNC";
+        versusRoomState.players.remote.state = options.remoteState || "WAIT";
+        versusRoomState.players.remote.ready = !!options.remoteReady;
         roomIdEl.textContent = roomId;
         opponentNameEl.textContent = remoteName;
-        versusStatusEl.textContent = options.statusText || "LOCAL ROOM: 2人ルームHUDと garbage:send イベント設計を先行実装しています。";
-        remoteState = serializeGameState(state);
+        versusStatusEl.textContent = options.statusText || "LOCAL ROOM: 相手参加待ちです。";
+        remoteState = options.remoteReady ? serializeGameState(state) : null;
         updateRemoteHud(remoteState);
         renderVersusRoomHud();
-        emitGameEvent("start", { roomId });
       } else {
+        clearVersusCountdown();
+        waitingForOpponent = false;
+        versusMatchStarted = false;
         roomId = "----";
         versusRoomState = null;
         firebaseSession = null;
@@ -3090,6 +3204,9 @@
                 : "WAITING...",
               localState: "READY",
               remoteState: selectedLobbyAction === "join" ? "HOST" : "WAIT",
+              remoteReady: selectedLobbyAction === "join",
+              waitForOpponent: selectedLobbyAction !== "join",
+              matchStarted: selectedLobbyAction === "join",
               statusText: selectedLobbyAction === "join"
                 ? `FIREBASE JOIN: ROOM ${result.room.roomId} に参加しました。state:update を接続できます。`
                 : `FIREBASE CREATE: ROOM ${result.room.roomId} を作成しました。guest を待機中です。`
@@ -3107,18 +3224,21 @@
             remoteName: selectedLobbyAction === "join" ? "HOST BOT" : "GUEST BOT",
             localState: "READY",
             remoteState: selectedLobbyAction === "join" ? "HOST" : "JOIN",
+            remoteReady: selectedLobbyAction === "join",
+            waitForOpponent: selectedLobbyAction !== "join",
+            matchStarted: selectedLobbyAction === "join",
             statusText: selectedLobbyAction === "join"
               ? `LOCAL JOIN: ROOM ${requestedRoomId} に参加した想定で HUD を起動します。`
-              : "LOCAL CREATE: 新規ルームを作成した想定で HUD を起動します。"
+              : "LOCAL CREATE: ルームを作成しました。参加者が入るまで開始しません。"
           })
         });
       } else {
         setGameMode("single");
       }
       titleScreenEl.classList.remove("is-open");
-      state.paused = false;
+      state.paused = selectedGameMode === "versus" ? waitingForOpponent : false;
       updateHUD(state);
-      if (currentGameMode === "versus") syncVersusPreview(true);
+      if (currentGameMode === "versus" && versusMatchStarted) syncVersusPreview(true);
       scheduleFitLayout();
     }
 
@@ -3284,11 +3404,14 @@
         state = createState();
         gameOverHandled = false;
         updateHUD(state);
-        if (currentGameMode === "versus") {
+      if (currentGameMode === "versus") {
           versusRoomState = createVersusRoomState();
+          clearVersusCountdown();
+          waitingForOpponent = true;
+          versusMatchStarted = false;
           versusStatusEl.textContent = `LOCAL ROOM ${roomId}: リセットして再同期しました。`;
           renderVersusRoomHud();
-          syncVersusPreview(true);
+          updateRemoteHud(null);
         }
         restartBtn.classList.remove("holding");
         restartBtn.textContent = "Hold Reset";
