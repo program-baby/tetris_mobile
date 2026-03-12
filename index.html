@@ -1577,6 +1577,11 @@
     let versusRoomState = null;
     let selectedLobbyAction = "create";
     let firebaseReady = false;
+    let firebaseApp = null;
+    let firebaseDb = null;
+    let firebaseAuth = null;
+    let firebaseRoomRef = null;
+    let firebaseRoomListener = null;
     let firebaseSession = null;
 
     if (debugHudEl) {
@@ -2448,6 +2453,19 @@
     async function initFirebaseAdapter() {
       if (firebaseReady) return true;
       if (!hasFirebaseConfig()) return false;
+      if (!window.firebase || !window.firebase.initializeApp || !window.firebase.database || !window.firebase.auth) {
+        return false;
+      }
+      if (!firebaseApp) {
+        firebaseApp = window.firebase.apps?.length
+          ? window.firebase.app()
+          : window.firebase.initializeApp(FIREBASE_CONFIG);
+      }
+      firebaseDb = firebaseApp.database ? firebaseApp.database() : window.firebase.database();
+      firebaseAuth = firebaseApp.auth ? firebaseApp.auth() : window.firebase.auth();
+      if (!firebaseAuth.currentUser) {
+        await firebaseAuth.signInAnonymously();
+      }
       firebaseReady = true;
       return true;
     }
@@ -2457,14 +2475,49 @@
         roomId,
         status: "waiting",
         createdAt: Date.now(),
-        host: { name: hostName, ready: true },
-        guest: null
+        updatedAt: Date.now(),
+        hostId: firebaseAuth?.currentUser?.uid || null,
+        guestId: null,
+        lastEvent: {
+          type: "room:create",
+          at: Date.now()
+        },
+        host: {
+          name: hostName,
+          ready: true,
+          state: "READY",
+          garbageSent: 0,
+          garbageQueue: {
+            pending: 0,
+            items: {}
+          },
+          game: null
+        },
+        guest: {
+          name: null,
+          ready: false,
+          state: "EMPTY",
+          garbageSent: 0,
+          garbageQueue: {
+            pending: 0,
+            items: {}
+          },
+          game: null
+        }
       };
     }
 
     async function createFirebaseRoom(roomId, hostName) {
       const ok = await initFirebaseAdapter();
       if (!ok) return { ok: false, reason: "missing-config" };
+      const roomRef = firebaseDb.ref(`rooms/${roomId}`);
+      const result = await roomRef.transaction((current) => {
+        if (current) return;
+        return createRoomPayload(roomId, hostName);
+      });
+      if (!result.committed) {
+        return { ok: false, reason: "room-exists" };
+      }
       firebaseSession = {
         role: "host",
         roomId,
@@ -2472,13 +2525,41 @@
       };
       return {
         ok: true,
-        room: createRoomPayload(roomId, hostName)
+        room: result.snapshot.val()
       };
     }
 
     async function joinFirebaseRoom(roomId, guestName) {
       const ok = await initFirebaseAdapter();
       if (!ok) return { ok: false, reason: "missing-config" };
+      const roomRef = firebaseDb.ref(`rooms/${roomId}`);
+      const result = await roomRef.transaction((current) => {
+        if (!current) return current;
+        if (current.guest && current.guest.name) return;
+        current.guest = {
+          name: guestName,
+          ready: true,
+          state: "READY",
+          garbageSent: 0,
+          garbageQueue: {
+            pending: 0,
+            items: {}
+          },
+          game: null
+        };
+        current.guestId = firebaseAuth?.currentUser?.uid || null;
+        current.status = "ready";
+        current.updatedAt = Date.now();
+        current.lastEvent = {
+          type: "room:join",
+          at: Date.now()
+        };
+        return current;
+      });
+      const room = result.snapshot.val();
+      if (!result.committed || !room) {
+        return { ok: false, reason: room ? "room-full" : "room-missing" };
+      }
       firebaseSession = {
         role: "guest",
         roomId,
@@ -2486,28 +2567,93 @@
       };
       return {
         ok: true,
-        room: {
-          roomId,
-          status: "ready",
-          createdAt: Date.now(),
-          host: { name: "HOST", ready: true },
-          guest: { name: guestName, ready: true }
-        }
+        room
       };
     }
 
     async function sendFirebaseStateUpdate(snapshot) {
       if (!firebaseSession || !firebaseReady) return false;
-      return !!snapshot;
+      const role = firebaseSession.role;
+      const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
+      await roomRef.child(`${role}/game`).set(snapshot);
+      await roomRef.update({
+        updatedAt: Date.now(),
+        status: snapshot.gameOver ? "finished" : "playing",
+        lastEvent: {
+          type: "state:update",
+          at: Date.now()
+        },
+        [`${role}/state`]: snapshot.gameOver ? "LOSE" : snapshot.paused ? "READY" : "LIVE"
+      });
+      return true;
     }
 
     async function sendFirebaseGarbage(lines, source) {
       if (!firebaseSession || !firebaseReady) return false;
-      return !!lines && !!source;
+      if (!lines || !source) return false;
+      const targetRole = firebaseSession.role === "host" ? "guest" : "host";
+      const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
+      const queueRef = roomRef.child(`${targetRole}/garbageQueue/pending`);
+      await queueRef.transaction((current) => (current || 0) + lines);
+      const itemRef = roomRef.child(`${targetRole}/garbageQueue/items`).push();
+      await itemRef.set({
+        lines,
+        source,
+        from: firebaseSession.role,
+        createdAt: Date.now()
+      });
+      const sentRef = roomRef.child(`${firebaseSession.role}/garbageSent`);
+      await sentRef.transaction((current) => (current || 0) + lines);
+      await roomRef.update({
+        updatedAt: Date.now(),
+        lastEvent: {
+          type: "garbage:send",
+          at: Date.now()
+        }
+      });
+      return true;
     }
 
     async function subscribeFirebaseRoom(roomId) {
       if (!firebaseReady || !roomId) return false;
+      if (firebaseRoomRef && firebaseRoomListener) {
+        firebaseRoomRef.off("value", firebaseRoomListener);
+      }
+      firebaseRoomRef = firebaseDb.ref(`rooms/${roomId}`);
+      firebaseRoomListener = (snapshot) => {
+        const room = snapshot.val();
+        if (!room || !firebaseSession) return;
+        const localRole = firebaseSession.role;
+        const remoteRole = localRole === "host" ? "guest" : "host";
+        const local = room[localRole] || {};
+        const remote = room[remoteRole] || {};
+        const baseState = versusRoomState || createVersusRoomState();
+        baseState.phase = room.status || "lobby";
+        baseState.lastEvent = room.lastEvent?.type || "none";
+        baseState.players.local.name = local.name || firebaseSession.playerName || "PLAYER";
+        baseState.players.local.ready = !!local.ready;
+        baseState.players.local.state = local.state || "READY";
+        baseState.players.local.garbageSent = local.garbageSent || 0;
+        baseState.players.local.garbagePending = local.garbageQueue?.pending || 0;
+        baseState.players.remote.name = remote.name || "WAITING...";
+        baseState.players.remote.ready = !!remote.ready;
+        baseState.players.remote.state = remote.state || "WAIT";
+        baseState.players.remote.garbageSent = remote.garbageSent || 0;
+        baseState.players.remote.garbagePending = remote.garbageQueue?.pending || 0;
+        baseState.garbageQueue.outgoing = [];
+        baseState.garbageQueue.incoming = Object.values(local.garbageQueue?.items || {}).map((item) => item.lines || 0);
+        versusRoomState = baseState;
+        versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: ${room.status || "waiting"}`;
+        renderVersusRoomHud();
+        if (remote.game) {
+          remoteState = remote.game;
+          updateRemoteHud(remote.game);
+        } else {
+          remoteState = null;
+          updateRemoteHud(null);
+        }
+      };
+      firebaseRoomRef.on("value", firebaseRoomListener);
       return true;
     }
 
