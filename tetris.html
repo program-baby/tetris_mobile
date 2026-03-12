@@ -858,6 +858,113 @@
     .debug-hud.is-visible {
       display: block;
     }
+
+    .title-screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background:
+        radial-gradient(circle at top, rgba(34, 211, 238, 0.16), transparent 34%),
+        rgba(2, 6, 23, 0.92);
+      z-index: 15;
+      padding: 18px;
+    }
+
+    .title-screen.is-open {
+      display: grid;
+    }
+
+    .title-card {
+      width: min(92vw, 440px);
+      border-radius: 18px;
+      padding: 22px 18px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(12, 18, 34, 0.98));
+      border: 1px solid rgba(103, 232, 249, 0.34);
+      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.45);
+      display: grid;
+      gap: 14px;
+    }
+
+    .title-eyebrow {
+      margin: 0;
+      color: #67e8f9;
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .title-hero {
+      margin: 0;
+      font-size: clamp(1.9rem, 7vw, 2.8rem);
+      line-height: 0.95;
+      letter-spacing: 0.04em;
+    }
+
+    .title-sub {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .mode-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .mode-option {
+      border: 1px solid rgba(71, 85, 105, 0.9);
+      border-radius: 14px;
+      padding: 14px 12px;
+      background: rgba(15, 23, 42, 0.72);
+      color: #e2e8f0;
+      text-align: left;
+      transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+    }
+
+    .mode-option.is-active {
+      border-color: rgba(34, 211, 238, 0.96);
+      box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.32), 0 12px 24px rgba(34, 211, 238, 0.14);
+      transform: translateY(-1px);
+    }
+
+    .mode-option-label {
+      display: block;
+      font-size: 1rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .mode-option-copy {
+      display: block;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      line-height: 1.45;
+    }
+
+    .title-note {
+      min-height: 2.8em;
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .title-note.is-warning {
+      color: #fbbf24;
+    }
+
+    .title-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .title-start-btn {
+      font-size: 0.88rem;
+      padding: 12px 8px;
+    }
   </style>
 </head>
 <body>
@@ -960,6 +1067,29 @@
     <p class="hint">Reset長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒)</p>
   </main>
 
+  <section id="title-screen" class="title-screen is-open" aria-label="Title screen">
+    <div class="title-card">
+      <p class="title-eyebrow">Arcade Select</p>
+      <h1 class="title-hero">TETRIS<br>DUAL GATE</h1>
+      <p class="title-sub">タイトル画面から 1人用 と 対戦用 を選べるようにしました。現時点では 1人用 が実プレイ対象で、対戦用は次段階の通信対戦に向けた入口です。</p>
+      <div class="mode-grid" role="list" aria-label="Game mode">
+        <button id="mode-single" class="mode-option is-active" type="button" data-mode="single">
+          <span class="mode-option-label">1人用</span>
+          <span class="mode-option-copy">今までのテトリスをそのまま開始します。</span>
+        </button>
+        <button id="mode-versus" class="mode-option" type="button" data-mode="versus">
+          <span class="mode-option-label">対戦用</span>
+          <span class="mode-option-copy">通信対戦用の入口です。現状はロビー準備中です。</span>
+        </button>
+      </div>
+      <p id="title-mode-note" class="title-note">1人用を選ぶと、すぐに既存のテトリスを開始します。</p>
+      <div class="title-actions">
+        <button id="title-start" class="title-start-btn" type="button">ゲーム開始</button>
+        <button id="title-ranking" class="ghost title-start-btn" type="button">ランキング</button>
+      </div>
+    </div>
+  </section>
+
   <section id="ranking-modal" class="ranking-modal" aria-hidden="true">
     <div class="ranking-modal-card">
       <div class="ranking-modal-head">
@@ -1039,6 +1169,12 @@
     const rankingModalEl = document.getElementById("ranking-modal");
     const rankingModalListEl = document.getElementById("ranking-modal-list");
     const rankingCloseBtn = document.getElementById("ranking-close");
+    const titleScreenEl = document.getElementById("title-screen");
+    const modeSingleBtn = document.getElementById("mode-single");
+    const modeVersusBtn = document.getElementById("mode-versus");
+    const titleModeNoteEl = document.getElementById("title-mode-note");
+    const titleStartBtn = document.getElementById("title-start");
+    const titleRankingBtn = document.getElementById("title-ranking");
     const landscapeBestScoreEl = document.getElementById("landscape-best-score");
     const landscapeRankingListEl = document.getElementById("landscape-ranking-list");
     const recordCelebrationEl = document.getElementById("record-celebration");
@@ -1082,6 +1218,7 @@
     let layoutRaf = 0;
     let lastViewportW = 0;
     let lastViewportH = 0;
+    let selectedGameMode = "single";
 
     if (debugHudEl) {
       debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
@@ -2024,11 +2161,50 @@
       };
     }
 
+    function updateTitleSelection(mode = selectedGameMode) {
+      selectedGameMode = mode;
+      const isSingle = mode === "single";
+      modeSingleBtn.classList.toggle("is-active", isSingle);
+      modeVersusBtn.classList.toggle("is-active", !isSingle);
+      if (isSingle) {
+        titleModeNoteEl.textContent = "1人用を選ぶと、すぐに既存のテトリスを開始します。";
+        titleModeNoteEl.classList.remove("is-warning");
+      } else {
+        titleModeNoteEl.textContent = "対戦用は通信対戦ロビーの予定地です。今回は入口だけを先に用意しています。";
+        titleModeNoteEl.classList.add("is-warning");
+      }
+    }
+
+    function startSelectedMode() {
+      unlockAudio();
+      if (selectedGameMode === "versus") {
+        titleModeNoteEl.textContent = "対戦用はまだロビー準備中です。現時点では 1人用 を選んでください。";
+        titleModeNoteEl.classList.add("is-warning");
+        return;
+      }
+
+      state = createState();
+      gameOverHandled = false;
+      titleScreenEl.classList.remove("is-open");
+      state.paused = false;
+      updateHUD(state);
+      scheduleFitLayout();
+    }
+
+    function openTitleScreen() {
+      titleScreenEl.classList.add("is-open");
+      state.paused = true;
+      updateTitleSelection(selectedGameMode);
+      updateHUD(state);
+    }
+
     let state = createState();
+    state.paused = true;
     updateHUD(state);
     renderRanking();
     scheduleFitLayout();
     handleOrientationRanking();
+    updateTitleSelection("single");
 
     function tick(time = 0) {
       const delta = time - state.lastTime;
@@ -2069,6 +2245,22 @@
       unlockAudio();
       if (celebrationOpen) {
         closeRecordCelebration();
+        return;
+      }
+      if (titleScreenEl.classList.contains("is-open")) {
+        if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+          updateTitleSelection("single");
+          return;
+        }
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+          updateTitleSelection("versus");
+          return;
+        }
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          startSelectedMode();
+          return;
+        }
         return;
       }
       if (rankingModalEl.classList.contains("is-open")) {
@@ -2270,6 +2462,13 @@
       unlockAudio();
       hold(state);
     }, { passive: false });
+
+    modeSingleBtn.addEventListener("click", () => updateTitleSelection("single"));
+    modeVersusBtn.addEventListener("click", () => updateTitleSelection("versus"));
+    titleStartBtn.addEventListener("click", startSelectedMode);
+    titleRankingBtn.addEventListener("click", () => {
+      openRankingModal();
+    });
 
     rankingBoxEl.addEventListener("click", openRankingModal);
     rankingBoxEl.addEventListener("touchstart", (e) => {
