@@ -572,6 +572,13 @@
       font-size: 0.78rem;
     }
 
+    .rules-modal-copy {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
     .record-celebration {
       position: fixed;
       inset: 0;
@@ -912,79 +919,10 @@
     }
 
     @media (orientation: landscape) {
-      body {
-        background: #000;
-      }
-
-      .app {
-        align-content: stretch;
-        padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
-      }
-
-      .arena {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: 1fr;
-        align-items: stretch;
-        align-content: stretch;
-        min-height: calc(var(--viewport-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 12px);
-      }
-
-      .left-tools {
-        grid-column: 1;
-        grid-row: 1;
-        flex-direction: row;
-        align-items: stretch;
-        justify-content: flex-start;
-      }
-
-      .left-tools .tool-btn,
-      .left-tools .landscape-rules {
-        display: none;
-      }
-
-      .landscape-ranking {
-        display: block;
-      }
-
-      .right-info {
-        grid-column: 2;
-        grid-row: 1;
-        width: 100%;
-      }
-
-      .right-info > :not(.rules-panel) {
-        display: none !important;
-      }
-
+      .landscape-ranking,
+      .landscape-rules,
       .rules-panel {
-        display: grid;
-      }
-
-      .board-wrap {
-        display: none;
-      }
-
-      .tool-btn {
-        min-width: 0;
-        width: 100%;
-      }
-
-      .board-score-hud {
-        display: none;
-      }
-
-      .board-score-item {
-        display: none;
-      }
-
-      .combo-time,
-      .combo-bonus {
-        display: none;
-      }
-
-      #controls,
-      .hint {
-        display: none;
+        display: none !important;
       }
     }
 
@@ -1241,6 +1179,7 @@
     <section id="gameArea" class="arena">
       <aside id="leftTools" class="panel left-tools">
         <button id="pause" class="ghost tool-btn" type="button">Pause</button>
+        <button id="rules-open" class="ghost tool-btn" type="button">Rules</button>
         <button id="restart" class="danger tool-btn" type="button">Hold Reset</button>
         <div class="landscape-ranking">
           <div class="landscape-ranking-head">
@@ -1437,6 +1376,24 @@
     </div>
   </section>
 
+  <section id="rules-modal" class="ranking-modal" aria-hidden="true">
+    <div class="ranking-modal-card">
+      <div class="ranking-modal-head">
+        <h2 class="ranking-modal-title">RULES</h2>
+        <button id="rules-close" class="ghost ranking-close" type="button">閉じる</button>
+      </div>
+      <p class="rules-modal-copy">1人用も対戦用も、ゲームを止めずに読み返せるようにルールをまとめています。</p>
+      <ol class="rules-list">
+        <li>1〜4ライン同時消去で x1〜x4（4ラインは金色表示）</li>
+        <li>コンボは 6.5秒以内に次のラインを消すと継続</li>
+        <li>HOLD はホールド枠タップ</li>
+        <li>DROP は長押し 0.2 秒</li>
+        <li>RESET は長押し 0.7 秒</li>
+        <li>対戦用は ROOM を作成して、相手参加後に 3 秒カウントダウンで開始</li>
+      </ol>
+    </div>
+  </section>
+
   <section id="record-celebration" class="record-celebration" aria-hidden="true">
     <div class="record-card">
       <div class="record-content">
@@ -1530,6 +1487,9 @@
     const rankingModalEl = document.getElementById("ranking-modal");
     const rankingModalListEl = document.getElementById("ranking-modal-list");
     const rankingCloseBtn = document.getElementById("ranking-close");
+    const rulesModalEl = document.getElementById("rules-modal");
+    const rulesOpenBtn = document.getElementById("rules-open");
+    const rulesCloseBtn = document.getElementById("rules-close");
     const titleScreenEl = document.getElementById("title-screen");
     const modeSingleBtn = document.getElementById("mode-single");
     const modeVersusBtn = document.getElementById("mode-versus");
@@ -1600,6 +1560,7 @@
     let gameOverHandled = false;
     let bestNeonTimer = null;
     let pausedByRankingModal = false;
+    let pausedByRulesModal = false;
     let celebrationOpen = false;
     let pausedByCelebration = false;
     let wasLandscape = null;
@@ -1699,7 +1660,9 @@
     function shouldUseMobileOrientationOverlay() {
       const { width, height } = getViewportSize();
       const hasTouch = window.matchMedia ? window.matchMedia("(pointer: coarse)").matches : false;
-      return hasTouch && Math.min(width, height) <= 1024;
+      const uaMobile = !!(navigator.userAgentData?.mobile || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ""));
+      const compactScreen = Math.min(width, height) <= 900 && Math.max(width, height) <= 1280;
+      return uaMobile || (hasTouch && compactScreen);
     }
 
     function fitLayout() {
@@ -1885,6 +1848,28 @@
       updateHUD(state);
     }
 
+    function openRulesModal() {
+      rulesModalEl.classList.add("is-open");
+      rulesModalEl.setAttribute("aria-hidden", "false");
+      if (!state.paused && !state.gameOver) {
+        pausedByRulesModal = true;
+        state.paused = true;
+      } else {
+        pausedByRulesModal = false;
+      }
+      updateHUD(state);
+    }
+
+    function closeRulesModal() {
+      rulesModalEl.classList.remove("is-open");
+      rulesModalEl.setAttribute("aria-hidden", "true");
+      if (pausedByRulesModal && !state.gameOver) {
+        state.paused = false;
+      }
+      pausedByRulesModal = false;
+      updateHUD(state);
+    }
+
     function openRecordCelebration(score) {
       recordScoreEl.textContent = String(score);
       recordCelebrationEl.classList.add("is-open");
@@ -1911,48 +1896,8 @@
     }
 
     function handleOrientationRanking() {
-      const { width, height } = getViewportSize();
-      const isLandscape = width > height;
-      const shouldApply = shouldUseMobileOrientationOverlay();
-      if (!shouldApply) {
-        wasLandscape = null;
-        if (forcedRankingByOrientation) {
-          forcedRankingByOrientation = false;
-          if (!state.gameOver && rankingModalEl.classList.contains("is-open")) {
-            closeRankingModal();
-          }
-          if (!state.gameOver) {
-            state.paused = false;
-            updateHUD(state);
-          }
-        }
-        return;
-      }
-      if (isLandscape === wasLandscape) return;
-      wasLandscape = isLandscape;
-
-      if (isLandscape) {
-        if (celebrationOpen) return;
-        if (!state.paused && !state.gameOver) {
-          forcedRankingByOrientation = true;
-          state.paused = true;
-          updateHUD(state);
-        } else {
-          forcedRankingByOrientation = false;
-        }
-        return;
-      }
-
-      if (forcedRankingByOrientation) {
-        forcedRankingByOrientation = false;
-        if (!state.gameOver && rankingModalEl.classList.contains("is-open")) {
-          closeRankingModal();
-        }
-        if (!state.gameOver) {
-          state.paused = false;
-          updateHUD(state);
-        }
-      }
+      wasLandscape = null;
+      forcedRankingByOrientation = false;
     }
 
     function registerRankingScore(state) {
@@ -3375,6 +3320,10 @@
         if (e.key === "Escape") closeRankingModal();
         return;
       }
+      if (rulesModalEl.classList.contains("is-open")) {
+        if (e.key === "Escape") closeRulesModal();
+        return;
+      }
       if (e.key === "p" || e.key === "P") {
         state.paused = !state.paused;
         updateHUD(state);
@@ -3607,6 +3556,15 @@
     rankingCloseBtn.addEventListener("click", closeRankingModal);
     rankingModalEl.addEventListener("click", (e) => {
       if (e.target === rankingModalEl) closeRankingModal();
+    });
+    rulesOpenBtn.addEventListener("click", openRulesModal);
+    rulesOpenBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      openRulesModal();
+    }, { passive: false });
+    rulesCloseBtn.addEventListener("click", closeRulesModal);
+    rulesModalEl.addEventListener("click", (e) => {
+      if (e.target === rulesModalEl) closeRulesModal();
     });
 
     recordCelebrationEl.addEventListener("click", closeRecordCelebration);
