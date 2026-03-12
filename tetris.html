@@ -1130,6 +1130,55 @@
       color: #67e8f9;
     }
 
+    .lobby-controls {
+      display: none;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid rgba(71, 85, 105, 0.78);
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .lobby-controls.is-open {
+      display: grid;
+    }
+
+    .lobby-switches {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .lobby-btn {
+      border: 1px solid rgba(71, 85, 105, 0.88);
+      background: rgba(15, 23, 42, 0.82);
+      color: #cbd5e1;
+      font-size: 0.78rem;
+      padding: 10px 8px;
+    }
+
+    .lobby-btn.is-active {
+      border-color: rgba(34, 211, 238, 0.96);
+      box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.22);
+      color: #ecfeff;
+    }
+
+    .lobby-input {
+      width: 100%;
+      border: 1px solid rgba(71, 85, 105, 0.88);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.72);
+      color: #f8fafc;
+      font-size: 0.84rem;
+      padding: 11px 12px;
+      outline: none;
+    }
+
+    .lobby-input:focus {
+      border-color: rgba(34, 211, 238, 0.92);
+      box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.28);
+    }
+
     .title-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1231,7 +1280,10 @@
             <div class="versus-meta">
               <div class="versus-meta-row"><span>LAST EVENT</span><strong id="versus-last-event">none</strong></div>
               <div class="versus-meta-row"><span>EVENT COUNT</span><strong id="versus-event-count">0</strong></div>
+              <div class="versus-meta-row"><span>OUT QUEUE</span><strong id="versus-out-queue">0</strong></div>
+              <div class="versus-meta-row"><span>IN QUEUE</span><strong id="versus-in-queue">0</strong></div>
             </div>
+            <div id="versus-queue-view" class="versus-log">out: - / in: -</div>
           </div>
           <div class="versus-opponent">
             <div class="versus-head">
@@ -1309,6 +1361,13 @@
           <span class="mode-option-label">対戦用</span>
           <span class="mode-option-copy">通信対戦用の入口です。現状はロビー準備中です。</span>
         </button>
+      </div>
+      <div id="lobby-controls" class="lobby-controls">
+        <div class="lobby-switches">
+          <button id="lobby-create" class="lobby-btn is-active" type="button">部屋作成</button>
+          <button id="lobby-join" class="lobby-btn" type="button">部屋参加</button>
+        </div>
+        <input id="join-room-input" class="lobby-input" type="text" inputmode="text" maxlength="8" placeholder="参加する ROOM ID">
       </div>
       <p id="title-mode-note" class="title-note">1人用を選ぶと、すぐに既存のテトリスを開始します。</p>
       <div class="title-actions">
@@ -1408,6 +1467,10 @@
     const titleScreenEl = document.getElementById("title-screen");
     const modeSingleBtn = document.getElementById("mode-single");
     const modeVersusBtn = document.getElementById("mode-versus");
+    const lobbyControlsEl = document.getElementById("lobby-controls");
+    const lobbyCreateBtn = document.getElementById("lobby-create");
+    const lobbyJoinBtn = document.getElementById("lobby-join");
+    const joinRoomInputEl = document.getElementById("join-room-input");
     const titleModeNoteEl = document.getElementById("title-mode-note");
     const titleStartBtn = document.getElementById("title-start");
     const titleRankingBtn = document.getElementById("title-ranking");
@@ -1426,6 +1489,9 @@
     const versusRemoteGarbagePendingEl = document.getElementById("versus-remote-garbage-pending");
     const versusLastEventEl = document.getElementById("versus-last-event");
     const versusEventCountEl = document.getElementById("versus-event-count");
+    const versusOutQueueEl = document.getElementById("versus-out-queue");
+    const versusInQueueEl = document.getElementById("versus-in-queue");
+    const versusQueueViewEl = document.getElementById("versus-queue-view");
     const opponentNameEl = document.getElementById("opponent-name");
     const opponentScoreEl = document.getElementById("opponent-score");
     const opponentLinesEl = document.getElementById("opponent-lines");
@@ -1480,6 +1546,7 @@
     let remoteState = null;
     let remoteStateTimer = 0;
     let versusRoomState = null;
+    let selectedLobbyAction = "create";
 
     if (debugHudEl) {
       debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
@@ -2294,6 +2361,10 @@
         phase: "lobby",
         eventCount: 0,
         lastEvent: "none",
+        garbageQueue: {
+          outgoing: [],
+          incoming: []
+        },
         players: {
           local: {
             name: "YOU",
@@ -2329,6 +2400,11 @@
 
       versusLastEventEl.textContent = versusRoomState.lastEvent;
       versusEventCountEl.textContent = String(versusRoomState.eventCount);
+      versusOutQueueEl.textContent = String(versusRoomState.garbageQueue.outgoing.reduce((sum, item) => sum + item, 0));
+      versusInQueueEl.textContent = String(versusRoomState.garbageQueue.incoming.reduce((sum, item) => sum + item, 0));
+      const outText = versusRoomState.garbageQueue.outgoing.length ? versusRoomState.garbageQueue.outgoing.join(" + ") : "-";
+      const inText = versusRoomState.garbageQueue.incoming.length ? versusRoomState.garbageQueue.incoming.join(" + ") : "-";
+      versusQueueViewEl.textContent = `out: ${outText} / in: ${inText}`;
     }
 
     function calculateGarbageLines(cleared) {
@@ -2336,6 +2412,21 @@
       if (cleared === 2) return 1;
       if (cleared === 3) return 2;
       return 4;
+    }
+
+    function updateLobbyAction(action = selectedLobbyAction) {
+      selectedLobbyAction = action;
+      lobbyCreateBtn.classList.toggle("is-active", action === "create");
+      lobbyJoinBtn.classList.toggle("is-active", action === "join");
+      joinRoomInputEl.disabled = action !== "join";
+      joinRoomInputEl.style.opacity = action === "join" ? "1" : "0.55";
+      if (selectedGameMode === "versus") {
+        titleModeNoteEl.classList.remove("is-warning");
+        titleModeNoteEl.classList.add("is-info");
+        titleModeNoteEl.textContent = action === "create"
+          ? "対戦用: ローカル擬似ルームを新規作成します。Firebase導入後は room:create に置き換えます。"
+          : "対戦用: 入力した ROOM ID へ参加する流れを先に確認できます。Firebase導入後は room:join に置き換えます。";
+      }
     }
 
     function ensureVersusUnlocked() {
@@ -2378,6 +2469,8 @@
         } else if (type === "garbage") {
           versusRoomState.players.local.garbageSent += payload.lines || 0;
           versusRoomState.players.remote.garbagePending += payload.lines || 0;
+          versusRoomState.garbageQueue.outgoing.push(payload.lines || 0);
+          versusRoomState.garbageQueue.incoming = versusRoomState.garbageQueue.outgoing.map((value) => Math.max(1, value));
         } else if (type === "gameOver") {
           versusRoomState.phase = "finished";
           versusRoomState.players.local.state = "LOSE";
@@ -2620,15 +2713,21 @@
       };
     }
 
-    function setGameMode(mode) {
+    function setGameMode(mode, options = {}) {
       currentGameMode = mode;
       appEl.classList.toggle("mode-versus", mode === "versus");
       if (mode === "versus") {
-        roomId = createRoomId();
+        roomId = options.roomId || createRoomId();
         versusRoomState = createVersusRoomState();
+        const localName = options.localName || "YOU";
+        const remoteName = options.remoteName || "RIVAL BOT";
+        versusRoomState.players.local.name = localName;
+        versusRoomState.players.remote.name = remoteName;
+        versusRoomState.players.local.state = options.localState || "READY";
+        versusRoomState.players.remote.state = options.remoteState || "SYNC";
         roomIdEl.textContent = roomId;
-        opponentNameEl.textContent = "RIVAL BOT";
-        versusStatusEl.textContent = "LOCAL ROOM: 2人ルームHUDと garbage:send イベント設計を先行実装しています。";
+        opponentNameEl.textContent = remoteName;
+        versusStatusEl.textContent = options.statusText || "LOCAL ROOM: 2人ルームHUDと garbage:send イベント設計を先行実装しています。";
         remoteState = serializeGameState(state);
         updateRemoteHud(remoteState);
         renderVersusRoomHud();
@@ -2649,13 +2748,15 @@
       const isSingle = mode === "single";
       modeSingleBtn.classList.toggle("is-active", isSingle);
       modeVersusBtn.classList.toggle("is-active", !isSingle);
+      lobbyControlsEl.classList.toggle("is-open", !isSingle);
       titleModeNoteEl.classList.remove("is-warning", "is-info");
       if (isSingle) {
         titleModeNoteEl.textContent = "1人用を選ぶと、すぐに既存のテトリスを開始します。";
       } else {
-        titleModeNoteEl.textContent = isVersusUnlocked()
-          ? "対戦用の工事モードは解放済みです。ローカル同期の土台を確認できます。"
-          : "対戦用は工事中です。工事用パスワードを入力した場合のみ入れます。";
+        updateLobbyAction(selectedLobbyAction);
+        if (!isVersusUnlocked()) {
+          titleModeNoteEl.textContent = "対戦用は工事中です。工事用パスワードを入力した場合のみ入れます。";
+        }
         titleModeNoteEl.classList.add("is-info");
       }
     }
@@ -2667,7 +2768,27 @@
       }
       state = createState();
       gameOverHandled = false;
-      setGameMode(selectedGameMode);
+      if (selectedGameMode === "versus") {
+        const requestedRoomId = joinRoomInputEl.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+        if (selectedLobbyAction === "join" && !requestedRoomId) {
+          titleModeNoteEl.textContent = "部屋参加を選んだ場合は ROOM ID を入力してください。";
+          titleModeNoteEl.classList.remove("is-info");
+          titleModeNoteEl.classList.add("is-warning");
+          return;
+        }
+        setGameMode("versus", {
+          roomId: selectedLobbyAction === "join" ? requestedRoomId : createRoomId(),
+          localName: selectedLobbyAction === "join" ? "GUEST" : "HOST",
+          remoteName: selectedLobbyAction === "join" ? "HOST BOT" : "GUEST BOT",
+          localState: "READY",
+          remoteState: selectedLobbyAction === "join" ? "HOST" : "JOIN",
+          statusText: selectedLobbyAction === "join"
+            ? `LOCAL JOIN: ROOM ${requestedRoomId} に参加した想定で HUD を起動します。`
+            : "LOCAL CREATE: 新規ルームを作成した想定で HUD を起動します。"
+        });
+      } else {
+        setGameMode("single");
+      }
       titleScreenEl.classList.remove("is-open");
       state.paused = false;
       updateHUD(state);
@@ -2689,6 +2810,7 @@
     renderRanking();
     scheduleFitLayout();
     handleOrientationRanking();
+    updateLobbyAction("create");
     updateTitleSelection("single");
 
     function tick(time = 0) {
@@ -2965,6 +3087,11 @@
 
     modeSingleBtn.addEventListener("click", () => updateTitleSelection("single"));
     modeVersusBtn.addEventListener("click", () => updateTitleSelection("versus"));
+    lobbyCreateBtn.addEventListener("click", () => updateLobbyAction("create"));
+    lobbyJoinBtn.addEventListener("click", () => updateLobbyAction("join"));
+    joinRoomInputEl.addEventListener("input", () => {
+      joinRoomInputEl.value = joinRoomInputEl.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    });
     titleStartBtn.addEventListener("click", startSelectedMode);
     titleRankingBtn.addEventListener("click", () => {
       openRankingModal();
