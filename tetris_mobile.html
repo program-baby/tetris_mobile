@@ -1130,6 +1130,17 @@
       color: #67e8f9;
     }
 
+    .service-note {
+      margin: 0;
+      padding: 10px 12px;
+      border: 1px solid rgba(250, 204, 21, 0.28);
+      border-radius: 12px;
+      background: rgba(38, 24, 8, 0.46);
+      color: #fde68a;
+      font-size: 0.74rem;
+      line-height: 1.45;
+    }
+
     .lobby-controls {
       display: none;
       gap: 10px;
@@ -1384,6 +1395,7 @@
         <label for="player-name-input" class="player-name-label">ユーザー名</label>
         <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
       </div>
+      <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
       <p id="title-mode-note" class="title-note">1人用を選ぶと、すぐに既存のテトリスを開始します。</p>
       <div class="title-actions">
         <button id="title-start" class="title-start-btn" type="button">ゲーム開始</button>
