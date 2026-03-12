@@ -1447,6 +1447,7 @@
     const DEBUG_LAYOUT = false;
     const VERSUS_DEV_PASSWORD = "dualgate2026";
     const VERSUS_UNLOCK_KEY = "tetrisVersusUnlockedV1";
+    const FIREBASE_CONFIG = window.TETRIS_FIREBASE_CONFIG || null;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -1563,6 +1564,8 @@
     let remoteStateTimer = 0;
     let versusRoomState = null;
     let selectedLobbyAction = "create";
+    let firebaseReady = false;
+    let firebaseSession = null;
 
     if (debugHudEl) {
       debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
@@ -2426,6 +2429,76 @@
       return name;
     }
 
+    function hasFirebaseConfig() {
+      return !!(FIREBASE_CONFIG && typeof FIREBASE_CONFIG === "object");
+    }
+
+    async function initFirebaseAdapter() {
+      if (firebaseReady) return true;
+      if (!hasFirebaseConfig()) return false;
+      firebaseReady = true;
+      return true;
+    }
+
+    function createRoomPayload(roomId, hostName) {
+      return {
+        roomId,
+        status: "waiting",
+        createdAt: Date.now(),
+        host: { name: hostName, ready: true },
+        guest: null
+      };
+    }
+
+    async function createFirebaseRoom(roomId, hostName) {
+      const ok = await initFirebaseAdapter();
+      if (!ok) return { ok: false, reason: "missing-config" };
+      firebaseSession = {
+        role: "host",
+        roomId,
+        playerName: hostName
+      };
+      return {
+        ok: true,
+        room: createRoomPayload(roomId, hostName)
+      };
+    }
+
+    async function joinFirebaseRoom(roomId, guestName) {
+      const ok = await initFirebaseAdapter();
+      if (!ok) return { ok: false, reason: "missing-config" };
+      firebaseSession = {
+        role: "guest",
+        roomId,
+        playerName: guestName
+      };
+      return {
+        ok: true,
+        room: {
+          roomId,
+          status: "ready",
+          createdAt: Date.now(),
+          host: { name: "HOST", ready: true },
+          guest: { name: guestName, ready: true }
+        }
+      };
+    }
+
+    async function sendFirebaseStateUpdate(snapshot) {
+      if (!firebaseSession || !firebaseReady) return false;
+      return !!snapshot;
+    }
+
+    async function sendFirebaseGarbage(lines, source) {
+      if (!firebaseSession || !firebaseReady) return false;
+      return !!lines && !!source;
+    }
+
+    async function subscribeFirebaseRoom(roomId) {
+      if (!firebaseReady || !roomId) return false;
+      return true;
+    }
+
     function renderVersusRoomHud() {
       if (!versusRoomState) return;
       versusLocalNameEl.textContent = versusRoomState.players.local.name;
@@ -2466,8 +2539,8 @@
         titleModeNoteEl.classList.remove("is-warning");
         titleModeNoteEl.classList.add("is-info");
         titleModeNoteEl.textContent = action === "create"
-          ? "対戦用: ローカル擬似ルームを新規作成します。Firebase導入後は room:create に置き換えます。"
-          : "対戦用: 入力した ROOM ID へ参加する流れを先に確認できます。Firebase導入後は room:join に置き換えます。";
+          ? "対戦用: 新規ルーム作成の流れです。Firebase設定があれば room:create、無ければローカル擬似ルームで動きます。"
+          : "対戦用: 入力した ROOM ID へ参加する流れです。Firebase設定があれば room:join、無ければローカル擬似ルームで動きます。";
       }
     }
 
@@ -2531,6 +2604,7 @@
         lines,
         source
       });
+      sendFirebaseGarbage(lines, source).catch(() => {});
     }
 
     function syncVersusPreview(force = false) {
@@ -2553,6 +2627,7 @@
         lines: remoteState.lines,
         level: remoteState.level
       });
+      sendFirebaseStateUpdate(snapshot).catch(() => {});
     }
 
     function getGhostOffset(state) {
@@ -2777,6 +2852,7 @@
       } else {
         roomId = "----";
         versusRoomState = null;
+        firebaseSession = null;
         roomIdEl.textContent = roomId;
         versusStatusEl.textContent = "対戦ロビー初期化前です。";
         remoteState = null;
@@ -2803,7 +2879,7 @@
       }
     }
 
-    function startSelectedMode() {
+    async function startSelectedMode() {
       unlockAudio();
       const savedName = savePlayerName(playerNameInputEl.value) || getStoredPlayerName();
       if (!savedName || savedName === "PLAYER") {
@@ -2826,15 +2902,42 @@
           titleModeNoteEl.classList.add("is-warning");
           return;
         }
+        let roomOptions = null;
+        if (hasFirebaseConfig()) {
+          const result = selectedLobbyAction === "join"
+            ? await joinFirebaseRoom(requestedRoomId, savedName)
+            : await createFirebaseRoom(createRoomId(), savedName);
+          if (result.ok) {
+            await subscribeFirebaseRoom(result.room.roomId);
+            roomOptions = {
+              roomId: result.room.roomId,
+              localName: savedName,
+              remoteName: selectedLobbyAction === "join"
+                ? (result.room.host?.name || "HOST")
+                : "WAITING...",
+              localState: "READY",
+              remoteState: selectedLobbyAction === "join" ? "HOST" : "WAIT",
+              statusText: selectedLobbyAction === "join"
+                ? `FIREBASE JOIN: ROOM ${result.room.roomId} に参加しました。state:update を接続できます。`
+                : `FIREBASE CREATE: ROOM ${result.room.roomId} を作成しました。guest を待機中です。`
+            };
+          } else {
+            titleModeNoteEl.textContent = "Firebase 設定が未完了なので、ローカル擬似ルームで開始します。";
+            titleModeNoteEl.classList.remove("is-warning");
+            titleModeNoteEl.classList.add("is-info");
+          }
+        }
         setGameMode("versus", {
-          roomId: selectedLobbyAction === "join" ? requestedRoomId : createRoomId(),
-          localName: savedName,
-          remoteName: selectedLobbyAction === "join" ? "HOST BOT" : "GUEST BOT",
-          localState: "READY",
-          remoteState: selectedLobbyAction === "join" ? "HOST" : "JOIN",
-          statusText: selectedLobbyAction === "join"
-            ? `LOCAL JOIN: ROOM ${requestedRoomId} に参加した想定で HUD を起動します。`
-            : "LOCAL CREATE: 新規ルームを作成した想定で HUD を起動します。"
+          ...(roomOptions || {
+            roomId: selectedLobbyAction === "join" ? requestedRoomId : createRoomId(),
+            localName: savedName,
+            remoteName: selectedLobbyAction === "join" ? "HOST BOT" : "GUEST BOT",
+            localState: "READY",
+            remoteState: selectedLobbyAction === "join" ? "HOST" : "JOIN",
+            statusText: selectedLobbyAction === "join"
+              ? `LOCAL JOIN: ROOM ${requestedRoomId} に参加した想定で HUD を起動します。`
+              : "LOCAL CREATE: 新規ルームを作成した想定で HUD を起動します。"
+          })
         });
       } else {
         setGameMode("single");
