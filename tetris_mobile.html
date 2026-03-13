@@ -1153,18 +1153,25 @@
       background: rgba(15, 23, 42, 0.58);
     }
 
-    .title-counter {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .title-counter-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
+    }
+
+    .title-counter {
+      display: grid;
+      gap: 2px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.42);
       color: #cbd5e1;
-      font-size: 0.76rem;
+      font-size: 0.72rem;
     }
 
     .title-counter strong {
       color: #67e8f9;
-      font-size: 0.94rem;
+      font-size: 0.98rem;
       font-variant-numeric: tabular-nums;
     }
 
@@ -1416,9 +1423,15 @@
         <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
       </div>
       <div class="title-session">
-        <div class="title-counter">
-          <span>PLAY COUNT</span>
-          <strong id="play-count-value">0</strong>
+        <div class="title-counter-grid">
+          <div class="title-counter">
+            <span>TODAY</span>
+            <strong id="play-count-today">0</strong>
+          </div>
+          <div class="title-counter">
+            <span>TOTAL</span>
+            <strong id="play-count-total">0</strong>
+          </div>
         </div>
         <div id="title-waiting" class="title-waiting" aria-live="polite">
           <div class="title-waiting-label">ROOM WAITING</div>
@@ -1574,7 +1587,8 @@
     const titleModeNoteEl = document.getElementById("title-mode-note");
     const titleStartBtn = document.getElementById("title-start");
     const titleRankingBtn = document.getElementById("title-ranking");
-    const playCountValueEl = document.getElementById("play-count-value");
+    const playCountTodayEl = document.getElementById("play-count-today");
+    const playCountTotalEl = document.getElementById("play-count-total");
     const titleWaitingEl = document.getElementById("title-waiting");
     const titleWaitingStatusEl = document.getElementById("title-waiting-status");
     const titleWaitingRoomEl = document.getElementById("title-waiting-room");
@@ -1666,7 +1680,10 @@
     let firebaseAuth = null;
     let firebaseRoomRef = null;
     let firebaseRoomListener = null;
+    let firebaseStatsRef = null;
+    let firebaseStatsListener = null;
     let firebaseSession = null;
+    let globalPlayStats = { today: 0, total: 0 };
 
     if (debugHudEl) {
       debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
@@ -1675,6 +1692,7 @@
     const RANKING_KEY = "tetrisLocalTop10V1";
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
     const PLAY_COUNT_KEY = "tetrisPlayCountV1";
+    const PLAY_COUNT_DAILY_KEY = "tetrisPlayCountDailyV1";
 
     const COLORS = [
       null,
@@ -2554,20 +2572,92 @@
       return name;
     }
 
-    function getPlayCount() {
-      const raw = Number(localStorage.getItem(PLAY_COUNT_KEY) || "0");
-      return Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0;
+    function getTodayKey() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
     }
 
-    function incrementPlayCount(amount) {
-      const next = getPlayCount() + Math.max(0, Math.floor(amount));
-      localStorage.setItem(PLAY_COUNT_KEY, String(next));
-      if (playCountValueEl) playCountValueEl.textContent = String(next);
+    function getLocalPlayStats() {
+      const total = Number(localStorage.getItem(PLAY_COUNT_KEY) || "0");
+      const dailyRaw = localStorage.getItem(PLAY_COUNT_DAILY_KEY);
+      let dailyMap = {};
+      try {
+        dailyMap = dailyRaw ? JSON.parse(dailyRaw) : {};
+      } catch {
+        dailyMap = {};
+      }
+      const today = Number(dailyMap[getTodayKey()] || 0);
+      return {
+        today: Number.isFinite(today) ? Math.max(0, Math.floor(today)) : 0,
+        total: Number.isFinite(total) ? Math.max(0, Math.floor(total)) : 0
+      };
+    }
+
+    function setDisplayedPlayStats(today, total) {
+      globalPlayStats.today = Math.max(0, Math.floor(today || 0));
+      globalPlayStats.total = Math.max(0, Math.floor(total || 0));
+      if (playCountTodayEl) playCountTodayEl.textContent = String(globalPlayStats.today);
+      if (playCountTotalEl) playCountTotalEl.textContent = String(globalPlayStats.total);
+    }
+
+    async function subscribeGlobalPlayStats() {
+      if (!firebaseReady || firebaseStatsRef) return;
+      firebaseStatsRef = firebaseDb.ref("stats/playCount");
+      firebaseStatsListener = (snapshot) => {
+        const stats = snapshot.val() || {};
+        const todayKey = getTodayKey();
+        setDisplayedPlayStats(stats.days?.[todayKey] || 0, stats.total || 0);
+      };
+      firebaseStatsRef.on("value", firebaseStatsListener);
+    }
+
+    function incrementLocalPlayCount(amount) {
+      const safeAmount = Math.max(0, Math.floor(amount));
+      const dailyRaw = localStorage.getItem(PLAY_COUNT_DAILY_KEY);
+      let dailyMap = {};
+      try {
+        dailyMap = dailyRaw ? JSON.parse(dailyRaw) : {};
+      } catch {
+        dailyMap = {};
+      }
+      const todayKey = getTodayKey();
+      const nextTotal = getLocalPlayStats().total + safeAmount;
+      dailyMap[todayKey] = Math.max(0, Math.floor(dailyMap[todayKey] || 0)) + safeAmount;
+      localStorage.setItem(PLAY_COUNT_KEY, String(nextTotal));
+      localStorage.setItem(PLAY_COUNT_DAILY_KEY, JSON.stringify(dailyMap));
+      setDisplayedPlayStats(dailyMap[todayKey], nextTotal);
+    }
+
+    async function incrementPlayCount(amount) {
+      const safeAmount = Math.max(0, Math.floor(amount));
+      if (safeAmount <= 0) return;
+      if (!hasFirebaseConfig()) {
+        incrementLocalPlayCount(safeAmount);
+        return;
+      }
+      const ok = await initFirebaseAdapter();
+      if (!ok) {
+        incrementLocalPlayCount(safeAmount);
+        return;
+      }
+      const todayKey = getTodayKey();
+      const statsRef = firebaseDb.ref("stats/playCount");
+      await statsRef.child("total").transaction((current) => (current || 0) + safeAmount);
+      await statsRef.child(`days/${todayKey}`).transaction((current) => (current || 0) + safeAmount);
+    }
+
+    function getVersusPlayIncrement() {
+      if (!firebaseSession) return 2;
+      return firebaseSession.role === "host" ? 2 : 0;
     }
 
     function renderTitleSessionInfo() {
-      if (playCountValueEl) {
-        playCountValueEl.textContent = String(getPlayCount());
+      if (!firebaseStatsRef) {
+        const localStats = getLocalPlayStats();
+        setDisplayedPlayStats(localStats.today, localStats.total);
       }
       const showWaiting = currentGameMode === "versus" && waitingForOpponent && !!versusRoomState;
       titleWaitingEl.classList.toggle("is-open", showWaiting);
@@ -2607,6 +2697,7 @@
         await firebaseAuth.signInAnonymously();
       }
       firebaseReady = true;
+      subscribeGlobalPlayStats().catch(() => {});
       return true;
     }
 
@@ -2975,7 +3066,7 @@
         versusCountdownEndsAt = 0;
         versusCountdownLastValue = 0;
         versusMatchStarted = true;
-        incrementPlayCount(2);
+        incrementPlayCount(getVersusPlayIncrement()).catch(() => {});
         versusStartFlashUntil = performance.now() + 700;
         state.paused = false;
         if (versusRoomState) {
@@ -3339,7 +3430,7 @@
         });
       } else {
         setGameMode("single");
-        incrementPlayCount(1);
+        incrementPlayCount(1).catch(() => {});
       }
       titleScreenEl.classList.remove("is-open");
       state.paused = selectedGameMode === "versus" ? waitingForOpponent : false;
@@ -3362,6 +3453,9 @@
     updateHUD(state);
     renderRanking();
     renderTitleSessionInfo();
+    if (hasFirebaseConfig()) {
+      initFirebaseAdapter().catch(() => {});
+    }
     scheduleFitLayout();
     handleOrientationRanking();
     syncPlayerNameInput();
