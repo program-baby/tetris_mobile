@@ -1144,6 +1144,64 @@
       letter-spacing: 0.04em;
     }
 
+    .title-session {
+      display: grid;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(71, 85, 105, 0.78);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.58);
+    }
+
+    .title-counter {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      color: #cbd5e1;
+      font-size: 0.76rem;
+    }
+
+    .title-counter strong {
+      color: #67e8f9;
+      font-size: 0.94rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .title-waiting {
+      display: none;
+      gap: 4px;
+      padding: 10px 12px;
+      border: 1px solid rgba(34, 211, 238, 0.28);
+      border-radius: 12px;
+      background: rgba(6, 23, 36, 0.52);
+    }
+
+    .title-waiting.is-open {
+      display: grid;
+    }
+
+    .title-waiting-label {
+      color: #67e8f9;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .title-waiting-status {
+      color: #f8fafc;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .title-waiting-meta {
+      display: grid;
+      gap: 2px;
+      color: #cbd5e1;
+      font-size: 0.72rem;
+      line-height: 1.4;
+    }
+
     .title-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -1357,6 +1415,21 @@
         <label for="player-name-input" class="player-name-label">ユーザー名</label>
         <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
       </div>
+      <div class="title-session">
+        <div class="title-counter">
+          <span>PLAY COUNT</span>
+          <strong id="play-count-value">0</strong>
+        </div>
+        <div id="title-waiting" class="title-waiting" aria-live="polite">
+          <div class="title-waiting-label">ROOM WAITING</div>
+          <div id="title-waiting-status" class="title-waiting-status">待機中の部屋はありません</div>
+          <div class="title-waiting-meta">
+            <div>ROOM: <strong id="title-waiting-room">----</strong></div>
+            <div>HOST: <strong id="title-waiting-host">-</strong></div>
+            <div>RIVAL: <strong id="title-waiting-remote">-</strong></div>
+          </div>
+        </div>
+      </div>
       <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
       <p id="title-mode-note" class="title-note">1人用を選ぶと、すぐに既存のテトリスを開始します。</p>
       <div class="title-actions">
@@ -1501,6 +1574,12 @@
     const titleModeNoteEl = document.getElementById("title-mode-note");
     const titleStartBtn = document.getElementById("title-start");
     const titleRankingBtn = document.getElementById("title-ranking");
+    const playCountValueEl = document.getElementById("play-count-value");
+    const titleWaitingEl = document.getElementById("title-waiting");
+    const titleWaitingStatusEl = document.getElementById("title-waiting-status");
+    const titleWaitingRoomEl = document.getElementById("title-waiting-room");
+    const titleWaitingHostEl = document.getElementById("title-waiting-host");
+    const titleWaitingRemoteEl = document.getElementById("title-waiting-remote");
     const versusBoxEl = document.getElementById("versus-box");
     const roomIdEl = document.getElementById("room-id");
     const versusStatusEl = document.getElementById("versus-status");
@@ -1595,6 +1674,7 @@
 
     const RANKING_KEY = "tetrisLocalTop10V1";
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
+    const PLAY_COUNT_KEY = "tetrisPlayCountV1";
 
     const COLORS = [
       null,
@@ -2469,8 +2549,41 @@
       if (versusRoomState) {
         versusRoomState.players.local.name = name;
         renderVersusRoomHud();
+        renderTitleSessionInfo();
       }
       return name;
+    }
+
+    function getPlayCount() {
+      const raw = Number(localStorage.getItem(PLAY_COUNT_KEY) || "0");
+      return Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0;
+    }
+
+    function incrementPlayCount(amount) {
+      const next = getPlayCount() + Math.max(0, Math.floor(amount));
+      localStorage.setItem(PLAY_COUNT_KEY, String(next));
+      if (playCountValueEl) playCountValueEl.textContent = String(next);
+    }
+
+    function renderTitleSessionInfo() {
+      if (playCountValueEl) {
+        playCountValueEl.textContent = String(getPlayCount());
+      }
+      const showWaiting = currentGameMode === "versus" && waitingForOpponent && !!versusRoomState;
+      titleWaitingEl.classList.toggle("is-open", showWaiting);
+      if (!showWaiting) {
+        titleWaitingStatusEl.textContent = "待機中の部屋はありません";
+        titleWaitingRoomEl.textContent = "----";
+        titleWaitingHostEl.textContent = "-";
+        titleWaitingRemoteEl.textContent = "-";
+        return;
+      }
+      const localName = versusRoomState.players.local.name || getStoredPlayerName();
+      const remoteName = versusRoomState.players.remote.name || "WAITING...";
+      titleWaitingStatusEl.textContent = `ROOM ${roomId} で参加待機中です`;
+      titleWaitingRoomEl.textContent = roomId;
+      titleWaitingHostEl.textContent = localName;
+      titleWaitingRemoteEl.textContent = remoteName;
     }
 
     function hasFirebaseConfig() {
@@ -2713,6 +2826,7 @@
       const outText = versusRoomState.garbageQueue.outgoing.length ? versusRoomState.garbageQueue.outgoing.join(" + ") : "-";
       const inText = versusRoomState.garbageQueue.incoming.length ? versusRoomState.garbageQueue.incoming.join(" + ") : "-";
       versusQueueViewEl.textContent = `out: ${outText} / in: ${inText}`;
+      renderTitleSessionInfo();
     }
 
     function calculateGarbageLines(cleared) {
@@ -2861,6 +2975,7 @@
         versusCountdownEndsAt = 0;
         versusCountdownLastValue = 0;
         versusMatchStarted = true;
+        incrementPlayCount(2);
         versusStartFlashUntil = performance.now() + 700;
         state.paused = false;
         if (versusRoomState) {
@@ -3134,6 +3249,7 @@
         remoteState = null;
         updateRemoteHud(null);
       }
+      renderTitleSessionInfo();
       scheduleFitLayout();
     }
 
@@ -3223,6 +3339,7 @@
         });
       } else {
         setGameMode("single");
+        incrementPlayCount(1);
       }
       titleScreenEl.classList.remove("is-open");
       state.paused = selectedGameMode === "versus" ? waitingForOpponent : false;
@@ -3244,6 +3361,7 @@
     setGameMode("single");
     updateHUD(state);
     renderRanking();
+    renderTitleSessionInfo();
     scheduleFitLayout();
     handleOrientationRanking();
     syncPlayerNameInput();
