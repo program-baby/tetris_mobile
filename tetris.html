@@ -1400,11 +1400,11 @@
     <div class="title-card">
       <p class="title-eyebrow">Arcade Select</p>
       <h1 class="title-hero">TETRIS<br>DUAL GATE</h1>
-      <p class="title-sub">タイトル画面から 1人用 と 対戦用 を選べるようにしました。現時点では 1人用 が実プレイ対象で、対戦用は次段階の通信対戦に向けた入口です。</p>
+      <p class="title-sub">1人用と対戦用を選べます。対戦用は通信対戦に向けた準備中です。</p>
       <div class="mode-grid" role="list" aria-label="Game mode">
         <button id="mode-single" class="mode-option is-active" type="button" data-mode="single">
           <span class="mode-option-label">1人用</span>
-          <span class="mode-option-copy">今までのテトリスをそのまま開始します。</span>
+          <span class="mode-option-copy">ソロプレイのテトリスを開始します。</span>
         </button>
         <button id="mode-versus" class="mode-option" type="button" data-mode="versus">
           <span class="mode-option-label">対戦用</span>
@@ -1437,6 +1437,8 @@
           <div class="title-waiting-label">ROOM WAITING</div>
           <div id="title-waiting-status" class="title-waiting-status">待機中の部屋はありません</div>
           <div class="title-waiting-meta">
+            <div>MEMBERS: <strong id="title-waiting-members">0/2</strong></div>
+            <div>ELAPSED: <strong id="title-waiting-elapsed">0:00</strong></div>
             <div>ROOM: <strong id="title-waiting-room">----</strong></div>
             <div>HOST: <strong id="title-waiting-host">-</strong></div>
             <div>RIVAL: <strong id="title-waiting-remote">-</strong></div>
@@ -1444,7 +1446,7 @@
         </div>
       </div>
       <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
-      <p id="title-mode-note" class="title-note">1人用を選ぶと、すぐに既存のテトリスを開始します。</p>
+      <p id="title-mode-note" class="title-note">モードを選択して「ゲーム開始」ボタンをクリック/タップしてください。</p>
       <div class="title-actions">
         <button id="title-start" class="title-start-btn" type="button">ゲーム開始</button>
         <button id="title-ranking" class="ghost title-start-btn" type="button">ランキング</button>
@@ -1591,6 +1593,8 @@
     const playCountTotalEl = document.getElementById("play-count-total");
     const titleWaitingEl = document.getElementById("title-waiting");
     const titleWaitingStatusEl = document.getElementById("title-waiting-status");
+    const titleWaitingMembersEl = document.getElementById("title-waiting-members");
+    const titleWaitingElapsedEl = document.getElementById("title-waiting-elapsed");
     const titleWaitingRoomEl = document.getElementById("title-waiting-room");
     const titleWaitingHostEl = document.getElementById("title-waiting-host");
     const titleWaitingRemoteEl = document.getElementById("title-waiting-remote");
@@ -1684,6 +1688,8 @@
     let firebaseStatsListener = null;
     let firebaseSession = null;
     let globalPlayStats = { today: 0, total: 0 };
+    let waitingStartedAt = 0;
+    let waitingTimer = null;
 
     if (debugHudEl) {
       debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
@@ -2654,6 +2660,28 @@
       return firebaseSession.role === "host" ? 2 : 0;
     }
 
+    function formatElapsed(ms) {
+      const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+      return `${totalMinutes}分`;
+    }
+
+    function updateWaitingElapsed() {
+      if (!waitingStartedAt || !titleWaitingElapsedEl) return;
+      titleWaitingElapsedEl.textContent = formatElapsed(Date.now() - waitingStartedAt);
+    }
+
+    function ensureWaitingTimer(active) {
+      if (active) {
+        updateWaitingElapsed();
+        if (!waitingTimer) {
+          waitingTimer = setInterval(updateWaitingElapsed, 60000);
+        }
+      } else if (waitingTimer) {
+        clearInterval(waitingTimer);
+        waitingTimer = null;
+      }
+    }
+
     function renderTitleSessionInfo() {
       if (!firebaseStatsRef) {
         const localStats = getLocalPlayStats();
@@ -2663,17 +2691,24 @@
       titleWaitingEl.classList.toggle("is-open", showWaiting);
       if (!showWaiting) {
         titleWaitingStatusEl.textContent = "待機中の部屋はありません";
+        titleWaitingMembersEl.textContent = "0/2";
+        titleWaitingElapsedEl.textContent = "0:00";
         titleWaitingRoomEl.textContent = "----";
         titleWaitingHostEl.textContent = "-";
         titleWaitingRemoteEl.textContent = "-";
+        ensureWaitingTimer(false);
         return;
       }
       const localName = versusRoomState.players.local.name || getStoredPlayerName();
       const remoteName = versusRoomState.players.remote.name || "WAITING...";
+      const memberCount = versusRoomState.players.remote.ready ? "2/2" : "1/2";
       titleWaitingStatusEl.textContent = `ROOM ${roomId} で参加待機中です`;
+      titleWaitingMembersEl.textContent = memberCount;
+      titleWaitingElapsedEl.textContent = waitingStartedAt ? formatElapsed(Date.now() - waitingStartedAt) : "0:00";
       titleWaitingRoomEl.textContent = roomId;
       titleWaitingHostEl.textContent = localName;
       titleWaitingRemoteEl.textContent = remoteName;
+      ensureWaitingTimer(showWaiting);
     }
 
     function hasFirebaseConfig() {
@@ -2874,6 +2909,7 @@
         baseState.garbageQueue.outgoing = [];
         baseState.garbageQueue.incoming = Object.values(local.garbageQueue?.items || {}).map((item) => item.lines || 0);
         versusRoomState = baseState;
+        waitingStartedAt = room.createdAt || waitingStartedAt || Date.now();
         versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: ${room.status || "waiting"}`;
         renderVersusRoomHud();
         if (remote.game) {
@@ -3046,6 +3082,7 @@
     function beginVersusMatch(statusText = "") {
       if (currentGameMode !== "versus" || versusMatchStarted) return;
       waitingForOpponent = false;
+      ensureWaitingTimer(false);
       clearVersusCountdown();
       versusCountdownEndsAt = performance.now() + 3000;
       versusCountdownLastValue = 3;
@@ -3313,6 +3350,7 @@
       if (mode === "versus") {
         waitingForOpponent = !!options.waitForOpponent;
         versusMatchStarted = !!options.matchStarted;
+        waitingStartedAt = options.waitStartedAt || (waitingForOpponent ? Date.now() : 0);
         roomId = options.roomId || createRoomId();
         versusRoomState = createVersusRoomState();
         const localName = options.localName || "YOU";
@@ -3332,6 +3370,8 @@
         clearVersusCountdown();
         waitingForOpponent = false;
         versusMatchStarted = false;
+        waitingStartedAt = 0;
+        ensureWaitingTimer(false);
         roomId = "----";
         versusRoomState = null;
         firebaseSession = null;
@@ -3352,7 +3392,7 @@
       lobbyControlsEl.classList.toggle("is-open", !isSingle);
       titleModeNoteEl.classList.remove("is-warning", "is-info");
       if (isSingle) {
-        titleModeNoteEl.textContent = "1人用を選ぶと、すぐに既存のテトリスを開始します。";
+        titleModeNoteEl.textContent = "モードを選択して「ゲーム開始」ボタンをクリック/タップしてください。";
       } else {
         updateLobbyAction(selectedLobbyAction);
         if (!isVersusUnlocked()) {
@@ -3403,6 +3443,7 @@
               remoteReady: selectedLobbyAction === "join",
               waitForOpponent: selectedLobbyAction !== "join",
               matchStarted: selectedLobbyAction === "join",
+              waitStartedAt: result.room.createdAt || Date.now(),
               statusText: selectedLobbyAction === "join"
                 ? `FIREBASE JOIN: ROOM ${result.room.roomId} に参加しました。state:update を接続できます。`
                 : `FIREBASE CREATE: ROOM ${result.room.roomId} を作成しました。guest を待機中です。`
@@ -3423,6 +3464,7 @@
             remoteReady: selectedLobbyAction === "join",
             waitForOpponent: selectedLobbyAction !== "join",
             matchStarted: selectedLobbyAction === "join",
+            waitStartedAt: Date.now(),
             statusText: selectedLobbyAction === "join"
               ? `LOCAL JOIN: ROOM ${requestedRoomId} に参加した想定で HUD を起動します。`
               : "LOCAL CREATE: ルームを作成しました。参加者が入るまで開始しません。"
@@ -3609,11 +3651,12 @@
         state = createState();
         gameOverHandled = false;
         updateHUD(state);
-      if (currentGameMode === "versus") {
+        if (currentGameMode === "versus") {
           versusRoomState = createVersusRoomState();
           clearVersusCountdown();
           waitingForOpponent = true;
           versusMatchStarted = false;
+          waitingStartedAt = Date.now();
           versusStatusEl.textContent = `LOCAL ROOM ${roomId}: リセットして再同期しました。`;
           renderVersusRoomHud();
           updateRemoteHud(null);
