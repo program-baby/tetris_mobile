@@ -3001,7 +3001,9 @@
       if (!ok) return { ok: false, reason: "missing-config" };
       const roomRef = firebaseDb.ref(`rooms/${roomId}`);
       const result = await roomRef.transaction((current) => {
-        if (current) return;
+        const hostActive = !!(current?.host?.name && current?.host?.state !== "LEFT");
+        const guestActive = !!(current?.guest?.name && current?.guest?.state !== "LEFT");
+        if (hostActive || guestActive) return;
         return createRoomPayload(roomId, hostName);
       });
       if (!result.committed) {
@@ -3945,9 +3947,17 @@
                   : `FIREBASE CREATE: ROOM ${result.room.roomId} を作成しました。guest を待機中です。`
               };
             } else {
-              titleModeNoteEl.textContent = "Firebase 設定が未完了なので、ローカル擬似ルームで開始します。";
-              titleModeNoteEl.classList.remove("is-warning");
-              titleModeNoteEl.classList.add("is-info");
+              shouldStart = false;
+              titleModeNoteEl.classList.remove("is-info");
+              titleModeNoteEl.classList.add("is-warning");
+              titleModeNoteEl.textContent = result.reason === "room-exists"
+                ? `ROOM ${requestedRoomId} は現在使用中です。別の部屋を選んでください。`
+                : result.reason === "room-full"
+                  ? `ROOM ${requestedRoomId} は満員です。別の部屋を選んでください。`
+                  : result.reason === "room-missing"
+                    ? `ROOM ${requestedRoomId} が見つかりません。`
+                    : "Firebase 接続に失敗しました。時間をおいて再度お試しください。";
+              return;
             }
           }
           setGameMode("versus", {
