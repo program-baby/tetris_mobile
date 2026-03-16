@@ -3527,6 +3527,7 @@
       ensureWaitingTimer(false);
       clearVersusCountdown();
       clearRematchWaitTimer();
+      titleScreenEl.classList.remove("is-open");
       versusCountdownEndsAt = performance.now() + 3000;
       versusCountdownLastValue = 3;
       playCountdownBeep(3);
@@ -3960,7 +3961,9 @@
         setTitleStartLoading(false);
       }
       if (!shouldStart) return;
-      titleScreenEl.classList.remove("is-open");
+      if (!(selectedGameMode === "versus" && waitingForOpponent)) {
+        titleScreenEl.classList.remove("is-open");
+      }
       state.paused = selectedGameMode === "versus" ? waitingForOpponent : false;
       updateHUD(state);
       if (currentGameMode === "versus" && versusMatchStarted) syncVersusPreview(true);
