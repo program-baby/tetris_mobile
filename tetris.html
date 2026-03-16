@@ -1207,8 +1207,9 @@
 
     .title-waiting-status {
       color: #f8fafc;
-      font-size: 0.8rem;
+      font-size: 0.86rem;
       font-weight: 700;
+      line-height: 1.45;
     }
 
     .title-waiting-meta {
@@ -1448,14 +1449,14 @@
           </div>
         </div>
         <div id="title-waiting" class="title-waiting" aria-live="polite">
-          <div class="title-waiting-label">ROOM WAITING</div>
+          <div class="title-waiting-label">対戦待機中</div>
           <div id="title-waiting-status" class="title-waiting-status">待機中の部屋はありません</div>
           <div class="title-waiting-meta">
             <div>MEMBERS: <strong id="title-waiting-members">0/2</strong></div>
             <div>ELAPSED: <strong id="title-waiting-elapsed">0:00</strong></div>
             <div>ROOM: <strong id="title-waiting-room">----</strong></div>
-            <div>HOST: <strong id="title-waiting-host">-</strong></div>
-            <div>RIVAL: <strong id="title-waiting-remote">-</strong></div>
+            <div>WAITING: <strong id="title-waiting-host">-</strong></div>
+            <div>JOINED: <strong id="title-waiting-remote">-</strong></div>
           </div>
         </div>
       </div>
@@ -2717,19 +2718,21 @@
         titleWaitingElapsedEl.textContent = "0:00";
         titleWaitingRoomEl.textContent = "----";
         titleWaitingHostEl.textContent = "-";
-        titleWaitingRemoteEl.textContent = "-";
+        titleWaitingRemoteEl.textContent = "未参加";
         ensureWaitingTimer(false);
         return;
       }
       const localName = versusRoomState.players.local.name || getStoredPlayerName();
       const remoteName = versusRoomState.players.remote.name || "WAITING...";
       const memberCount = versusRoomState.players.remote.ready ? "2/2" : "1/2";
-      titleWaitingStatusEl.textContent = `ROOM ${roomId} で参加待機中です`;
+      titleWaitingStatusEl.textContent = versusRoomState.players.remote.ready
+        ? `${localName} さんの部屋に ${remoteName} さんが参加しました`
+        : `${localName} さんが ROOM ${roomId} で待機中です`;
       titleWaitingMembersEl.textContent = memberCount;
       titleWaitingElapsedEl.textContent = waitingStartedAt ? formatElapsed(Date.now() - waitingStartedAt) : "0:00";
       titleWaitingRoomEl.textContent = roomId;
       titleWaitingHostEl.textContent = localName;
-      titleWaitingRemoteEl.textContent = remoteName;
+      titleWaitingRemoteEl.textContent = versusRoomState.players.remote.ready ? remoteName : "未参加";
       ensureWaitingTimer(showWaiting);
     }
 
@@ -3665,8 +3668,23 @@
       }
     }
 
+    function setTitleStartLoading(isLoading, message = "") {
+      titleStartBtn.disabled = isLoading;
+      titleStartBtn.textContent = isLoading
+        ? (selectedGameMode === "versus"
+          ? (selectedLobbyAction === "join" ? "部屋参加中..." : "待機画面へ...")
+          : "ゲーム開始中...")
+        : "ゲーム開始";
+      if (message) {
+        titleModeNoteEl.textContent = message;
+        titleModeNoteEl.classList.remove("is-warning");
+        titleModeNoteEl.classList.add("is-info");
+      }
+    }
+
     async function startSelectedMode() {
       unlockAudio();
+      let shouldStart = true;
       const savedName = savePlayerName(playerNameInputEl.value) || getStoredPlayerName();
       if (!savedName || savedName === "PLAYER") {
         titleModeNoteEl.textContent = "先にユーザー名を入力してください。ランキングと対戦相手表示に使います。";
@@ -3680,63 +3698,75 @@
       }
       state = createState();
       gameOverHandled = false;
-      if (selectedGameMode === "versus") {
-        const requestedRoomId = joinRoomInputEl.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
-        if (selectedLobbyAction === "join" && !requestedRoomId) {
-          titleModeNoteEl.textContent = "部屋参加を選んだ場合は ROOM ID を入力してください。";
-          titleModeNoteEl.classList.remove("is-info");
-          titleModeNoteEl.classList.add("is-warning");
-          return;
-        }
-        let roomOptions = null;
-        if (hasFirebaseConfig()) {
-          const result = selectedLobbyAction === "join"
-            ? await joinFirebaseRoom(requestedRoomId, savedName)
-            : await createFirebaseRoom(createRoomId(), savedName);
-          if (result.ok) {
-            await subscribeFirebaseRoom(result.room.roomId);
-            roomOptions = {
-              roomId: result.room.roomId,
+      const showLoading = selectedGameMode === "versus";
+      if (showLoading) {
+        setTitleStartLoading(true, selectedLobbyAction === "join"
+          ? "ROOM ID を確認して部屋へ参加しています..."
+          : "対戦ルームを準備して待機画面へ移動しています...");
+      }
+      try {
+        if (selectedGameMode === "versus") {
+          const requestedRoomId = joinRoomInputEl.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+          if (selectedLobbyAction === "join" && !requestedRoomId) {
+            titleModeNoteEl.textContent = "部屋参加を選んだ場合は ROOM ID を入力してください。";
+            titleModeNoteEl.classList.remove("is-info");
+            titleModeNoteEl.classList.add("is-warning");
+            shouldStart = false;
+            return;
+          }
+          let roomOptions = null;
+          if (hasFirebaseConfig()) {
+            const result = selectedLobbyAction === "join"
+              ? await joinFirebaseRoom(requestedRoomId, savedName)
+              : await createFirebaseRoom(createRoomId(), savedName);
+            if (result.ok) {
+              await subscribeFirebaseRoom(result.room.roomId);
+              roomOptions = {
+                roomId: result.room.roomId,
+                localName: savedName,
+                remoteName: selectedLobbyAction === "join"
+                  ? (result.room.host?.name || "HOST")
+                  : "WAITING...",
+                localState: "READY",
+                remoteState: selectedLobbyAction === "join" ? "HOST" : "WAIT",
+                remoteReady: selectedLobbyAction === "join",
+                waitForOpponent: selectedLobbyAction !== "join",
+                matchStarted: selectedLobbyAction === "join",
+                waitStartedAt: result.room.createdAt || Date.now(),
+                statusText: selectedLobbyAction === "join"
+                  ? `FIREBASE JOIN: ROOM ${result.room.roomId} に参加しました。state:update を接続できます。`
+                  : `FIREBASE CREATE: ROOM ${result.room.roomId} を作成しました。guest を待機中です。`
+              };
+            } else {
+              titleModeNoteEl.textContent = "Firebase 設定が未完了なので、ローカル擬似ルームで開始します。";
+              titleModeNoteEl.classList.remove("is-warning");
+              titleModeNoteEl.classList.add("is-info");
+            }
+          }
+          setGameMode("versus", {
+            ...(roomOptions || {
+              roomId: selectedLobbyAction === "join" ? requestedRoomId : createRoomId(),
               localName: savedName,
-              remoteName: selectedLobbyAction === "join"
-                ? (result.room.host?.name || "HOST")
-                : "WAITING...",
+              remoteName: selectedLobbyAction === "join" ? "HOST BOT" : "GUEST BOT",
               localState: "READY",
-              remoteState: selectedLobbyAction === "join" ? "HOST" : "WAIT",
+              remoteState: selectedLobbyAction === "join" ? "HOST" : "JOIN",
               remoteReady: selectedLobbyAction === "join",
               waitForOpponent: selectedLobbyAction !== "join",
               matchStarted: selectedLobbyAction === "join",
-              waitStartedAt: result.room.createdAt || Date.now(),
+              waitStartedAt: Date.now(),
               statusText: selectedLobbyAction === "join"
-                ? `FIREBASE JOIN: ROOM ${result.room.roomId} に参加しました。state:update を接続できます。`
-                : `FIREBASE CREATE: ROOM ${result.room.roomId} を作成しました。guest を待機中です。`
-            };
-          } else {
-            titleModeNoteEl.textContent = "Firebase 設定が未完了なので、ローカル擬似ルームで開始します。";
-            titleModeNoteEl.classList.remove("is-warning");
-            titleModeNoteEl.classList.add("is-info");
-          }
+                ? `LOCAL JOIN: ROOM ${requestedRoomId} に参加した想定で HUD を起動します。`
+                : "LOCAL CREATE: ルームを作成しました。参加者が入るまで開始しません。"
+            })
+          });
+        } else {
+          setGameMode("single");
+          incrementPlayCount(1).catch(() => {});
         }
-        setGameMode("versus", {
-          ...(roomOptions || {
-            roomId: selectedLobbyAction === "join" ? requestedRoomId : createRoomId(),
-            localName: savedName,
-            remoteName: selectedLobbyAction === "join" ? "HOST BOT" : "GUEST BOT",
-            localState: "READY",
-            remoteState: selectedLobbyAction === "join" ? "HOST" : "JOIN",
-            remoteReady: selectedLobbyAction === "join",
-            waitForOpponent: selectedLobbyAction !== "join",
-            matchStarted: selectedLobbyAction === "join",
-            waitStartedAt: Date.now(),
-            statusText: selectedLobbyAction === "join"
-              ? `LOCAL JOIN: ROOM ${requestedRoomId} に参加した想定で HUD を起動します。`
-              : "LOCAL CREATE: ルームを作成しました。参加者が入るまで開始しません。"
-          })
-        });
-      } else {
-        setGameMode("single");
-        incrementPlayCount(1).catch(() => {});
+      } finally {
+        setTitleStartLoading(false);
       }
+      if (!shouldStart) return;
       titleScreenEl.classList.remove("is-open");
       state.paused = selectedGameMode === "versus" ? waitingForOpponent : false;
       updateHUD(state);
