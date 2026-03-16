@@ -2883,6 +2883,12 @@
         const hostName = room?.host?.name || "";
         const guestName = room?.guest?.name || "";
         button.classList.remove("is-empty", "is-joinable", "is-busy");
+        if (hasFirebaseConfig() && !firebaseReady && !room) {
+          button.classList.add("is-busy");
+          button.disabled = true;
+          button.innerHTML = `<strong>ROOM ${roomKey}</strong><small>ルーム情報を同期しています...</small>`;
+          return;
+        }
         if (mode === "create") {
           button.classList.add("is-empty");
           button.disabled = false;
@@ -3001,6 +3007,8 @@
       if (!result.committed) {
         return { ok: false, reason: "room-exists" };
       }
+      titleRoomSnapshots[roomId] = result.snapshot.val();
+      renderTitleRoomSlots();
       firebaseSession = {
         role: "host",
         roomId,
@@ -3853,6 +3861,11 @@
       if (isSingle) {
         titleModeNoteEl.textContent = "モードを選択して「ゲーム開始」ボタンをクリック/タップしてください。";
       } else {
+        if (hasFirebaseConfig()) {
+          initFirebaseAdapter()
+            .then(() => renderTitleRoomSlots())
+            .catch(() => {});
+        }
         renderTitleRoomSlots();
         updateLobbyAction(selectedLobbyAction);
         if (!isVersusUnlocked()) {
