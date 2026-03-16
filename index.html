@@ -3608,25 +3608,46 @@
       if (firebaseSession) markFirebaseRoomPlaying().catch(() => {});
     }
 
-    function beginVersusMatch(statusText = "", startAtMs = Date.now() + 3000) {
-      if (currentGameMode !== "versus" || versusMatchStarted) return;
+    function beginVersusCountdown(statusText = "") {
+      if (currentGameMode !== "versus" || versusMatchStarted || !versusStartAtMs || versusCountdownEndsAt) return;
       waitingForOpponent = false;
       ensureWaitingTimer(false);
-      clearRematchWaitTimer();
       titleScreenEl.classList.remove("is-open");
-      versusStartAtMs = Math.max(Date.now() + 3000, startAtMs || Date.now() + 3000);
       versusCountdownEndsAt = versusStartAtMs;
       versusCountdownLastValue = 0;
       state.paused = true;
       if (versusRoomState) {
         versusRoomState.phase = "countdown";
+        versusRoomState.players.local.state = "COUNT";
+        if (versusRoomState.players.remote.ready) {
+          versusRoomState.players.remote.state = "COUNT";
+        }
+        renderVersusRoomHud();
+      }
+      if (statusText) versusStatusEl.textContent = statusText;
+      updateHUD(state);
+    }
+
+    function beginVersusMatch(statusText = "", startAtMs = Date.now() + 3000) {
+      if (currentGameMode !== "versus" || versusMatchStarted) return;
+      if (versusStartAtMs && versusStartAtMs > Date.now()) {
+        if (statusText) versusStatusEl.textContent = `${statusText} 同期完了後に3カウントを開始します。`;
+        return;
+      }
+      clearRematchWaitTimer();
+      versusStartAtMs = Math.max(Date.now() + 3000, startAtMs || Date.now() + 3000);
+      versusCountdownEndsAt = 0;
+      versusCountdownLastValue = 0;
+      state.paused = true;
+      if (versusRoomState) {
+        versusRoomState.phase = "sync";
         versusRoomState.players.local.state = "SYNC";
         if (versusRoomState.players.remote.ready) {
           versusRoomState.players.remote.state = "SYNC";
         }
         renderVersusRoomHud();
       }
-      if (statusText) versusStatusEl.textContent = statusText;
+      if (statusText) versusStatusEl.textContent = `${statusText} 同期完了後に3カウントを開始します。`;
       updateHUD(state);
     }
 
@@ -4120,6 +4141,13 @@
       const delta = time - state.lastTime;
       state.lastTime = time;
       const speed = Math.max(1000 - (state.level - 1) * 90, 120);
+
+      if (currentGameMode === "versus" && versusStartAtMs && !versusMatchStarted && !versusCountdownEndsAt) {
+        const countdownStartAt = versusStartAtMs - 3000;
+        if (Date.now() >= countdownStartAt) {
+          beginVersusCountdown(`FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`);
+        }
+      }
 
       if (currentGameMode === "versus" && versusStartAtMs && !versusMatchStarted && Date.now() >= versusStartAtMs) {
         completeVersusMatchStart(`FIREBASE ROOM ${roomId}: 対戦を開始します。`);
