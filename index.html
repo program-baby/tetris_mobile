@@ -20,11 +20,6 @@
       --controls-h: 164px;
       --board-w: 300px;
       --side-panel-w: 96px;
-      --panel-gap: 8px;
-      --panel-pad: 6px;
-      --board-top-pad: 26px;
-      --tool-min-width: 92px;
-      --side-canvas-size: clamp(58px, calc(var(--side-panel-w) - 10px), 76px);
     }
 
     * {
@@ -41,7 +36,7 @@
       background: linear-gradient(rgba(2, 6, 23, 0.62), rgba(2, 6, 23, 0.62)), url("./bg.png") center / cover no-repeat;
       display: grid;
       place-items: center;
-      padding: clamp(4px, 1.5vw, 8px);
+      padding: 6px;
       overflow: hidden;
     }
 
@@ -50,7 +45,7 @@
       min-height: var(--viewport-h);
       display: grid;
       grid-template-rows: 1fr auto;
-      gap: max(4px, calc(var(--panel-gap) - 2px));
+      gap: 4px;
       align-content: stretch;
       padding-top: calc(4px + env(safe-area-inset-top));
       padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 8px);
@@ -60,7 +55,7 @@
       display: grid;
       grid-template-columns: minmax(0, 1fr) var(--side-panel-w);
       grid-template-rows: auto 1fr;
-      gap: var(--panel-gap);
+      gap: 8px;
       align-items: start;
       align-content: end;
       min-height: calc(var(--viewport-h) - var(--controls-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 18px);
@@ -70,17 +65,16 @@
       background: linear-gradient(180deg, #16233f, var(--panel));
       border: 1px solid var(--line);
       border-radius: 10px;
-      padding: var(--panel-pad);
+      padding: 6px;
     }
 
     .left-tools {
       grid-column: 1 / 3;
       grid-row: 1;
       display: flex;
-      gap: var(--panel-gap);
+      gap: 8px;
       align-items: center;
       justify-content: flex-start;
-      flex-wrap: wrap;
     }
 
     .landscape-rules {
@@ -273,8 +267,8 @@
     }
 
     #opponent-board {
-      width: var(--side-canvas-size);
-      height: calc(var(--side-canvas-size) * 2);
+      width: 76px;
+      height: 152px;
       border: 2px solid var(--line);
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
@@ -339,7 +333,7 @@
       grid-row: 2;
       width: var(--side-panel-w);
       display: grid;
-      gap: max(4px, calc(var(--panel-gap) - 2px));
+      gap: 5px;
       align-content: start;
     }
 
@@ -404,8 +398,8 @@
     }
 
     #next {
-      width: var(--side-canvas-size);
-      height: var(--side-canvas-size);
+      width: 76px;
+      height: 76px;
       border: 2px solid var(--line);
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
@@ -414,8 +408,8 @@
     }
 
     #hold {
-      width: var(--side-canvas-size);
-      height: var(--side-canvas-size);
+      width: 76px;
+      height: 76px;
       border: 2px solid var(--line);
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
@@ -698,7 +692,7 @@
       justify-content: center;
       align-items: flex-end;
       min-height: 0;
-      padding-top: var(--board-top-pad);
+      padding-top: 26px;
     }
 
     .board-score-hud {
@@ -723,7 +717,7 @@
       border: 1px solid rgba(148, 163, 184, 0.38);
       border-radius: 7px;
       padding: 3px 6px;
-      min-width: clamp(72px, calc(var(--board-w) * 0.27), 92px);
+      min-width: 92px;
     }
 
     .board-score-item.right {
@@ -842,7 +836,7 @@
       margin: 0 auto;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: var(--panel-gap);
+      gap: 8px;
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
       box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.3);
@@ -850,7 +844,7 @@
 
     .control-side {
       display: grid;
-      gap: max(5px, calc(var(--panel-gap) - 2px));
+      gap: 6px;
     }
 
     .left-pad {
@@ -883,7 +877,7 @@
 
     .tool-btn {
       min-height: 36px;
-      min-width: var(--tool-min-width);
+      min-width: 92px;
       font-size: 0.75rem;
       line-height: 1.2;
       padding: 8px 10px;
@@ -936,10 +930,6 @@
       :root {
         --controls-h: 152px;
         --side-panel-w: 88px;
-        --panel-gap: 6px;
-        --panel-pad: 5px;
-        --board-top-pad: 22px;
-        --tool-min-width: 78px;
       }
 
       .controls-inner {
@@ -953,49 +943,6 @@
       button {
         font-size: 0.9rem;
         padding: 9px 5px;
-      }
-    }
-
-    @media (max-width: 430px) {
-      .board-score-hud {
-        font-size: 0.62rem;
-      }
-
-      .board-score-item {
-        padding: 3px 5px;
-      }
-
-      .combo-hud {
-        width: min(82%, 190px);
-      }
-
-      .rules-list {
-        font-size: 0.63rem;
-      }
-    }
-
-    @media (max-width: 360px), (max-height: 640px) {
-      :root {
-        --controls-h: 146px;
-        --panel-gap: 5px;
-        --panel-pad: 4px;
-        --board-top-pad: 20px;
-        --tool-min-width: 70px;
-      }
-
-      .left-tools {
-        gap: 5px;
-      }
-
-      .tool-btn {
-        font-size: 0.68rem;
-        padding: 7px 8px;
-      }
-
-      .next-label,
-      .status-text,
-      .audio-row {
-        font-size: 0.62rem;
       }
     }
 
@@ -1947,46 +1894,36 @@
       lastViewportH = vh;
 
       const isLandscape = vw > vh;
-      const tinyScreen = vw <= 360 || vh <= 640;
-      const narrowPortrait = !isLandscape && vw <= 430;
-      const appCap = isLandscape ? 960 : currentGameMode === "versus" ? 660 : 600;
-      const appW = Math.max(320, Math.min(vw - (tinyScreen ? 8 : 12), appCap));
+      const appCap = isLandscape ? 920 : currentGameMode === "versus" ? 640 : 560;
+      const appW = Math.max(320, Math.min(vw - 12, appCap));
       document.documentElement.style.setProperty("--viewport-h", `${vh}px`);
       document.documentElement.style.setProperty("--app-w", `${appW}px`);
-      document.documentElement.style.setProperty("--panel-gap", `${tinyScreen ? 5 : narrowPortrait ? 6 : 8}px`);
-      document.documentElement.style.setProperty("--panel-pad", `${tinyScreen ? 4 : narrowPortrait ? 5 : 6}px`);
-      document.documentElement.style.setProperty("--board-top-pad", `${tinyScreen ? 20 : narrowPortrait ? 22 : 26}px`);
-      document.documentElement.style.setProperty("--tool-min-width", `${tinyScreen ? 70 : narrowPortrait ? 78 : 92}px`);
-      const compactSide = (isLandscape && vh < 460) || (narrowPortrait && vh < 760);
+      const compactSide = isLandscape && vh < 460;
       sidePanelEl.classList.toggle("compact", compactSide);
 
       const controlsH = Math.ceil(controlsEl.getBoundingClientRect().height);
       document.documentElement.style.setProperty("--controls-h", `${controlsH}px`);
 
       const appRect = appEl.getBoundingClientRect();
+      const sideW = sidePanelEl.getBoundingClientRect().width;
       const leftToolsH = leftToolsEl.getBoundingClientRect().height;
       const areaStyles = getComputedStyle(gameAreaEl);
       const colGap = parseFloat(areaStyles.columnGap) || 8;
       const rowGap = parseFloat(areaStyles.rowGap) || 8;
-      const sideMin = currentGameMode === "versus"
-        ? (compactSide ? 96 : narrowPortrait ? 112 : 126)
-        : (compactSide ? 74 : narrowPortrait ? 80 : 88);
-      const sideMax = currentGameMode === "versus"
-        ? (isLandscape ? 156 : 138)
-        : (isLandscape ? 124 : 112);
-      const sidePanelW = Math.max(
-        sideMin,
-        Math.min(sideMax, Math.floor((appRect.width - colGap - 8) * (currentGameMode === "versus" ? (isLandscape ? 0.27 : 0.29) : 0.24)))
-      );
-      const boardMaxWByWidth = Math.max(140, appRect.width - sidePanelW - colGap - 8);
+
+      const boardMaxWByWidth = Math.max(140, appRect.width - sideW - colGap - 8);
       const boardMaxHByHeight = Math.max(
         240,
-        vh - controlsH - leftToolsH - rowGap - (narrowPortrait ? 18 : 26) - (isLandscape ? 8 : 0)
+        vh - controlsH - leftToolsH - rowGap - 26 - (isLandscape ? 8 : 0)
       );
       const boardMaxWByHeight = Math.floor(boardMaxHByHeight / 2);
-      const boardCap = isLandscape ? 540 : narrowPortrait ? 380 : 420;
+      const boardCap = isLandscape ? 520 : 420;
       const boardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
       document.documentElement.style.setProperty("--board-w", `${boardW}px`);
+
+      const sideMin = currentGameMode === "versus" ? (compactSide ? 94 : 126) : (compactSide ? 78 : 84);
+      const sideMax = currentGameMode === "versus" ? 148 : 120;
+      const sidePanelW = Math.max(sideMin, Math.min(sideMax, Math.floor((appRect.width - boardW - colGap - 8))));
       document.documentElement.style.setProperty("--side-panel-w", `${sidePanelW}px`);
 
       if (DEBUG_LAYOUT && debugHudEl) {
