@@ -3363,7 +3363,8 @@
           beginVersusMatch(`FIREBASE ROOM ${roomId}: 同期中です。まもなく対戦を開始します。`, room.startAt);
         } else if (roomPlaying && !versusMatchStarted) {
           if (!versusStartAtMs) beginVersusMatch(`FIREBASE ROOM ${roomId}: 対戦を開始します。`, room.startAt);
-          if (Date.now() >= room.startAt - 120) {
+          const effectiveStartAt = Math.max(room.startAt || 0, versusStartAtMs || 0);
+          if (Date.now() >= effectiveStartAt - 120) {
             completeVersusMatchStart(`FIREBASE ROOM ${roomId}: 対戦を開始します。`);
           }
         } else if (!versusMatchStarted) {
