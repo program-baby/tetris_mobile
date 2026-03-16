@@ -4400,7 +4400,10 @@
       hold(state);
     }, { passive: false });
 
-    modeSingleBtn.addEventListener("click", () => updateTitleSelection("single"));
+    modeSingleBtn.addEventListener("click", () => {
+      updateTitleSelection("single");
+      startSelectedMode();
+    });
     modeVersusBtn.addEventListener("click", () => updateTitleSelection("versus"));
     versusRoomBackBtn.addEventListener("click", () => updateTitleSelection("single"));
     versusRoomBackBtn.addEventListener("touchstart", (e) => {
