@@ -3097,7 +3097,7 @@
         const bothReady = !!current.host.rematchReady && !!current.guest.rematchReady;
         if (bothReady) {
           current.status = "countdown";
-          current.startAt = Date.now() + 4500;
+          current.startAt = Date.now() + 7000;
           current.host.game = null;
           current.guest.game = null;
           current.host.garbageSent = 0;
@@ -3140,7 +3140,7 @@
         };
         current.guestId = firebaseAuth?.currentUser?.uid || null;
         current.status = "countdown";
-        current.startAt = Date.now() + 4500;
+        current.startAt = Date.now() + 7000;
         current.updatedAt = Date.now();
         current.lastEvent = {
           type: "room:join",
@@ -3176,7 +3176,7 @@
           const hasFutureStart = !!current.startAt && current.startAt > Date.now() + 200;
           if (hasFutureStart && (current.status === "countdown" || current.status === "playing")) return current;
           current.status = "countdown";
-          current.startAt = Date.now() + 4500;
+          current.startAt = Date.now() + 7000;
           current.updatedAt = Date.now();
           current.lastEvent = {
             type: "room:sync-start",
@@ -3596,7 +3596,7 @@
       ensureWaitingTimer(false);
       clearRematchWaitTimer();
       titleScreenEl.classList.remove("is-open");
-      versusStartAtMs = Math.max(Date.now() + 400, startAtMs || Date.now() + 3000);
+      versusStartAtMs = Math.max(Date.now() + 3000, startAtMs || Date.now() + 3000);
       versusCountdownEndsAt = versusStartAtMs;
       versusCountdownLastValue = 0;
       state.paused = true;
@@ -4504,5 +4504,6 @@
   </script>
 </body>
 </html>
+
 
 
