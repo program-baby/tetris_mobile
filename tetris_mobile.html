@@ -3834,6 +3834,9 @@
         emitGameEvent("gameOver", { score: state.score, lines: state.lines });
         if (currentGameMode === "versus") {
           versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: あなたがゲームオーバーです。相手の勝利です。`;
+        } else {
+          setStatus(state, "画面をタップしてタイトルへ戻る", 60 * 60 * 1000);
+          updateHUD(state);
         }
         registerRankingScore(state);
       } else if (!state.gameOver) {
@@ -3907,6 +3910,20 @@
     }
 
     document.addEventListener("pointerdown", unlockAudio, { once: true });
+
+    function handleSingleGameOverTapReturn(e) {
+      if (currentGameMode !== "single") return;
+      if (!state.gameOver) return;
+      if (titleScreenEl.classList.contains("is-open")) return;
+      if (rankingModalEl.classList.contains("is-open")) return;
+      if (rulesModalEl.classList.contains("is-open")) return;
+      if (celebrationOpen) return;
+      if (e) e.preventDefault();
+      openTitleScreen();
+    }
+
+    appEl.addEventListener("click", handleSingleGameOverTapReturn);
+    appEl.addEventListener("touchstart", handleSingleGameOverTapReturn, { passive: false });
 
     loadSeVolume();
 
