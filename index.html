@@ -1537,9 +1537,8 @@
         <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
       </div>
       <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
-      <p id="title-mode-note" class="title-note">モードを選択して「ゲーム開始」ボタンをクリック/タップしてください。</p>
+      <p id="title-mode-note" class="title-note">1人用はボタンを押すと開始、対戦用は ROOM を選ぶと待機/参加します。</p>
       <div class="title-actions">
-        <button id="title-start" class="title-start-btn" type="button">ゲーム開始</button>
         <button id="title-ranking" class="ghost title-start-btn" type="button">ランキング</button>
       </div>
     </div>
@@ -1679,7 +1678,6 @@
     const titleRoomSlotEls = Array.from(document.querySelectorAll("[data-room-slot]"));
     const playerNameInputEl = document.getElementById("player-name-input");
     const titleModeNoteEl = document.getElementById("title-mode-note");
-    const titleStartBtn = document.getElementById("title-start");
     const titleRankingBtn = document.getElementById("title-ranking");
     const playCountTodayEl = document.getElementById("play-count-today");
     const playCountTotalEl = document.getElementById("play-count-total");
@@ -2816,6 +2814,7 @@
       titleWaitingHostEl.textContent = localName;
       titleWaitingRemoteEl.textContent = versusRoomState.players.remote.ready ? remoteName : "未参加";
       ensureWaitingTimer(showWaiting);
+      renderTitleRoomSlots();
     }
 
     function getTitleRoomSnapshot(roomKey) {
@@ -3877,6 +3876,7 @@
         remoteState = options.remoteReady ? serializeGameState(state) : null;
         updateRemoteHud(remoteState);
         renderVersusRoomHud();
+        renderTitleRoomSlots();
       } else {
         clearRematchWaitTimer();
         clearVersusCountdown();
@@ -3898,6 +3898,7 @@
         versusStatusEl.textContent = "対戦ロビー初期化前です。";
         remoteState = null;
         updateRemoteHud(null);
+        renderTitleRoomSlots();
       }
       renderTitleSessionInfo();
       scheduleFitLayout();
@@ -3910,10 +3911,9 @@
       titleCardEl.classList.toggle("is-versus", !isSingle);
       modeSingleBtn.classList.toggle("is-active", isSingle);
       modeVersusBtn.classList.toggle("is-active", !isSingle);
-      titleStartBtn.style.display = isSingle ? "" : "none";
       titleModeNoteEl.classList.remove("is-warning", "is-info");
       if (isSingle) {
-        titleModeNoteEl.textContent = "モードを選択して「ゲーム開始」ボタンをクリック/タップしてください。";
+        titleModeNoteEl.textContent = "1人用ボタンを押すと、すぐにソロプレイを開始します。";
       } else {
         if (hasFirebaseConfig()) {
           initFirebaseAdapter()
@@ -3930,12 +3930,6 @@
     }
 
     function setTitleStartLoading(isLoading, message = "") {
-      titleStartBtn.disabled = isLoading;
-      titleStartBtn.textContent = isLoading
-        ? (selectedGameMode === "versus"
-          ? (selectedLobbyAction === "join" ? "部屋参加中..." : "待機画面へ...")
-          : "ゲーム開始中...")
-        : "ゲーム開始";
       if (message) {
         titleModeNoteEl.textContent = message;
         titleModeNoteEl.classList.remove("is-warning");
@@ -4170,11 +4164,6 @@
         }
         if (e.key === "ArrowRight" || e.key === "ArrowDown") {
           updateTitleSelection("versus");
-          return;
-        }
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          startSelectedMode();
           return;
         }
         return;
@@ -4429,7 +4418,6 @@
       syncPlayerNameInput();
       renderTitleRoomSlots();
     });
-    titleStartBtn.addEventListener("click", startSelectedMode);
     titleRankingBtn.addEventListener("click", () => {
       openRankingModal();
     });
