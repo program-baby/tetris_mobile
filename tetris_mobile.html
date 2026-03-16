@@ -3265,8 +3265,8 @@
           resetVersusMatchLocalState();
           waitingStartedAt = Date.now();
           versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 再戦準備が整いました。3秒後に開始します。`;
-        } else {
-        versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: ${room.status || "waiting"}`;
+        } else if (!versusCountdownEndsAt && !versusMatchStarted) {
+          versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: ${room.status || "waiting"}`;
         }
         renderVersusRoomHud();
         if (remote.game) {
@@ -3321,8 +3321,8 @@
           enqueueIncomingGarbage(state, item.lines || 0);
           consumeFirebaseGarbage(itemId, item.lines || 0).catch(() => {});
         }
-        const roomReady = !!local.ready && !!remote.ready && (room.status === "ready" || room.status === "playing");
-        if (roomReady) {
+        const roomReady = !!local.ready && !!remote.ready && room.status === "ready";
+        if (roomReady && !versusCountdownEndsAt && !versusMatchStarted) {
           beginVersusMatch(`FIREBASE ROOM ${roomId}: 2人そろったので対戦を開始します。`);
         } else if (!versusMatchStarted) {
           waitingForOpponent = true;
@@ -3924,7 +3924,7 @@
                 remoteState: selectedLobbyAction === "join" ? "HOST" : "WAIT",
                 remoteReady: selectedLobbyAction === "join",
                 waitForOpponent: selectedLobbyAction !== "join",
-                matchStarted: selectedLobbyAction === "join",
+                matchStarted: false,
                 waitStartedAt: result.room.createdAt || Date.now(),
                 statusText: selectedLobbyAction === "join"
                   ? `FIREBASE JOIN: ROOM ${result.room.roomId} に参加しました。state:update を接続できます。`
@@ -3945,7 +3945,7 @@
               remoteState: selectedLobbyAction === "join" ? "HOST" : "JOIN",
               remoteReady: selectedLobbyAction === "join",
               waitForOpponent: selectedLobbyAction !== "join",
-              matchStarted: selectedLobbyAction === "join",
+              matchStarted: false,
               waitStartedAt: Date.now(),
               statusText: selectedLobbyAction === "join"
                 ? `LOCAL JOIN: ROOM ${requestedRoomId} に参加した想定で HUD を起動します。`
