@@ -1688,6 +1688,7 @@
     const COMBO_BONUS_MAX = 210;
     const COMBO_WINDOW_MS = 6500;
     const COMBO_FLASH_MS = 1100;
+    const ROOM_STALE_MS = 5 * 60 * 1000;
     const DEBUG_LAYOUT = false;
     const VERSUS_DEV_PASSWORD = "dualgate2026";
     const VERSUS_UNLOCK_KEY = "tetrisVersusUnlockedV1";
@@ -1852,6 +1853,7 @@
     let processedGarbageIds = new Set();
     let playCountCommittedForMatch = false;
     let versusRoomReleased = false;
+    let staleRoomCleanupPending = {};
     let waitingStartedAt = 0;
     let waitingTimer = null;
     let localRematchRequested = false;
@@ -2968,6 +2970,16 @@
       renderTitleRoomSlots();
     }
 
+    function isRoomStale(room) {
+      const hostName = room?.host?.name || "";
+      const guestName = room?.guest?.name || "";
+      const hostLeft = room?.host?.state === "LEFT";
+      if (!hostName || hostLeft || guestName) return false;
+      const basis = Number(room?.updatedAt || room?.createdAt || 0);
+      if (!basis) return false;
+      return Date.now() - basis >= ROOM_STALE_MS;
+    }
+
     function getTitleRoomSnapshot(roomKey) {
       if (
         currentGameMode === "versus" &&
@@ -2987,6 +2999,9 @@
               }
             : null
         };
+      }
+      if (isRoomStale(titleRoomSnapshots[roomKey])) {
+        return null;
       }
       return titleRoomSnapshots[roomKey] || null;
     }
@@ -3038,6 +3053,12 @@
         const ref = firebaseDb.ref(`rooms/${roomKey}`);
         const listener = (snapshot) => {
           titleRoomSnapshots[roomKey] = snapshot.val();
+          if (isRoomStale(titleRoomSnapshots[roomKey]) && !staleRoomCleanupPending[roomKey]) {
+            staleRoomCleanupPending[roomKey] = true;
+            ref.set(null).catch(() => {}).finally(() => {
+              staleRoomCleanupPending[roomKey] = false;
+            });
+          }
           renderTitleRoomSlots();
         };
         ref.on("value", listener);
