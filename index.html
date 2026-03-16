@@ -1311,8 +1311,6 @@
       <aside id="leftTools" class="panel left-tools">
         <button id="title-return-top" class="ghost tool-btn" type="button">タイトルへ戻る</button>
         <button id="pause" class="ghost tool-btn" type="button">一時停止</button>
-        <button id="board-smaller" class="ghost tool-btn" type="button">盤面－</button>
-        <button id="board-larger" class="ghost tool-btn" type="button">盤面＋</button>
         <button id="rules-open" class="ghost tool-btn" type="button">ルール</button>
         <button id="restart" class="danger tool-btn" type="button">リセット長押し</button>
         <div class="landscape-ranking">
@@ -1745,8 +1743,6 @@
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
     const titleReturnTopBtn = document.getElementById("title-return-top");
-    const boardSmallerBtn = document.getElementById("board-smaller");
-    const boardLargerBtn = document.getElementById("board-larger");
     const leftBtn = document.getElementById("left");
     const rightBtn = document.getElementById("right");
     const rotateCcwBtn = document.getElementById("rotate-ccw");
@@ -1775,7 +1771,6 @@
     let layoutRaf = 0;
     let lastViewportW = 0;
     let lastViewportH = 0;
-    let boardScale = 1;
     let selectedGameMode = "single";
     let currentGameMode = "single";
     let roomId = "----";
@@ -1822,7 +1817,6 @@
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
     const PLAY_COUNT_KEY = "tetrisPlayCountV1";
     const PLAY_COUNT_DAILY_KEY = "tetrisPlayCountDailyV1";
-    const BOARD_SCALE_KEY = "tetrisBoardScaleV1";
 
     const COLORS = [
       null,
@@ -1879,24 +1873,6 @@
       }
     }
 
-    function setBoardScale(nextScale) {
-      const safe = Math.max(0.82, Math.min(1.18, Math.round(nextScale * 100) / 100));
-      boardScale = safe;
-      localStorage.setItem(BOARD_SCALE_KEY, String(safe));
-      if (boardSmallerBtn) boardSmallerBtn.disabled = safe <= 0.82;
-      if (boardLargerBtn) boardLargerBtn.disabled = safe >= 1.18;
-      scheduleFitLayout();
-    }
-
-    function loadBoardScale() {
-      const saved = Number(localStorage.getItem(BOARD_SCALE_KEY));
-      if (Number.isFinite(saved)) {
-        setBoardScale(saved);
-      } else {
-        setBoardScale(1);
-      }
-    }
-
     function getViewportSize() {
       const vv = window.visualViewport;
       if (vv) return { width: Math.round(vv.width), height: Math.round(vv.height) };
@@ -1942,9 +1918,7 @@
       );
       const boardMaxWByHeight = Math.floor(boardMaxHByHeight / 2);
       const boardCap = isLandscape ? 520 : 420;
-      const baseBoardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
-      const scaledBoardW = Math.round(baseBoardW * boardScale);
-      const boardW = Math.max(132, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap, scaledBoardW));
+      const boardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
       document.documentElement.style.setProperty("--board-w", `${boardW}px`);
 
       const sideMin = currentGameMode === "versus" ? (compactSide ? 94 : 126) : (compactSide ? 78 : 84);
@@ -4439,7 +4413,6 @@
     appEl.addEventListener("touchstart", handleSingleGameOverTapReturn, { passive: false });
 
     loadSeVolume();
-    loadBoardScale();
 
     function changeSeVolume(step) {
       const current = Number(seVolumeValueEl.textContent.replace("%", ""));
@@ -4595,14 +4568,6 @@
     bindTap(pauseBtn, () => {
       state.paused = !state.paused;
       updateHUD(state);
-    });
-
-    bindTap(boardSmallerBtn, () => {
-      setBoardScale(boardScale - 0.08);
-    });
-
-    bindTap(boardLargerBtn, () => {
-      setBoardScale(boardScale + 0.08);
     });
 
     bindTap(titleReturnTopBtn, () => {
