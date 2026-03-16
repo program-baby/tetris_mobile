@@ -1688,6 +1688,7 @@
     let firebaseStatsListener = null;
     let firebaseSession = null;
     let globalPlayStats = { today: 0, total: 0 };
+    let processedGarbageIds = new Set();
     let waitingStartedAt = 0;
     let waitingTimer = null;
 
@@ -2343,6 +2344,7 @@
       queueGarbageSend(calculateGarbageLines(clearedRows), "line-clear");
       applyClearedRows(state, state.clearing.rows, state.clearing.tspin);
       state.clearing = null;
+      flushIncomingGarbage(state);
       spawnNext(state);
       updateHUD(state);
       syncVersusPreview(true);
@@ -2880,6 +2882,17 @@
       return true;
     }
 
+    async function consumeFirebaseGarbage(itemId, lines) {
+      if (!firebaseSession || !firebaseReady || !itemId) return false;
+      const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
+      await roomRef.child(`${firebaseSession.role}/garbageQueue/items/${itemId}`).remove();
+      await roomRef.child(`${firebaseSession.role}/garbageQueue/pending`).transaction((current) => {
+        const next = (current || 0) - (lines || 0);
+        return next > 0 ? next : 0;
+      });
+      return true;
+    }
+
     async function subscribeFirebaseRoom(roomId) {
       if (!firebaseReady || !roomId) return false;
       if (firebaseRoomRef && firebaseRoomListener) {
@@ -2918,6 +2931,14 @@
         } else {
           remoteState = null;
           updateRemoteHud(null);
+        }
+        const incomingItems = Object.entries(local.garbageQueue?.items || {})
+          .sort((a, b) => (a[1]?.createdAt || 0) - (b[1]?.createdAt || 0));
+        for (const [itemId, item] of incomingItems) {
+          if (processedGarbageIds.has(itemId)) continue;
+          processedGarbageIds.add(itemId);
+          enqueueIncomingGarbage(state, item.lines || 0);
+          consumeFirebaseGarbage(itemId, item.lines || 0).catch(() => {});
         }
         const roomReady = !!local.ready && !!remote.ready && (room.status === "ready" || room.status === "playing");
         if (roomReady) {
@@ -3039,6 +3060,37 @@
         source
       });
       sendFirebaseGarbage(lines, source).catch(() => {});
+    }
+
+    function enqueueIncomingGarbage(state, lines) {
+      const safeLines = Math.max(0, Math.floor(lines || 0));
+      if (!safeLines) return;
+      state.incomingGarbage.push(safeLines);
+      setStatus(state, `GARBAGE +${safeLines}`, 900);
+      updateHUD(state);
+    }
+
+    function applyGarbageRows(board, lines) {
+      const safeLines = Math.max(0, Math.floor(lines || 0));
+      if (!safeLines) return false;
+      let overflow = false;
+      for (let i = 0; i < safeLines; i++) {
+        if (board[0].some((cell) => cell !== 0)) overflow = true;
+        board.shift();
+        const hole = Math.floor(Math.random() * COLS);
+        const garbageRow = Array.from({ length: COLS }, (_, x) => (x === hole ? 0 : 7));
+        board.push(garbageRow);
+      }
+      return overflow;
+    }
+
+    function flushIncomingGarbage(state) {
+      if (!state.incomingGarbage.length) return;
+      const total = state.incomingGarbage.reduce((sum, lines) => sum + lines, 0);
+      state.incomingGarbage = [];
+      const overflow = applyGarbageRows(state.board, total);
+      if (overflow) state.gameOver = true;
+      setStatus(state, `GARBAGE ${total}`, 1000);
     }
 
     function syncVersusPreview(force = false) {
@@ -3241,6 +3293,7 @@
         applyScoring(state, 0, tspin);
         state.lastRotate = false;
         playLockSound();
+        flushIncomingGarbage(state);
         spawnNext(state);
         updateHUD(state);
         syncVersusPreview(true);
@@ -3336,6 +3389,7 @@
         comboWindowUntil: 0,
         comboFlashUntil: 0,
         lastComboBonus: 0,
+        incomingGarbage: [],
         dropCounter: 0,
         lastTime: 0,
         clearing: null,
@@ -3348,6 +3402,7 @@
       currentGameMode = mode;
       appEl.classList.toggle("mode-versus", mode === "versus");
       if (mode === "versus") {
+        processedGarbageIds = new Set();
         waitingForOpponent = !!options.waitForOpponent;
         versusMatchStarted = !!options.matchStarted;
         waitingStartedAt = options.waitStartedAt || (waitingForOpponent ? Date.now() : 0);
@@ -3368,6 +3423,7 @@
         renderVersusRoomHud();
       } else {
         clearVersusCountdown();
+        processedGarbageIds = new Set();
         waitingForOpponent = false;
         versusMatchStarted = false;
         waitingStartedAt = 0;
