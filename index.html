@@ -1181,39 +1181,6 @@
       line-height: 1.45;
     }
 
-    .lobby-controls {
-      display: none;
-      gap: 10px;
-      padding: 12px;
-      border: 1px solid rgba(71, 85, 105, 0.78);
-      border-radius: 14px;
-      background: rgba(15, 23, 42, 0.6);
-    }
-
-    .lobby-controls.is-open {
-      display: grid;
-    }
-
-    .lobby-switches {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .lobby-btn {
-      border: 1px solid rgba(71, 85, 105, 0.88);
-      background: rgba(15, 23, 42, 0.82);
-      color: #cbd5e1;
-      font-size: 0.78rem;
-      padding: 10px 8px;
-    }
-
-    .lobby-btn.is-active {
-      border-color: rgba(34, 211, 238, 0.96);
-      box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.22);
-      color: #ecfeff;
-    }
-
     .lobby-input {
       width: 100%;
       border: 1px solid rgba(71, 85, 105, 0.88);
@@ -1540,13 +1507,6 @@
         </aside>
         <div class="title-versus-main">
           <button id="versus-room-back" class="ghost title-room-back" type="button">← タイトルへ戻る</button>
-          <div id="lobby-controls" class="lobby-controls">
-            <div class="lobby-switches">
-              <button id="lobby-create" class="lobby-btn is-active" type="button">部屋作成</button>
-              <button id="lobby-join" class="lobby-btn" type="button">部屋参加</button>
-            </div>
-            <input id="join-room-input" class="lobby-input" type="text" inputmode="text" maxlength="8" placeholder="参加する ROOM ID">
-          </div>
           <div class="title-session">
             <div class="title-counter-grid">
               <div class="title-counter">
@@ -1716,10 +1676,6 @@
     const modeVersusBtn = document.getElementById("mode-versus");
     const titleVersusStageEl = document.getElementById("title-versus-stage");
     const versusRoomBackBtn = document.getElementById("versus-room-back");
-    const lobbyControlsEl = document.getElementById("lobby-controls");
-    const lobbyCreateBtn = document.getElementById("lobby-create");
-    const lobbyJoinBtn = document.getElementById("lobby-join");
-    const joinRoomInputEl = document.getElementById("join-room-input");
     const titleRoomSlotEls = Array.from(document.querySelectorAll("[data-room-slot]"));
     const playerNameInputEl = document.getElementById("player-name-input");
     const titleModeNoteEl = document.getElementById("title-mode-note");
@@ -1816,6 +1772,7 @@
     let versusCountdownEndsAt = 0;
     let versusStartFlashUntil = 0;
     let versusCountdownLastValue = 0;
+    let versusStartAtMs = 0;
     let selectedLobbyAction = "create";
     let firebaseReady = false;
     let firebaseApp = null;
@@ -2918,7 +2875,7 @@
           button.innerHTML = `<strong>ROOM ${roomKey}</strong><small>${hostName} さんが待機中です。タップするとこの部屋へ参加します。</small>`;
         } else {
           button.classList.add("is-busy");
-          button.disabled = true;
+          button.disabled = !!guestName;
           button.innerHTML = `<strong>ROOM ${roomKey}</strong><small>${guestName ? `${hostName || "HOST"} / ${guestName} が使用中です。` : `${hostName || "HOST"} さんがこの部屋で待機中です。`}</small>`;
         }
       });
@@ -2940,13 +2897,8 @@
     function handleTitleRoomSlotSelect(roomKey) {
       updateTitleSelection("versus");
       selectedLobbyRoomId = roomKey;
-      joinRoomInputEl.value = roomKey;
       const mode = getTitleRoomMode(roomKey);
-      if (mode === "join") {
-        updateLobbyAction("join");
-      } else {
-        updateLobbyAction("create");
-      }
+      selectedLobbyAction = mode === "join" ? "join" : "create";
       startSelectedMode();
     }
 
@@ -2980,6 +2932,7 @@
       return {
         roomId,
         status: "waiting",
+        startAt: null,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         hostId: firebaseAuth?.currentUser?.uid || null,
@@ -3139,7 +3092,8 @@
         current[role].state = "READY";
         const bothReady = !!current.host.rematchReady && !!current.guest.rematchReady;
         if (bothReady) {
-          current.status = "ready";
+          current.status = "countdown";
+          current.startAt = Date.now() + 4500;
           current.host.game = null;
           current.guest.game = null;
           current.host.garbageSent = 0;
@@ -3181,7 +3135,8 @@
           game: null
         };
         current.guestId = firebaseAuth?.currentUser?.uid || null;
-        current.status = "ready";
+        current.status = "countdown";
+        current.startAt = Date.now() + 4500;
         current.updatedAt = Date.now();
         current.lastEvent = {
           type: "room:join",
@@ -3293,8 +3248,8 @@
         if (rematchTriggered) {
           resetVersusMatchLocalState();
           waitingStartedAt = Date.now();
-          versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 再戦準備が整いました。3秒後に開始します。`;
-        } else if (!versusCountdownEndsAt && !versusMatchStarted) {
+        }
+        if (!versusStartAtMs && !versusMatchStarted) {
           versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: ${room.status || "waiting"}`;
         }
         renderVersusRoomHud();
@@ -3350,10 +3305,17 @@
           enqueueIncomingGarbage(state, item.lines || 0);
           consumeFirebaseGarbage(itemId, item.lines || 0).catch(() => {});
         }
-        const roomReady = !!local.ready && !!remote.ready && room.status === "ready";
-        if (roomReady && !versusCountdownEndsAt && !versusMatchStarted) {
-          beginVersusMatch(`FIREBASE ROOM ${roomId}: 2人そろったので対戦を開始します。`);
+        const roomReady = !!local.ready && !!remote.ready && room.status === "countdown" && !!room.startAt;
+        const roomPlaying = room.status === "playing" && !!room.startAt;
+        if (roomReady && !versusMatchStarted) {
+          beginVersusMatch(`FIREBASE ROOM ${roomId}: 同期中です。まもなく対戦を開始します。`, room.startAt);
+        } else if (roomPlaying && !versusMatchStarted) {
+          if (!versusStartAtMs) beginVersusMatch(`FIREBASE ROOM ${roomId}: 対戦を開始します。`, room.startAt);
+          if (Date.now() >= room.startAt - 120) {
+            completeVersusMatchStart(`FIREBASE ROOM ${roomId}: 対戦を開始します。`);
+          }
         } else if (!versusMatchStarted) {
+          clearVersusCountdown();
           waitingForOpponent = true;
           state.paused = true;
           updateHUD(state);
@@ -3405,16 +3367,12 @@
 
     function updateLobbyAction(action = selectedLobbyAction) {
       selectedLobbyAction = action;
-      lobbyCreateBtn.classList.toggle("is-active", action === "create");
-      lobbyJoinBtn.classList.toggle("is-active", action === "join");
-      joinRoomInputEl.disabled = action !== "join";
-      joinRoomInputEl.style.opacity = action === "join" ? "1" : "0.55";
       if (selectedGameMode === "versus") {
         titleModeNoteEl.classList.remove("is-warning");
         titleModeNoteEl.classList.add("is-info");
-        titleModeNoteEl.textContent = action === "create"
-          ? "対戦用: 新規ルーム作成の流れです。Firebase設定があれば room:create、無ければローカル擬似ルームで動きます。"
-          : "対戦用: 入力した ROOM ID へ参加する流れです。Firebase設定があれば room:join、無ければローカル擬似ルームで動きます。";
+        titleModeNoteEl.textContent = action === "join"
+          ? "参加可能な ROOM を選ぶと、その部屋へ参加します。"
+          : "空いている ROOM を選ぶと、その部屋で待機を開始します。";
       }
     }
 
@@ -3536,63 +3494,85 @@
     }
 
     function getVersusCountdownValue() {
-      if (!versusCountdownEndsAt) return 0;
-      return Math.max(0, Math.ceil((versusCountdownEndsAt - performance.now()) / 1000));
+      if (!versusStartAtMs) return 0;
+      const remaining = versusStartAtMs - Date.now();
+      if (remaining > 3000 || remaining <= 0) return 0;
+      return Math.max(0, Math.ceil(remaining / 1000));
+    }
+
+    function getVersusSyncValue() {
+      if (!versusStartAtMs) return 0;
+      return Math.max(0, versusStartAtMs - Date.now() - 3000);
     }
 
     function clearVersusCountdown() {
-      if (versusCountdownTimer) {
-        clearTimeout(versusCountdownTimer);
-        versusCountdownTimer = null;
-      }
       versusCountdownEndsAt = 0;
       versusCountdownLastValue = 0;
       versusStartFlashUntil = 0;
+      versusStartAtMs = 0;
     }
 
-    function beginVersusMatch(statusText = "") {
-      if (currentGameMode !== "versus" || versusMatchStarted) return;
+    async function markFirebaseRoomPlaying() {
+      if (!firebaseSession || !firebaseReady) return false;
+      const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
+      await roomRef.update({
+        status: "playing",
+        updatedAt: Date.now(),
+        lastEvent: {
+          type: "game:start",
+          at: Date.now()
+        }
+      });
+      return true;
+    }
+
+    function completeVersusMatchStart(statusText = "") {
+      if (versusMatchStarted) return;
       waitingForOpponent = false;
       ensureWaitingTimer(false);
-      clearVersusCountdown();
       clearRematchWaitTimer();
+      clearVersusCountdown();
       titleScreenEl.classList.remove("is-open");
-      versusCountdownEndsAt = performance.now() + 3000;
-      versusCountdownLastValue = 3;
-      playCountdownBeep(3);
-      state.paused = true;
+      versusMatchStarted = true;
+      incrementPlayCount(getVersusPlayIncrement()).catch(() => {});
+      versusStartFlashUntil = performance.now() + 700;
+      state.paused = false;
       if (versusRoomState) {
-        versusRoomState.phase = "countdown";
-        versusRoomState.players.local.state = "COUNT";
+        versusRoomState.phase = "playing";
+        versusRoomState.players.local.state = "LIVE";
         if (versusRoomState.players.remote.ready) {
-          versusRoomState.players.remote.state = "COUNT";
+          versusRoomState.players.remote.state = "LIVE";
         }
         renderVersusRoomHud();
       }
-      if (statusText) versusStatusEl.textContent = `${statusText} 3秒後に開始します。`;
+      if (statusText) versusStatusEl.textContent = statusText;
       updateHUD(state);
-      versusCountdownTimer = setTimeout(() => {
-        versusCountdownTimer = null;
-        versusCountdownEndsAt = 0;
-        versusCountdownLastValue = 0;
-        versusMatchStarted = true;
-        incrementPlayCount(getVersusPlayIncrement()).catch(() => {});
-        versusStartFlashUntil = performance.now() + 700;
-        state.paused = false;
-        if (versusRoomState) {
-          versusRoomState.phase = "playing";
-          versusRoomState.players.local.state = "LIVE";
-          if (versusRoomState.players.remote.ready) {
-            versusRoomState.players.remote.state = "LIVE";
-          }
-          renderVersusRoomHud();
+      playCountdownStartSound();
+      emitGameEvent("start", { roomId });
+      syncVersusPreview(true);
+      if (firebaseSession) markFirebaseRoomPlaying().catch(() => {});
+    }
+
+    function beginVersusMatch(statusText = "", startAtMs = Date.now() + 3000) {
+      if (currentGameMode !== "versus" || versusMatchStarted) return;
+      waitingForOpponent = false;
+      ensureWaitingTimer(false);
+      clearRematchWaitTimer();
+      titleScreenEl.classList.remove("is-open");
+      versusStartAtMs = Math.max(Date.now() + 400, startAtMs || Date.now() + 3000);
+      versusCountdownEndsAt = versusStartAtMs;
+      versusCountdownLastValue = 0;
+      state.paused = true;
+      if (versusRoomState) {
+        versusRoomState.phase = "countdown";
+        versusRoomState.players.local.state = "SYNC";
+        if (versusRoomState.players.remote.ready) {
+          versusRoomState.players.remote.state = "SYNC";
         }
-        if (statusText) versusStatusEl.textContent = statusText;
-        updateHUD(state);
-        playCountdownStartSound();
-        emitGameEvent("start", { roomId });
-        syncVersusPreview(true);
-      }, 3000);
+        renderVersusRoomHud();
+      }
+      if (statusText) versusStatusEl.textContent = statusText;
+      updateHUD(state);
     }
 
     function getGhostOffset(state) {
@@ -3636,12 +3616,31 @@
       drawNext(state);
       drawHold(state);
 
+      const localVersusPhase = versusRoomState?.players?.local?.state || "";
       if (state.gameOver || state.paused) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.56)";
         ctx.fillRect(0, 0, COLS, ROWS);
         ctx.fillStyle = "#f8fafc";
         ctx.font = "0.82px sans-serif";
-        ctx.fillText(state.gameOver ? "GAME OVER" : "PAUSED", 2.6, 9.7);
+        const pausedLabel = currentGameMode === "versus" && localVersusPhase === "WIN"
+          ? "YOU WIN"
+          : currentGameMode === "versus" && localVersusPhase === "LOSE"
+            ? "YOU LOSE"
+            : state.gameOver
+              ? "GAME OVER"
+              : "PAUSED";
+        ctx.fillText(pausedLabel, 2.2, 9.7);
+      }
+
+      const syncValue = getVersusSyncValue();
+      if (syncValue > 0) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+        ctx.fillRect(0, 0, COLS, ROWS);
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "bold 1.08px sans-serif";
+        ctx.fillText("SYNC...", 3.1, 9.7);
+        ctx.font = "0.52px sans-serif";
+        ctx.fillText("両端末の開始をそろえています", 1.9, 11.2);
       }
 
       const countdownValue = getVersusCountdownValue();
@@ -3877,7 +3876,7 @@
       titleCardEl.classList.toggle("is-versus", !isSingle);
       modeSingleBtn.classList.toggle("is-active", isSingle);
       modeVersusBtn.classList.toggle("is-active", !isSingle);
-      lobbyControlsEl.classList.toggle("is-open", !isSingle);
+      titleStartBtn.style.display = isSingle ? "" : "none";
       titleModeNoteEl.classList.remove("is-warning", "is-info");
       if (isSingle) {
         titleModeNoteEl.textContent = "モードを選択して「ゲーム開始」ボタンをクリック/タップしてください。";
@@ -3934,9 +3933,9 @@
       }
       try {
         if (selectedGameMode === "versus") {
-          const requestedRoomId = (selectedLobbyRoomId || joinRoomInputEl.value.trim()).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
-          if (selectedLobbyAction === "join" && !requestedRoomId) {
-            titleModeNoteEl.textContent = "部屋参加を選んだ場合は ROOM ID を入力してください。";
+          const requestedRoomId = (selectedLobbyRoomId || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+          if (!requestedRoomId) {
+            titleModeNoteEl.textContent = "左の ROOM カードをタップして待機または参加してください。";
             titleModeNoteEl.classList.remove("is-info");
             titleModeNoteEl.classList.add("is-warning");
             shouldStart = false;
@@ -4069,6 +4068,10 @@
       const delta = time - state.lastTime;
       state.lastTime = time;
       const speed = Math.max(1000 - (state.level - 1) * 90, 120);
+
+      if (currentGameMode === "versus" && versusStartAtMs && !versusMatchStarted && Date.now() >= versusStartAtMs) {
+        completeVersusMatchStart(`FIREBASE ROOM ${roomId}: 対戦を開始します。`);
+      }
 
       if (state.clearing) {
         const elapsed = performance.now() - state.clearing.startedAt;
@@ -4377,23 +4380,12 @@
       e.preventDefault();
       updateTitleSelection("single");
     }, { passive: false });
-    lobbyCreateBtn.addEventListener("click", () => {
-      selectedLobbyRoomId = "";
-      updateLobbyAction("create");
-    });
-    lobbyJoinBtn.addEventListener("click", () => {
-      selectedLobbyRoomId = "";
-      updateLobbyAction("join");
-    });
     titleRoomSlotEls.forEach((button) => {
       button.addEventListener("click", () => handleTitleRoomSlotSelect(button.dataset.roomSlot));
       button.addEventListener("touchstart", (e) => {
         e.preventDefault();
         handleTitleRoomSlotSelect(button.dataset.roomSlot);
       }, { passive: false });
-    });
-    joinRoomInputEl.addEventListener("input", () => {
-      joinRoomInputEl.value = joinRoomInputEl.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
     });
     playerNameInputEl.addEventListener("input", () => {
       playerNameInputEl.value = sanitizePlayerName(playerNameInputEl.value);
