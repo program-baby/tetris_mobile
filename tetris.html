@@ -1791,6 +1791,7 @@
     let firebaseCountdownSyncPending = false;
     let globalPlayStats = { today: 0, total: 0 };
     let processedGarbageIds = new Set();
+    let playCountCommittedForMatch = false;
     let waitingStartedAt = 0;
     let waitingTimer = null;
     let localRematchRequested = false;
@@ -3091,6 +3092,7 @@
       gameOverHandled = false;
       waitingForOpponent = false;
       versusMatchStarted = false;
+      playCountCommittedForMatch = false;
       clearVersusCountdown();
       clearRematchWaitTimer();
       processedGarbageIds = new Set();
@@ -3584,7 +3586,10 @@
       clearVersusCountdown();
       titleScreenEl.classList.remove("is-open");
       versusMatchStarted = true;
-      incrementPlayCount(getVersusPlayIncrement()).catch(() => {});
+      if (!playCountCommittedForMatch) {
+        playCountCommittedForMatch = true;
+        incrementPlayCount(getVersusPlayIncrement()).catch(() => {});
+      }
       versusStartFlashUntil = performance.now() + 700;
       state.paused = false;
       if (versusRoomState) {
@@ -3872,6 +3877,7 @@
       currentGameMode = mode;
       appEl.classList.toggle("mode-versus", mode === "versus");
       if (mode === "versus") {
+        playCountCommittedForMatch = false;
         localRematchRequested = false;
         clearRematchWaitTimer();
         processedGarbageIds = new Set();
@@ -3895,6 +3901,7 @@
         renderVersusRoomHud();
         renderTitleRoomSlots();
       } else {
+        playCountCommittedForMatch = false;
         clearRematchWaitTimer();
         clearVersusCountdown();
         clearFirebaseDisconnectHandlers();
@@ -3999,14 +4006,14 @@
                 remoteName: selectedLobbyAction === "join"
                   ? (result.room.host?.name || "HOST")
                   : "WAITING...",
-                localState: "READY",
+                localState: "SYNC",
                 remoteState: selectedLobbyAction === "join" ? "HOST" : "WAIT",
                 remoteReady: selectedLobbyAction === "join",
-                waitForOpponent: selectedLobbyAction !== "join",
+                waitForOpponent: true,
                 matchStarted: false,
                 waitStartedAt: result.room.createdAt || Date.now(),
                 statusText: selectedLobbyAction === "join"
-                  ? `FIREBASE JOIN: ROOM ${result.room.roomId} に参加しました。state:update を接続できます。`
+                  ? `FIREBASE JOIN: ROOM ${result.room.roomId} に参加しました。開始同期を待っています。`
                   : `FIREBASE CREATE: ROOM ${result.room.roomId} を作成しました。guest を待機中です。`
               };
             } else {
@@ -4028,14 +4035,14 @@
               roomId: requestedRoomId || createRoomId(),
               localName: savedName,
               remoteName: selectedLobbyAction === "join" ? "HOST BOT" : "GUEST BOT",
-              localState: "READY",
+              localState: "SYNC",
               remoteState: selectedLobbyAction === "join" ? "HOST" : "JOIN",
               remoteReady: selectedLobbyAction === "join",
-              waitForOpponent: selectedLobbyAction !== "join",
+              waitForOpponent: true,
               matchStarted: false,
               waitStartedAt: Date.now(),
               statusText: selectedLobbyAction === "join"
-                ? `LOCAL JOIN: ROOM ${requestedRoomId} に参加した想定で HUD を起動します。`
+                ? `LOCAL JOIN: ROOM ${requestedRoomId} に参加した想定で開始同期を待っています。`
                 : "LOCAL CREATE: ルームを作成しました。参加者が入るまで開始しません。"
             })
           });
