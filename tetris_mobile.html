@@ -2861,6 +2861,25 @@
     }
 
     function getTitleRoomSnapshot(roomKey) {
+      if (
+        currentGameMode === "versus" &&
+        waitingForOpponent &&
+        roomId === roomKey &&
+        versusRoomState?.players?.local?.name
+      ) {
+        return {
+          host: {
+            name: versusRoomState.players.local.name,
+            state: versusRoomState.players.local.state || "READY"
+          },
+          guest: versusRoomState.players.remote.ready
+            ? {
+                name: versusRoomState.players.remote.name,
+                state: versusRoomState.players.remote.state || "READY"
+              }
+            : null
+        };
+      }
       return titleRoomSnapshots[roomKey] || null;
     }
 
