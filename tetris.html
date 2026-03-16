@@ -1479,10 +1479,6 @@
         <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
         <div class="next-label">HOLD</div>
         <canvas id="hold" width="76" height="76" aria-label="Hold piece"></canvas>
-        <div id="ranking-box" class="ranking-box" role="button" aria-label="Show leaderboard">
-          <div class="next-label">LOCAL TOP 10</div>
-          <div id="ranking-ticker" class="ranking-ticker"></div>
-        </div>
         <div class="rules-panel">
           <h2 class="rules-title">RULES</h2>
           <ol class="rules-list">
@@ -2052,19 +2048,23 @@
     function renderBestScore(list = loadRanking(), highlight = false) {
       const best = getBestEntry(list);
       if (!best) {
-        rankingTickerEl.innerHTML = `<div class="ranking-empty">No scores yet</div>`;
+        if (rankingTickerEl) {
+          rankingTickerEl.innerHTML = `<div class="ranking-empty">No scores yet</div>`;
+        }
         boardBestScoreEl.textContent = "0";
         if (landscapeBestScoreEl) landscapeBestScoreEl.textContent = "BEST 0";
         return;
       }
       boardBestScoreEl.textContent = String(best.score);
       if (landscapeBestScoreEl) landscapeBestScoreEl.textContent = `BEST ${best.score}`;
-      rankingTickerEl.innerHTML = `
-        <div class="best-label">BEST SCORE</div>
-        <div class="best-value">${best.score}</div>
-        <div class="best-owner">${best.name}</div>
-      `;
-      if (highlight) {
+      if (rankingTickerEl) {
+        rankingTickerEl.innerHTML = `
+          <div class="best-label">BEST SCORE</div>
+          <div class="best-value">${best.score}</div>
+          <div class="best-owner">${best.name}</div>
+        `;
+      }
+      if (highlight && rankingTickerEl) {
         rankingTickerEl.classList.remove("record-updated");
         void rankingTickerEl.offsetWidth;
         rankingTickerEl.classList.add("record-updated");
@@ -4683,11 +4683,13 @@
     adminResetAllBtn.addEventListener("click", () => {
       resetAllFirebaseRooms().catch(() => {});
     });
-    rankingBoxEl.addEventListener("click", openRankingModal);
-    rankingBoxEl.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      openRankingModal();
-    }, { passive: false });
+    if (rankingBoxEl) {
+      rankingBoxEl.addEventListener("click", openRankingModal);
+      rankingBoxEl.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        openRankingModal();
+      }, { passive: false });
+    }
     rankingCloseBtn.addEventListener("click", closeRankingModal);
     rankingModalEl.addEventListener("click", (e) => {
       if (e.target === rankingModalEl) closeRankingModal();
