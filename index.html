@@ -589,6 +589,45 @@
       line-height: 1.5;
     }
 
+    .admin-note {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.76rem;
+      line-height: 1.5;
+    }
+
+    .admin-room-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .admin-room-item {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid rgba(71, 85, 105, 0.72);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.56);
+    }
+
+    .admin-room-item strong {
+      font-size: 0.9rem;
+      color: #f8fafc;
+    }
+
+    .admin-room-meta {
+      color: #cbd5e1;
+      font-size: 0.76rem;
+      line-height: 1.45;
+    }
+
+    .admin-room-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .record-celebration {
       position: fixed;
       inset: 0;
@@ -1545,6 +1584,7 @@
       <p id="title-mode-note" class="title-note">1人用はボタンを押すと開始、対戦用は ROOM を選ぶと待機/参加します。</p>
       <div class="title-actions">
         <button id="title-ranking" class="ghost title-start-btn" type="button">ランキング</button>
+        <button id="title-admin" class="ghost title-start-btn" type="button">管理</button>
       </div>
     </div>
   </section>
@@ -1574,6 +1614,20 @@
         <li>RESET は長押し 0.7 秒</li>
         <li>対戦用は ROOM を作成して、相手参加後に 3 秒カウントダウンで開始</li>
       </ol>
+    </div>
+  </section>
+
+  <section id="admin-modal" class="ranking-modal" aria-hidden="true">
+    <div class="ranking-modal-card">
+      <div class="ranking-modal-head">
+        <h2 class="ranking-modal-title">管理画面</h2>
+        <button id="admin-close" class="ghost ranking-close" type="button">閉じる</button>
+      </div>
+      <p class="admin-note">詰まった公開ルームを手動で解放できます。必要な部屋だけリセットするか、全ルーム解放を実行してください。</p>
+      <div class="admin-room-actions">
+        <button id="admin-reset-all" class="danger tool-btn" type="button">全ルーム解放</button>
+      </div>
+      <div id="admin-room-list" class="admin-room-list"></div>
     </div>
   </section>
 
@@ -1674,6 +1728,10 @@
     const rulesModalEl = document.getElementById("rules-modal");
     const rulesOpenBtn = document.getElementById("rules-open");
     const rulesCloseBtn = document.getElementById("rules-close");
+    const adminModalEl = document.getElementById("admin-modal");
+    const adminCloseBtn = document.getElementById("admin-close");
+    const adminResetAllBtn = document.getElementById("admin-reset-all");
+    const adminRoomListEl = document.getElementById("admin-room-list");
     const titleScreenEl = document.getElementById("title-screen");
     const titleCardEl = titleScreenEl.querySelector(".title-card");
     const modeSingleBtn = document.getElementById("mode-single");
@@ -1684,6 +1742,7 @@
     const playerNameInputEl = document.getElementById("player-name-input");
     const titleModeNoteEl = document.getElementById("title-mode-note");
     const titleRankingBtn = document.getElementById("title-ranking");
+    const titleAdminBtn = document.getElementById("title-admin");
     const playCountTodayEl = document.getElementById("play-count-today");
     const playCountTotalEl = document.getElementById("play-count-total");
     const titleWaitingEl = document.getElementById("title-waiting");
@@ -2082,6 +2141,90 @@
       }
       pausedByRulesModal = false;
       updateHUD(state);
+    }
+
+    function ensureAdminUnlocked() {
+      const input = window.prompt("管理用パスワードを入力してください", "");
+      if (input === null) return false;
+      if (input.trim() !== VERSUS_DEV_PASSWORD) {
+        titleModeNoteEl.textContent = "管理用パスワードが違います。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        return false;
+      }
+      return true;
+    }
+
+    function getAdminRoomText(roomKey) {
+      const room = titleRoomSnapshots[roomKey];
+      const host = room?.host?.name || "-";
+      const guest = room?.guest?.name || "未参加";
+      const status = room?.status || "empty";
+      const memberCount = host !== "-" ? (guest !== "未参加" ? "2/2" : "1/2") : "0/2";
+      return { host, guest, status, memberCount };
+    }
+
+    function renderAdminRoomList() {
+      if (!adminRoomListEl) return;
+      adminRoomListEl.innerHTML = "";
+      TITLE_PUBLIC_ROOMS.forEach((roomKey) => {
+        const meta = getAdminRoomText(roomKey);
+        const item = document.createElement("div");
+        item.className = "admin-room-item";
+        item.innerHTML = `
+          <strong>${roomKey}</strong>
+          <div class="admin-room-meta">状態: ${meta.status}<br>人数: ${meta.memberCount}<br>HOST: ${meta.host}<br>GUEST: ${meta.guest}</div>
+          <div class="admin-room-actions">
+            <button class="ghost tool-btn" type="button" data-admin-reset="${roomKey}">${roomKey} をリセット</button>
+          </div>
+        `;
+        adminRoomListEl.appendChild(item);
+      });
+      adminRoomListEl.querySelectorAll("[data-admin-reset]").forEach((button) => {
+        button.addEventListener("click", () => {
+          resetFirebaseRoom(button.dataset.adminReset).catch(() => {});
+        });
+      });
+    }
+
+    function openAdminModal() {
+      if (!hasFirebaseConfig()) {
+        titleModeNoteEl.textContent = "Firebase 未設定のため管理画面は使えません。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        return;
+      }
+      if (!ensureAdminUnlocked()) return;
+      renderAdminRoomList();
+      adminModalEl.classList.add("is-open");
+      adminModalEl.setAttribute("aria-hidden", "false");
+    }
+
+    function closeAdminModal() {
+      adminModalEl.classList.remove("is-open");
+      adminModalEl.setAttribute("aria-hidden", "true");
+    }
+
+    async function resetFirebaseRoom(roomKey) {
+      const ok = await initFirebaseAdapter();
+      if (!ok) return false;
+      await firebaseDb.ref(`rooms/${roomKey}`).set(null);
+      titleRoomSnapshots[roomKey] = null;
+      renderTitleRoomSlots();
+      renderAdminRoomList();
+      titleModeNoteEl.textContent = `${roomKey} を解放しました。`;
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+      return true;
+    }
+
+    async function resetAllFirebaseRooms() {
+      for (const roomKey of TITLE_PUBLIC_ROOMS) {
+        await resetFirebaseRoom(roomKey);
+      }
+      titleModeNoteEl.textContent = "公開ルームをすべて解放しました。";
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
     }
 
     function openRecordCelebration(score) {
@@ -4508,6 +4651,16 @@
     });
     titleRankingBtn.addEventListener("click", () => {
       openRankingModal();
+    });
+    titleAdminBtn.addEventListener("click", () => {
+      openAdminModal();
+    });
+    adminCloseBtn.addEventListener("click", closeAdminModal);
+    adminModalEl.addEventListener("click", (e) => {
+      if (e.target === adminModalEl) closeAdminModal();
+    });
+    adminResetAllBtn.addEventListener("click", () => {
+      resetAllFirebaseRooms().catch(() => {});
     });
     rankingBoxEl.addEventListener("click", openRankingModal);
     rankingBoxEl.addEventListener("touchstart", (e) => {
