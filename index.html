@@ -1010,6 +1010,93 @@
       overscroll-behavior: contain;
     }
 
+    .title-card.is-versus {
+      width: min(96vw, 760px);
+    }
+
+    .title-card.is-versus .title-eyebrow,
+    .title-card.is-versus .title-hero,
+    .title-card.is-versus .title-sub,
+    .title-card.is-versus .mode-grid {
+      display: none;
+    }
+
+    .title-versus-stage {
+      display: none;
+      gap: 14px;
+    }
+
+    .title-card.is-versus .title-versus-stage {
+      display: grid;
+    }
+
+    .title-room-panel {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid rgba(71, 85, 105, 0.78);
+      border-radius: 14px;
+      background: rgba(9, 16, 28, 0.72);
+    }
+
+    .title-room-panel-head {
+      color: #67e8f9;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .title-room-back {
+      justify-self: start;
+      padding: 8px 12px;
+      font-size: 0.76rem;
+    }
+
+    .title-room-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .title-room-slot {
+      display: grid;
+      gap: 4px;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(71, 85, 105, 0.88);
+      background: rgba(15, 23, 42, 0.82);
+      color: #e2e8f0;
+    }
+
+    .title-room-slot.is-empty {
+      border-style: dashed;
+      color: #cbd5e1;
+    }
+
+    .title-room-slot.is-joinable {
+      border-color: rgba(34, 197, 94, 0.9);
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+    }
+
+    .title-room-slot.is-busy {
+      opacity: 0.7;
+    }
+
+    .title-room-slot strong {
+      font-size: 0.92rem;
+    }
+
+    .title-room-slot small {
+      color: #94a3b8;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+
+    .title-versus-main {
+      display: grid;
+      gap: 10px;
+    }
+
     .title-eyebrow {
       margin: 0;
       color: #67e8f9;
@@ -1231,6 +1318,13 @@
       padding: 12px 8px;
     }
 
+    @media (min-width: 760px) {
+      .title-card.is-versus .title-versus-stage {
+        grid-template-columns: minmax(230px, 260px) minmax(0, 1fr);
+        align-items: start;
+      }
+    }
+
     @media (max-height: 760px) {
       .title-screen {
         place-items: start center;
@@ -1426,39 +1520,61 @@
           <span class="mode-option-copy">通信対戦用の入口です。現状はロビー準備中です。</span>
         </button>
       </div>
-      <div id="lobby-controls" class="lobby-controls">
-        <div class="lobby-switches">
-          <button id="lobby-create" class="lobby-btn is-active" type="button">部屋作成</button>
-          <button id="lobby-join" class="lobby-btn" type="button">部屋参加</button>
+      <div id="title-versus-stage" class="title-versus-stage">
+        <aside id="title-room-panel" class="title-room-panel" aria-live="polite">
+          <div class="title-room-panel-head">公開ルーム</div>
+          <div class="title-room-list">
+            <button type="button" class="title-room-slot is-empty" data-room-slot="GATE1">
+              <strong>ROOM GATE1</strong>
+              <small>空き部屋です。タップすると待機を開始します。</small>
+            </button>
+            <button type="button" class="title-room-slot is-empty" data-room-slot="GATE2">
+              <strong>ROOM GATE2</strong>
+              <small>空き部屋です。タップすると待機を開始します。</small>
+            </button>
+            <button type="button" class="title-room-slot is-empty" data-room-slot="GATE3">
+              <strong>ROOM GATE3</strong>
+              <small>空き部屋です。タップすると待機を開始します。</small>
+            </button>
+          </div>
+        </aside>
+        <div class="title-versus-main">
+          <button id="versus-room-back" class="ghost title-room-back" type="button">← タイトルへ戻る</button>
+          <div id="lobby-controls" class="lobby-controls">
+            <div class="lobby-switches">
+              <button id="lobby-create" class="lobby-btn is-active" type="button">部屋作成</button>
+              <button id="lobby-join" class="lobby-btn" type="button">部屋参加</button>
+            </div>
+            <input id="join-room-input" class="lobby-input" type="text" inputmode="text" maxlength="8" placeholder="参加する ROOM ID">
+          </div>
+          <div class="title-session">
+            <div class="title-counter-grid">
+              <div class="title-counter">
+                <span>TODAY</span>
+                <strong id="play-count-today">0</strong>
+              </div>
+              <div class="title-counter">
+                <span>TOTAL</span>
+                <strong id="play-count-total">0</strong>
+              </div>
+            </div>
+            <div id="title-waiting" class="title-waiting" aria-live="polite">
+              <div class="title-waiting-label">対戦待機中</div>
+              <div id="title-waiting-status" class="title-waiting-status">待機中の部屋はありません</div>
+              <div class="title-waiting-meta">
+                <div>MEMBERS: <strong id="title-waiting-members">0/2</strong></div>
+                <div>ELAPSED: <strong id="title-waiting-elapsed">0:00</strong></div>
+                <div>ROOM: <strong id="title-waiting-room">----</strong></div>
+                <div>WAITING: <strong id="title-waiting-host">-</strong></div>
+                <div>JOINED: <strong id="title-waiting-remote">-</strong></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <input id="join-room-input" class="lobby-input" type="text" inputmode="text" maxlength="8" placeholder="参加する ROOM ID">
       </div>
       <div class="player-name-box">
         <label for="player-name-input" class="player-name-label">ユーザー名</label>
         <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
-      </div>
-      <div class="title-session">
-        <div class="title-counter-grid">
-          <div class="title-counter">
-            <span>TODAY</span>
-            <strong id="play-count-today">0</strong>
-          </div>
-          <div class="title-counter">
-            <span>TOTAL</span>
-            <strong id="play-count-total">0</strong>
-          </div>
-        </div>
-        <div id="title-waiting" class="title-waiting" aria-live="polite">
-          <div class="title-waiting-label">対戦待機中</div>
-          <div id="title-waiting-status" class="title-waiting-status">待機中の部屋はありません</div>
-          <div class="title-waiting-meta">
-            <div>MEMBERS: <strong id="title-waiting-members">0/2</strong></div>
-            <div>ELAPSED: <strong id="title-waiting-elapsed">0:00</strong></div>
-            <div>ROOM: <strong id="title-waiting-room">----</strong></div>
-            <div>WAITING: <strong id="title-waiting-host">-</strong></div>
-            <div>JOINED: <strong id="title-waiting-remote">-</strong></div>
-          </div>
-        </div>
       </div>
       <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
       <p id="title-mode-note" class="title-note">モードを選択して「ゲーム開始」ボタンをクリック/タップしてください。</p>
@@ -1558,6 +1674,7 @@
     const VERSUS_DEV_PASSWORD = "dualgate2026";
     const VERSUS_UNLOCK_KEY = "tetrisVersusUnlockedV1";
     const FIREBASE_CONFIG = window.TETRIS_FIREBASE_CONFIG || null;
+    const TITLE_PUBLIC_ROOMS = ["GATE1", "GATE2", "GATE3"];
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -1594,12 +1711,16 @@
     const rulesOpenBtn = document.getElementById("rules-open");
     const rulesCloseBtn = document.getElementById("rules-close");
     const titleScreenEl = document.getElementById("title-screen");
+    const titleCardEl = titleScreenEl.querySelector(".title-card");
     const modeSingleBtn = document.getElementById("mode-single");
     const modeVersusBtn = document.getElementById("mode-versus");
+    const titleVersusStageEl = document.getElementById("title-versus-stage");
+    const versusRoomBackBtn = document.getElementById("versus-room-back");
     const lobbyControlsEl = document.getElementById("lobby-controls");
     const lobbyCreateBtn = document.getElementById("lobby-create");
     const lobbyJoinBtn = document.getElementById("lobby-join");
     const joinRoomInputEl = document.getElementById("join-room-input");
+    const titleRoomSlotEls = Array.from(document.querySelectorAll("[data-room-slot]"));
     const playerNameInputEl = document.getElementById("player-name-input");
     const titleModeNoteEl = document.getElementById("title-mode-note");
     const titleStartBtn = document.getElementById("title-start");
@@ -1712,6 +1833,9 @@
     let waitingTimer = null;
     let localRematchRequested = false;
     let rematchWaitTimer = null;
+    let selectedLobbyRoomId = "";
+    let titleRoomSnapshots = {};
+    let titleRoomRefs = [];
 
     if (debugHudEl) {
       debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
@@ -2736,6 +2860,71 @@
       ensureWaitingTimer(showWaiting);
     }
 
+    function getTitleRoomSnapshot(roomKey) {
+      return titleRoomSnapshots[roomKey] || null;
+    }
+
+    function getTitleRoomMode(roomKey) {
+      const room = getTitleRoomSnapshot(roomKey);
+      const hostName = room?.host?.name || "";
+      const guestName = room?.guest?.name || "";
+      const localName = getStoredPlayerName();
+      if (!hostName || room?.host?.state === "LEFT") return "create";
+      if (hostName === localName && !guestName) return "busy";
+      if (!guestName) return "join";
+      return "busy";
+    }
+
+    function renderTitleRoomSlots() {
+      titleRoomSlotEls.forEach((button) => {
+        const roomKey = button.dataset.roomSlot;
+        const room = getTitleRoomSnapshot(roomKey);
+        const mode = getTitleRoomMode(roomKey);
+        const hostName = room?.host?.name || "";
+        const guestName = room?.guest?.name || "";
+        button.classList.remove("is-empty", "is-joinable", "is-busy");
+        if (mode === "create") {
+          button.classList.add("is-empty");
+          button.disabled = false;
+          button.innerHTML = `<strong>ROOM ${roomKey}</strong><small>空き部屋です。タップすると ${getStoredPlayerName()} さんが待機を開始します。</small>`;
+        } else if (mode === "join") {
+          button.classList.add("is-joinable");
+          button.disabled = false;
+          button.innerHTML = `<strong>ROOM ${roomKey}</strong><small>${hostName} さんが待機中です。タップするとこの部屋へ参加します。</small>`;
+        } else {
+          button.classList.add("is-busy");
+          button.disabled = true;
+          button.innerHTML = `<strong>ROOM ${roomKey}</strong><small>${guestName ? `${hostName || "HOST"} / ${guestName} が使用中です。` : `${hostName || "HOST"} さんがこの部屋で待機中です。`}</small>`;
+        }
+      });
+    }
+
+    function subscribeTitleRoomSlots() {
+      if (!firebaseReady || titleRoomRefs.length) return;
+      titleRoomRefs = TITLE_PUBLIC_ROOMS.map((roomKey) => {
+        const ref = firebaseDb.ref(`rooms/${roomKey}`);
+        const listener = (snapshot) => {
+          titleRoomSnapshots[roomKey] = snapshot.val();
+          renderTitleRoomSlots();
+        };
+        ref.on("value", listener);
+        return { ref, listener };
+      });
+    }
+
+    function handleTitleRoomSlotSelect(roomKey) {
+      updateTitleSelection("versus");
+      selectedLobbyRoomId = roomKey;
+      joinRoomInputEl.value = roomKey;
+      const mode = getTitleRoomMode(roomKey);
+      if (mode === "join") {
+        updateLobbyAction("join");
+      } else {
+        updateLobbyAction("create");
+      }
+      startSelectedMode();
+    }
+
     function hasFirebaseConfig() {
       return !!(FIREBASE_CONFIG && typeof FIREBASE_CONFIG === "object");
     }
@@ -2758,6 +2947,7 @@
       }
       firebaseReady = true;
       subscribeGlobalPlayStats().catch(() => {});
+      subscribeTitleRoomSlots();
       return true;
     }
 
@@ -3653,6 +3843,8 @@
     function updateTitleSelection(mode = selectedGameMode) {
       selectedGameMode = mode;
       const isSingle = mode === "single";
+      if (isSingle) selectedLobbyRoomId = "";
+      titleCardEl.classList.toggle("is-versus", !isSingle);
       modeSingleBtn.classList.toggle("is-active", isSingle);
       modeVersusBtn.classList.toggle("is-active", !isSingle);
       lobbyControlsEl.classList.toggle("is-open", !isSingle);
@@ -3660,6 +3852,7 @@
       if (isSingle) {
         titleModeNoteEl.textContent = "モードを選択して「ゲーム開始」ボタンをクリック/タップしてください。";
       } else {
+        renderTitleRoomSlots();
         updateLobbyAction(selectedLobbyAction);
         if (!isVersusUnlocked()) {
           titleModeNoteEl.textContent = "対戦用は工事中です。工事用パスワードを入力した場合のみ入れます。";
@@ -3706,7 +3899,7 @@
       }
       try {
         if (selectedGameMode === "versus") {
-          const requestedRoomId = joinRoomInputEl.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+          const requestedRoomId = (selectedLobbyRoomId || joinRoomInputEl.value.trim()).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
           if (selectedLobbyAction === "join" && !requestedRoomId) {
             titleModeNoteEl.textContent = "部屋参加を選んだ場合は ROOM ID を入力してください。";
             titleModeNoteEl.classList.remove("is-info");
@@ -3718,7 +3911,7 @@
           if (hasFirebaseConfig()) {
             const result = selectedLobbyAction === "join"
               ? await joinFirebaseRoom(requestedRoomId, savedName)
-              : await createFirebaseRoom(createRoomId(), savedName);
+              : await createFirebaseRoom(requestedRoomId || createRoomId(), savedName);
             if (result.ok) {
               await subscribeFirebaseRoom(result.room.roomId);
               roomOptions = {
@@ -3745,7 +3938,7 @@
           }
           setGameMode("versus", {
             ...(roomOptions || {
-              roomId: selectedLobbyAction === "join" ? requestedRoomId : createRoomId(),
+              roomId: requestedRoomId || createRoomId(),
               localName: savedName,
               remoteName: selectedLobbyAction === "join" ? "HOST BOT" : "GUEST BOT",
               localState: "READY",
@@ -3817,6 +4010,7 @@
     updateHUD(state);
     renderRanking();
     renderTitleSessionInfo();
+    renderTitleRoomSlots();
     if (hasFirebaseConfig()) {
       initFirebaseAdapter().catch(() => {});
     }
@@ -4133,8 +4327,26 @@
 
     modeSingleBtn.addEventListener("click", () => updateTitleSelection("single"));
     modeVersusBtn.addEventListener("click", () => updateTitleSelection("versus"));
-    lobbyCreateBtn.addEventListener("click", () => updateLobbyAction("create"));
-    lobbyJoinBtn.addEventListener("click", () => updateLobbyAction("join"));
+    versusRoomBackBtn.addEventListener("click", () => updateTitleSelection("single"));
+    versusRoomBackBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      updateTitleSelection("single");
+    }, { passive: false });
+    lobbyCreateBtn.addEventListener("click", () => {
+      selectedLobbyRoomId = "";
+      updateLobbyAction("create");
+    });
+    lobbyJoinBtn.addEventListener("click", () => {
+      selectedLobbyRoomId = "";
+      updateLobbyAction("join");
+    });
+    titleRoomSlotEls.forEach((button) => {
+      button.addEventListener("click", () => handleTitleRoomSlotSelect(button.dataset.roomSlot));
+      button.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        handleTitleRoomSlotSelect(button.dataset.roomSlot);
+      }, { passive: false });
+    });
     joinRoomInputEl.addEventListener("input", () => {
       joinRoomInputEl.value = joinRoomInputEl.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
     });
@@ -4144,6 +4356,7 @@
     playerNameInputEl.addEventListener("change", () => {
       savePlayerName(playerNameInputEl.value);
       syncPlayerNameInput();
+      renderTitleRoomSlots();
     });
     titleStartBtn.addEventListener("click", startSelectedMode);
     titleRankingBtn.addEventListener("click", () => {
