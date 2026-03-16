@@ -1319,9 +1319,10 @@
   <main id="app" class="app">
     <section id="gameArea" class="arena">
       <aside id="leftTools" class="panel left-tools">
-        <button id="pause" class="ghost tool-btn" type="button">Pause</button>
-        <button id="rules-open" class="ghost tool-btn" type="button">Rules</button>
-        <button id="restart" class="danger tool-btn" type="button">Hold Reset</button>
+        <button id="title-return-top" class="ghost tool-btn" type="button">タイトルへ戻る</button>
+        <button id="pause" class="ghost tool-btn" type="button">一時停止</button>
+        <button id="rules-open" class="ghost tool-btn" type="button">ルール</button>
+        <button id="restart" class="danger tool-btn" type="button">リセット長押し</button>
         <div class="landscape-ranking">
           <div class="landscape-ranking-head">
             <div class="landscape-ranking-title">LOCAL TOP 10</div>
@@ -1473,7 +1474,7 @@
       </div>
     </section>
 
-    <p class="hint">Reset長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒)</p>
+    <p class="hint">リセット長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒)</p>
   </main>
 
   <section id="title-screen" class="title-screen is-open" aria-label="Title screen">
@@ -1734,6 +1735,7 @@
 
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
+    const titleReturnTopBtn = document.getElementById("title-return-top");
     const leftBtn = document.getElementById("left");
     const rightBtn = document.getElementById("right");
     const rotateCcwBtn = document.getElementById("rotate-ccw");
@@ -3065,6 +3067,17 @@
       }
     }
 
+    function returnToTitleFromSingle(message = "タイトル画面へ戻りました。") {
+      state = createState();
+      gameOverHandled = false;
+      setGameMode("single");
+      openTitleScreen();
+      titleModeNoteEl.textContent = message;
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+      updateHUD(state);
+    }
+
     function startRematchWaitTimer() {
       clearRematchWaitTimer();
       rematchWaitTimer = setTimeout(() => {
@@ -3710,7 +3723,7 @@
       levelEl.textContent = state.level;
       comboEl.textContent = state.combo > 0 ? `x${state.combo + 1}` : "-";
       statusEl.textContent = state.statusText || "";
-      pauseBtn.textContent = state.paused ? "Resume" : "Pause";
+      pauseBtn.textContent = state.paused ? "再開" : "一時停止";
       updateComboHud(state);
     }
 
@@ -4262,7 +4275,7 @@
       e.preventDefault();
       if (resetTimer) return;
       restartBtn.classList.add("holding");
-      restartBtn.textContent = "Keep Holding";
+      restartBtn.textContent = "そのまま長押し";
       resetTimer = setTimeout(() => {
         state = createState();
         gameOverHandled = false;
@@ -4278,7 +4291,7 @@
           updateRemoteHud(null);
         }
         restartBtn.classList.remove("holding");
-        restartBtn.textContent = "Hold Reset";
+        restartBtn.textContent = "リセット長押し";
         resetTimer = null;
       }, RESET_HOLD_MS);
     }
@@ -4290,7 +4303,7 @@
         resetTimer = null;
       }
       restartBtn.classList.remove("holding");
-      restartBtn.textContent = "Hold Reset";
+      restartBtn.textContent = "リセット長押し";
     }
 
     function startHardDropHold(e) {
@@ -4298,7 +4311,7 @@
       unlockAudio();
       if (state.gameOver || state.paused || hardDropTimer) return;
       hardBtn.classList.add("hold-drop");
-      hardBtn.textContent = "HOLD...";
+      hardBtn.textContent = "長押し中...";
       hardDropTimer = setTimeout(() => {
         hardDrop(state);
         hardDropTimer = null;
@@ -4380,6 +4393,14 @@
     bindTap(pauseBtn, () => {
       state.paused = !state.paused;
       updateHUD(state);
+    });
+
+    bindTap(titleReturnTopBtn, () => {
+      if (currentGameMode === "versus") {
+        returnToTitleFromVersus("タイトル画面へ戻りました。", "room:title-return").catch(() => {});
+      } else {
+        returnToTitleFromSingle("タイトル画面へ戻りました。");
+      }
     });
 
     hardBtn.addEventListener("click", (e) => e.preventDefault());
