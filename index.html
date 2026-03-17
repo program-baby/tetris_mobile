@@ -5081,6 +5081,8 @@
         emitGameEvent("gameOver", { score: state.score, lines: state.lines });
         if (currentGameMode === "versus") {
           versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: あなたがゲームオーバーです。相手の勝利です。`;
+          setStatus(state, "YOU LOSE", 1800);
+          updateHUD(state);
           releaseFinishedVersusRoom("room:finished-lose").catch(() => {});
           scheduleVersusFinishReturn("あなたは負けました。タイトル画面へ戻りました。", "room:finished-lose-return");
         } else {
