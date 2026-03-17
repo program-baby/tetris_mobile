@@ -77,53 +77,6 @@
       justify-content: flex-start;
     }
 
-    .landscape-rules {
-      display: none;
-      margin-top: 4px;
-      padding: 6px 7px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      background: rgba(2, 6, 23, 0.42);
-      color: #cbd5e1;
-      font-size: 0.62rem;
-      line-height: 1.35;
-      white-space: pre-line;
-    }
-
-    .landscape-ranking {
-      display: none;
-      width: 100%;
-      gap: 6px;
-    }
-
-    .landscape-ranking-head {
-      display: grid;
-      gap: 2px;
-    }
-
-    .landscape-ranking-title {
-      color: #67e8f9;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-    }
-
-    .landscape-best {
-      color: #f8fafc;
-      font-size: 0.9rem;
-      font-weight: 800;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .landscape-ranking-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: 4px;
-      font-size: 0.7rem;
-    }
-
     .rules-panel {
       display: none;
       width: 100%;
@@ -531,13 +484,6 @@
       display: grid;
       gap: 6px;
       font-size: 0.78rem;
-    }
-
-    .rules-modal-copy {
-      margin: 0;
-      color: #cbd5e1;
-      font-size: 0.8rem;
-      line-height: 1.5;
     }
 
     .admin-note {
@@ -1061,14 +1007,6 @@
       }
     }
 
-    @media (orientation: landscape) {
-      .landscape-ranking,
-      .landscape-rules,
-      .rules-panel {
-        display: none !important;
-      }
-    }
-
     @media (max-width: 390px), (max-height: 700px) {
       :root {
         --controls-h: 152px;
@@ -1555,17 +1493,6 @@
         <button id="title-return-top" class="ghost tool-btn" type="button">タイトルへ戻る</button>
         <button id="pause" class="ghost tool-btn" type="button">一時停止</button>
         <button id="restart" class="danger tool-btn" type="button">リセット長押し</button>
-        <div class="landscape-ranking">
-          <div class="landscape-ranking-head">
-            <div class="landscape-ranking-title">ランキング TOP 10</div>
-            <div id="landscape-best-score" class="landscape-best">BEST 0</div>
-          </div>
-          <ol id="landscape-ranking-list" class="landscape-ranking-list"></ol>
-        </div>
-        <div class="landscape-rules">[横向きルール]
-・画面は自動で一時停止
-・ランキング/ルールを確認
-・縦向きに戻すと再開</div>
       </aside>
 
       <div id="board" class="board-wrap">
@@ -1656,10 +1583,6 @@
             </div>
           </div>
           <div id="versus-log" class="versus-log">state:update をここに表示します。</div>
-          <div id="versus-finish-actions" class="versus-finish-actions">
-            <button id="versus-rematch" type="button">もう一戦</button>
-            <button id="versus-title" class="ghost" type="button">タイトルへ戻る</button>
-          </div>
         </div>
         <div class="audio-box">
           <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
@@ -1812,26 +1735,6 @@
     </div>
   </section>
 
-  <section id="rules-modal" class="ranking-modal" aria-hidden="true">
-    <div class="ranking-modal-card">
-      <div class="ranking-modal-head">
-        <h2 class="ranking-modal-title">使い方</h2>
-        <button id="rules-close" class="ghost ranking-close" type="button">閉じる</button>
-      </div>
-      <p class="rules-modal-copy">ゲーム中に迷わないように、操作方法とルールを短くまとめています。</p>
-      <ol class="rules-list">
-        <li>1人用: タイトルで1人用を押すとすぐ始まります</li>
-        <li>対戦用: 公開ルームを選んで待機し、相手が入ると3秒後に開始します</li>
-        <li>左のボタンで横移動、右の回転ボタンで向きを変えます</li>
-        <li>▼で少しずつ下げ、DROPは長押し0.2秒で一気に落とします</li>
-        <li>HOLD枠をタップすると今のブロックを保管できます</li>
-        <li>1〜4ライン同時消去で倍率アップ、4ラインは金色表示です</li>
-        <li>6.5秒以内に続けてラインを消すとコンボが続きます</li>
-        <li>リセットは長押し0.7秒、タイトルへ戻るとゲームを抜けられます</li>
-      </ol>
-    </div>
-  </section>
-
   <section id="admin-modal" class="ranking-modal" aria-hidden="true">
     <div class="ranking-modal-card">
       <div class="ranking-modal-head">
@@ -1965,9 +1868,6 @@
     const rankingModalEl = document.getElementById("ranking-modal");
     const rankingModalListEl = document.getElementById("ranking-modal-list");
     const rankingCloseBtn = document.getElementById("ranking-close");
-    const rulesModalEl = document.getElementById("rules-modal");
-    const rulesOpenBtn = document.getElementById("rules-open");
-    const rulesCloseBtn = document.getElementById("rules-close");
     const adminModalEl = document.getElementById("admin-modal");
     const adminCloseBtn = document.getElementById("admin-close");
     const adminResetNameBtn = document.getElementById("admin-reset-name");
@@ -2022,16 +1922,11 @@
     const versusOutQueueEl = document.getElementById("versus-out-queue");
     const versusInQueueEl = document.getElementById("versus-in-queue");
     const versusQueueViewEl = document.getElementById("versus-queue-view");
-    const versusFinishActionsEl = document.getElementById("versus-finish-actions");
-    const versusRematchBtn = document.getElementById("versus-rematch");
-    const versusTitleBtn = document.getElementById("versus-title");
     const opponentNameEl = document.getElementById("opponent-name");
     const opponentScoreEl = document.getElementById("opponent-score");
     const opponentLinesEl = document.getElementById("opponent-lines");
     const opponentStateEl = document.getElementById("opponent-state");
     const versusLogEl = document.getElementById("versus-log");
-    const landscapeBestScoreEl = document.getElementById("landscape-best-score");
-    const landscapeRankingListEl = document.getElementById("landscape-ranking-list");
     const recordCelebrationEl = document.getElementById("record-celebration");
     const recordScoreEl = document.getElementById("record-score");
     const seVolumeValueEl = document.getElementById("se-volume-value");
@@ -2067,11 +1962,8 @@
     let gameOverHandled = false;
     let bestNeonTimer = null;
     let pausedByRankingModal = false;
-    let pausedByRulesModal = false;
     let celebrationOpen = false;
     let pausedByCelebration = false;
-    let wasLandscape = null;
-    let forcedRankingByOrientation = false;
     let layoutRaf = 0;
     let lastViewportW = 0;
     let lastViewportH = 0;
@@ -2092,7 +1984,8 @@
     let versusRoomState = null;
     let waitingForOpponent = false;
     let versusMatchStarted = false;
-    let versusCountdownTimer = null;
+    let versusTerminal = false;
+    let versusResultLabel = "";
     let versusCountdownEndsAt = 0;
     let versusStartFlashUntil = 0;
     let versusCountdownLastValue = 0;
@@ -2119,8 +2012,6 @@
     let staleRoomCleanupPending = {};
     let waitingStartedAt = 0;
     let waitingTimer = null;
-    let localRematchRequested = false;
-    let rematchWaitTimer = null;
     let versusFinishTimer = null;
     let playerNameCheckTimer = null;
     let playerNameCheckToken = 0;
@@ -2406,11 +2297,9 @@
           rankingTickerEl.innerHTML = `<div class="ranking-empty">まだスコアがありません</div>`;
         }
         boardBestScoreEl.textContent = "0";
-        if (landscapeBestScoreEl) landscapeBestScoreEl.textContent = "BEST 0";
         return;
       }
       boardBestScoreEl.textContent = String(best.score);
-      if (landscapeBestScoreEl) landscapeBestScoreEl.textContent = `BEST ${best.score}`;
       if (rankingTickerEl) {
         rankingTickerEl.innerHTML = `
           <div class="best-label">BEST SCORE</div>
@@ -2429,29 +2318,9 @@
       }
     }
 
-    function renderLandscapeRanking(list = loadRanking()) {
-      if (!landscapeRankingListEl) return;
-      landscapeRankingListEl.textContent = "";
-      if (list.length === 0) {
-        const empty = document.createElement("li");
-        empty.className = "ranking-empty";
-        empty.textContent = "まだスコアがありません";
-        landscapeRankingListEl.appendChild(empty);
-        return;
-      }
-
-      list.slice(0, 10).forEach((entry, idx) => {
-        const li = document.createElement("li");
-        li.className = "ranking-item";
-        li.innerHTML = buildRankingItemHtml(entry, idx);
-        landscapeRankingListEl.appendChild(li);
-      });
-    }
-
     function renderRanking(list = loadRanking(), highlightBest = false) {
       renderRankingModal(list);
       renderBestScore(list, highlightBest);
-      renderLandscapeRanking(list);
     }
 
     function openRankingModal() {
@@ -2474,30 +2343,6 @@
         state.paused = false;
       }
       pausedByRankingModal = false;
-      updateHUD(state);
-    }
-
-    function openRulesModal() {
-      if (!rulesModalEl) return;
-      rulesModalEl.classList.add("is-open");
-      rulesModalEl.setAttribute("aria-hidden", "false");
-      if (!state.paused && !state.gameOver) {
-        pausedByRulesModal = true;
-        state.paused = true;
-      } else {
-        pausedByRulesModal = false;
-      }
-      updateHUD(state);
-    }
-
-    function closeRulesModal() {
-      if (!rulesModalEl) return;
-      rulesModalEl.classList.remove("is-open");
-      rulesModalEl.setAttribute("aria-hidden", "true");
-      if (pausedByRulesModal && !state.gameOver) {
-        state.paused = false;
-      }
-      pausedByRulesModal = false;
       updateHUD(state);
     }
 
@@ -2725,11 +2570,6 @@
       pausedByCelebration = false;
       celebrationOpen = false;
       updateHUD(state);
-    }
-
-    function handleOrientationRanking() {
-      wasLandscape = null;
-      forcedRankingByOrientation = false;
     }
 
     async function registerRankingScore(state) {
@@ -3756,7 +3596,6 @@
         host: {
           name: hostName,
           ready: true,
-          rematchReady: false,
           state: "READY",
           garbageSent: 0,
           garbageQueue: {
@@ -3768,7 +3607,6 @@
         guest: {
           name: null,
           ready: false,
-          rematchReady: false,
           state: "EMPTY",
           garbageSent: 0,
           garbageQueue: {
@@ -3843,18 +3681,10 @@
           at: Date.now()
         },
         [`${role}/ready`]: false,
-        [`${role}/rematchReady`]: false,
         [`${role}/state`]: "LEFT",
         [`${role}/game`]: null
       });
       return true;
-    }
-
-    function clearRematchWaitTimer() {
-      if (rematchWaitTimer) {
-        clearTimeout(rematchWaitTimer);
-        rematchWaitTimer = null;
-      }
     }
 
     function clearVersusFinishTimer() {
@@ -3873,7 +3703,6 @@
     }
 
     async function returnToTitleFromVersus(message = "", reason = "room:leave") {
-      clearRematchWaitTimer();
       clearVersusFinishTimer();
       if (currentGameMode === "versus" && firebaseSession) {
         try {
@@ -3921,61 +3750,19 @@
       updateHUD(state);
     }
 
-    function startRematchWaitTimer() {
-      clearRematchWaitTimer();
-      rematchWaitTimer = setTimeout(() => {
-        localRematchRequested = false;
-        returnToTitleFromVersus("再戦待機が5秒を超えたため、タイトル画面へ戻りました。", "room:rematch-timeout").catch(() => {});
-      }, 5000);
-    }
-
     function resetVersusMatchLocalState() {
       state = createState();
       gameOverHandled = false;
       waitingForOpponent = false;
       versusMatchStarted = false;
+      versusTerminal = false;
+      versusResultLabel = "";
       playCountCommittedForMatch = false;
       clearVersusCountdown();
-      clearRematchWaitTimer();
       clearVersusFinishTimer();
       processedGarbageIds = new Set();
-      localRematchRequested = false;
       updateHUD(state);
       updateRemoteHud(null);
-    }
-
-    async function requestFirebaseRematch() {
-      if (!firebaseSession || !firebaseReady) return false;
-      const role = firebaseSession.role;
-      const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
-      const result = await roomRef.transaction((current) => {
-        if (!current || !current.host || !current.guest) return current;
-        current[role].rematchReady = true;
-        current[role].state = "READY";
-        const bothReady = !!current.host.rematchReady && !!current.guest.rematchReady;
-        if (bothReady) {
-          current.status = "sync";
-          current.phase = "sync";
-          current.startAt = Date.now() + 7000;
-          current.host.game = null;
-          current.guest.game = null;
-          current.host.garbageSent = 0;
-          current.guest.garbageSent = 0;
-          current.host.garbageQueue = { pending: 0, items: {} };
-          current.guest.garbageQueue = { pending: 0, items: {} };
-          current.host.rematchReady = false;
-          current.guest.rematchReady = false;
-          current.host.state = "READY";
-          current.guest.state = "READY";
-          current.updatedAt = Date.now();
-          current.lastEvent = {
-            type: "room:rematch",
-            at: Date.now()
-          };
-        }
-        return current;
-      });
-      return !!result.committed;
     }
 
     async function joinFirebaseRoom(roomId, guestName) {
@@ -3988,7 +3775,6 @@
         current.guest = {
           name: guestName,
           ready: true,
-          rematchReady: false,
           state: "READY",
           garbageSent: 0,
           garbageQueue: {
@@ -4153,6 +3939,7 @@
           if (remote.game.gameOver && !state.gameOver) {
             state.paused = true;
             versusMatchStarted = false;
+            versusTerminal = true;
             waitingForOpponent = false;
             clearVersusCountdown();
             if (versusRoomState) {
@@ -4161,6 +3948,7 @@
               versusRoomState.players.remote.state = "LOSE";
               renderVersusRoomHud();
             }
+            versusResultLabel = "YOU WIN";
             versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手がゲームオーバーしました。あなたの勝利です。`;
             setStatus(state, "YOU WIN", 1500);
             updateHUD(state);
@@ -4175,6 +3963,7 @@
           if (versusMatchStarted && !state.gameOver) {
             state.paused = true;
             versusMatchStarted = false;
+            versusTerminal = true;
             waitingForOpponent = false;
             clearVersusCountdown();
             if (versusRoomState) {
@@ -4183,6 +3972,7 @@
               versusRoomState.players.remote.state = "LEFT";
               renderVersusRoomHud();
             }
+            versusResultLabel = "YOU WIN";
             versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手が退出したため、あなたの勝利です。`;
             setStatus(state, "WIN BY EXIT", 1800);
             updateHUD(state);
@@ -4205,7 +3995,7 @@
           enqueueIncomingGarbage(state, item.lines || 0);
           consumeFirebaseGarbage(itemId, item.lines || 0).catch(() => {});
         }
-        const roomFinished = roomPhase === "finished" || !!local.game?.gameOver || !!remote.game?.gameOver
+        const roomFinished = versusTerminal || roomPhase === "finished" || !!local.game?.gameOver || !!remote.game?.gameOver
           || local.state === "LOSE" || remote.state === "LOSE"
           || local.state === "WIN" || remote.state === "WIN"
           || local.state === "LEFT" || remote.state === "LEFT";
@@ -4266,11 +4056,9 @@
       const outText = versusRoomState.garbageQueue.outgoing.length ? versusRoomState.garbageQueue.outgoing.join(" + ") : "-";
       const inText = versusRoomState.garbageQueue.incoming.length ? versusRoomState.garbageQueue.incoming.join(" + ") : "-";
       versusQueueViewEl.textContent = `out: ${outText} / in: ${inText}`;
-      const showFinishActions = versusRoomState.phase === "finished";
-      versusFinishActionsEl.classList.toggle("is-open", false);
-      versusRematchBtn.disabled = true;
-      versusRematchBtn.textContent = "再戦なし";
-      renderTitleSessionInfo();
+      if (waitingForOpponent || titleScreenEl.classList.contains("is-open")) {
+        renderTitleSessionInfo();
+      }
     }
 
     function calculateGarbageLines(cleared) {
@@ -4475,10 +4263,9 @@
     }
 
     function completeVersusMatchStart(statusText = "") {
-      if (versusMatchStarted) return;
+      if (versusMatchStarted || versusTerminal) return;
       waitingForOpponent = false;
       ensureWaitingTimer(false);
-      clearRematchWaitTimer();
       clearVersusCountdown();
       closeTitleScreenForGame();
       versusMatchStarted = true;
@@ -4499,7 +4286,7 @@
       if (statusText) versusStatusEl.textContent = statusText;
       updateHUD(state);
       scheduleFitLayout(true);
-      setTimeout(() => scheduleFitLayout(true), 60);
+      setTimeout(() => scheduleFitLayout(true), 140);
       playCountdownStartSound();
       emitGameEvent("start", { roomId });
       syncVersusPreview(true);
@@ -4507,7 +4294,7 @@
     }
 
     function beginVersusCountdown(statusText = "") {
-      if (currentGameMode !== "versus" || versusMatchStarted || !versusStartAtMs || versusCountdownEndsAt) return;
+      if (currentGameMode !== "versus" || versusMatchStarted || versusTerminal || !versusStartAtMs || versusCountdownEndsAt) return;
       waitingForOpponent = false;
       ensureWaitingTimer(false);
       closeTitleScreenForGame();
@@ -4527,12 +4314,11 @@
     }
 
     function beginVersusMatch(statusText = "", startAtMs = Date.now() + 3000) {
-      if (currentGameMode !== "versus" || versusMatchStarted) return;
+      if (currentGameMode !== "versus" || versusMatchStarted || versusTerminal) return;
       if (versusStartAtMs && versusStartAtMs > Date.now()) {
         if (statusText) versusStatusEl.textContent = `${statusText} 同期完了後に3カウントを開始します。`;
         return;
       }
-      clearRematchWaitTimer();
       versusStartAtMs = Math.max(Date.now() + 3000, startAtMs || Date.now() + 3000);
       versusCountdownEndsAt = 0;
       versusCountdownLastValue = 0;
@@ -4596,7 +4382,9 @@
         ctx.fillRect(0, 0, COLS, ROWS);
         ctx.fillStyle = "#f8fafc";
         ctx.font = "0.82px sans-serif";
-        const pausedLabel = currentGameMode === "versus" && localVersusPhase === "WIN"
+        const pausedLabel = versusResultLabel
+          ? versusResultLabel
+          : currentGameMode === "versus" && localVersusPhase === "WIN"
           ? "YOU WIN"
           : currentGameMode === "versus" && localVersusPhase === "LOSE"
             ? "YOU LOSE"
@@ -4798,8 +4586,8 @@
       if (mode === "versus") {
         versusRoomReleased = false;
         playCountCommittedForMatch = false;
-        localRematchRequested = false;
-        clearRematchWaitTimer();
+        versusTerminal = false;
+        versusResultLabel = "";
         processedGarbageIds = new Set();
         waitingForOpponent = !!options.waitForOpponent;
         versusMatchStarted = !!options.matchStarted;
@@ -4823,7 +4611,8 @@
       } else {
         versusRoomReleased = false;
         playCountCommittedForMatch = false;
-        clearRematchWaitTimer();
+        versusTerminal = false;
+        versusResultLabel = "";
         clearVersusCountdown();
         clearFirebaseDisconnectHandlers();
         if (firebaseRoomRef && firebaseRoomListener) {
@@ -5006,10 +4795,6 @@
       updateHUD(state);
     }
 
-    async function requestVersusRematch() {
-      returnToTitleFromVersus("この対戦は1戦で終了です。タイトル画面へ戻りました。", "room:rematch-disabled").catch(() => {});
-    }
-
     let state = createState();
     state.paused = true;
     setGameMode("single");
@@ -5021,7 +4806,6 @@
       initFirebaseAdapter().catch(() => {});
     }
     scheduleFitLayout();
-    handleOrientationRanking();
     syncPlayerNameInput();
     updateLobbyAction("create");
     updateTitleSelection("single");
@@ -5030,7 +4814,7 @@
       const delta = time - state.lastTime;
       state.lastTime = time;
       const speed = Math.max(1000 - (state.level - 1) * 90, 120);
-      const versusFinished = currentGameMode === "versus" && versusRoomState?.phase === "finished";
+      const versusFinished = currentGameMode === "versus" && (versusTerminal || versusRoomState?.phase === "finished");
 
       if (currentGameMode === "versus" && !versusFinished && versusStartAtMs && !versusMatchStarted && !versusCountdownEndsAt) {
         const countdownStartAt = versusStartAtMs - 3000;
@@ -5073,6 +4857,7 @@
       if (state.gameOver && !gameOverHandled) {
         gameOverHandled = true;
         versusMatchStarted = false;
+        versusTerminal = currentGameMode === "versus";
         waitingForOpponent = false;
         state.paused = true;
         clearVersusCountdown();
@@ -5084,6 +4869,7 @@
         }
         emitGameEvent("gameOver", { score: state.score, lines: state.lines });
         if (currentGameMode === "versus") {
+          versusResultLabel = "YOU LOSE";
           versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: あなたがゲームオーバーです。相手の勝利です。`;
           setStatus(state, "YOU LOSE", 1800);
           updateHUD(state);
@@ -5127,10 +4913,6 @@
         if (e.key === "Escape") closeRankingModal();
         return;
       }
-      if (rulesModalEl.classList.contains("is-open")) {
-        if (e.key === "Escape") closeRulesModal();
-        return;
-      }
       if (e.key === "p" || e.key === "P") {
         state.paused = !state.paused;
         updateHUD(state);
@@ -5166,7 +4948,6 @@
       if (!state.gameOver) return;
       if (titleScreenEl.classList.contains("is-open")) return;
       if (rankingModalEl.classList.contains("is-open")) return;
-      if (rulesModalEl.classList.contains("is-open")) return;
       if (celebrationOpen) return;
       if (e) e.preventDefault();
       openTitleScreen();
@@ -5494,22 +5275,6 @@
     rankingModalEl.addEventListener("click", (e) => {
       if (e.target === rankingModalEl) closeRankingModal();
     });
-    if (rulesOpenBtn) {
-      rulesOpenBtn.addEventListener("click", openRulesModal);
-      rulesOpenBtn.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        openRulesModal();
-      }, { passive: false });
-    }
-    if (rulesCloseBtn) {
-      rulesCloseBtn.addEventListener("click", closeRulesModal);
-    }
-    if (rulesModalEl) {
-      rulesModalEl.addEventListener("click", (e) => {
-        if (e.target === rulesModalEl) closeRulesModal();
-      });
-    }
-
     recordCelebrationEl.addEventListener("click", closeRecordCelebration);
     recordCelebrationEl.addEventListener("touchstart", (e) => {
       e.preventDefault();
@@ -5539,31 +5304,14 @@
     restartBtn.addEventListener("touchend", cancelResetHold, { passive: false });
     restartBtn.addEventListener("touchcancel", cancelResetHold, { passive: false });
 
-    versusRematchBtn.addEventListener("click", () => {
-      requestVersusRematch().catch(() => {});
-    });
-    versusRematchBtn.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      requestVersusRematch().catch(() => {});
-    }, { passive: false });
-    versusTitleBtn.addEventListener("click", () => {
-      returnToTitleFromVersus("タイトル画面へ戻りました。", "room:title-return").catch(() => {});
-    });
-    versusTitleBtn.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      returnToTitleFromVersus("タイトル画面へ戻りました。", "room:title-return").catch(() => {});
-    }, { passive: false });
-
     const handleViewportChange = () => {
       scheduleFitLayout();
-      handleOrientationRanking();
     };
 
     window.addEventListener("resize", handleViewportChange, { passive: true });
     window.addEventListener("orientationchange", () => setTimeout(handleViewportChange, 120), { passive: true });
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", handleViewportChange, { passive: true });
-      window.visualViewport.addEventListener("scroll", handleViewportChange, { passive: true });
     }
 
     requestAnimationFrame(tick);
