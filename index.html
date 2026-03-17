@@ -3613,6 +3613,7 @@
             state.paused = true;
             versusMatchStarted = false;
             waitingForOpponent = false;
+            clearVersusCountdown();
             if (versusRoomState) {
               versusRoomState.phase = "finished";
               versusRoomState.players.local.state = "WIN";
@@ -3633,6 +3634,7 @@
             state.paused = true;
             versusMatchStarted = false;
             waitingForOpponent = false;
+            clearVersusCountdown();
             if (versusRoomState) {
               versusRoomState.phase = "finished";
               versusRoomState.players.local.state = "WIN";
@@ -3881,6 +3883,13 @@
       versusStartAtMs = 0;
     }
 
+    function closeTitleScreenForGame() {
+      titleScreenEl.classList.remove("is-open");
+      titleScreenEl.scrollTop = 0;
+      if (titleCardEl) titleCardEl.scrollTop = 0;
+      scheduleFitLayout();
+    }
+
     async function markFirebaseRoomPlaying() {
       if (!firebaseSession || !firebaseReady) return false;
       const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
@@ -3922,7 +3931,7 @@
       ensureWaitingTimer(false);
       clearRematchWaitTimer();
       clearVersusCountdown();
-      titleScreenEl.classList.remove("is-open");
+      closeTitleScreenForGame();
       versusMatchStarted = true;
       if (!playCountCommittedForMatch) {
         playCountCommittedForMatch = true;
@@ -3950,7 +3959,7 @@
       if (currentGameMode !== "versus" || versusMatchStarted || !versusStartAtMs || versusCountdownEndsAt) return;
       waitingForOpponent = false;
       ensureWaitingTimer(false);
-      titleScreenEl.classList.remove("is-open");
+      closeTitleScreenForGame();
       versusCountdownEndsAt = versusStartAtMs;
       versusCountdownLastValue = 0;
       state.paused = true;
@@ -4481,8 +4490,9 @@
       const delta = time - state.lastTime;
       state.lastTime = time;
       const speed = Math.max(1000 - (state.level - 1) * 90, 120);
+      const versusFinished = currentGameMode === "versus" && versusRoomState?.phase === "finished";
 
-      if (currentGameMode === "versus" && versusStartAtMs && !versusMatchStarted && !versusCountdownEndsAt) {
+      if (currentGameMode === "versus" && !versusFinished && versusStartAtMs && !versusMatchStarted && !versusCountdownEndsAt) {
         const countdownStartAt = versusStartAtMs - 3000;
         if (firebaseSession) {
           if (
@@ -4497,7 +4507,7 @@
         }
       }
 
-      if (currentGameMode === "versus" && versusStartAtMs && !versusMatchStarted && Date.now() >= versusStartAtMs) {
+      if (currentGameMode === "versus" && !versusFinished && versusStartAtMs && !versusMatchStarted && Date.now() >= versusStartAtMs) {
         completeVersusMatchStart(`FIREBASE ROOM ${roomId}: 対戦を開始します。`);
       }
 
@@ -4525,6 +4535,7 @@
         versusMatchStarted = false;
         waitingForOpponent = false;
         state.paused = true;
+        clearVersusCountdown();
         if (versusRoomState) {
           versusRoomState.phase = "finished";
           versusRoomState.players.local.state = "LOSE";
