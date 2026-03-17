@@ -1748,7 +1748,6 @@
       <div class="player-name-box">
         <label for="player-name-input" class="player-name-label">ユーザー名</label>
         <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
-        <button id="player-name-confirm" class="ghost tool-btn" type="button">OK</button>
         <div id="player-name-status" class="player-name-status" aria-live="polite"></div>
       </div>
       <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
@@ -1948,7 +1947,6 @@
     const versusRoomBackBtn = document.getElementById("versus-room-back");
     const titleRoomSlotEls = Array.from(document.querySelectorAll("[data-room-slot]"));
     const playerNameInputEl = document.getElementById("player-name-input");
-    const playerNameConfirmBtn = document.getElementById("player-name-confirm");
     const playerNameStatusEl = document.getElementById("player-name-status");
     const titleModeNoteEl = document.getElementById("title-mode-note");
     const titleRankingBtn = document.getElementById("title-ranking");
@@ -2092,7 +2090,6 @@
 
     const SOLO_RANKING_LIMIT = 10;
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
-    const PLAYER_NAME_LOCK_KEY = "tetrisPlayerNameLockedV1";
     const PLAY_COUNT_KEY = "tetrisPlayCountV1";
     const PLAY_COUNT_DAILY_KEY = "tetrisPlayCountDailyV1";
     const BOARD_OFFSET_KEY = "tetrisBoardOffsetV1";
@@ -2632,7 +2629,6 @@
       await firebaseDb.ref(`usernames/${getPlayerNameKey(safeName)}`).remove();
       if (getStoredPlayerName() === safeName) {
         localStorage.removeItem(PLAYER_NAME_KEY);
-        localStorage.removeItem(PLAYER_NAME_LOCK_KEY);
         if (versusRoomState) {
           versusRoomState.players.local.name = "PLAYER";
           renderVersusRoomHud();
@@ -3265,7 +3261,8 @@
     }
 
     function isPlayerNameLocked() {
-      return localStorage.getItem(PLAYER_NAME_LOCK_KEY) === "1";
+      const stored = getStoredPlayerName();
+      return !!stored && stored !== "PLAYER";
     }
 
     function syncPlayerNameInput() {
@@ -3273,9 +3270,6 @@
       if (playerNameInputEl) {
         playerNameInputEl.value = stored === "PLAYER" ? "" : stored;
         playerNameInputEl.disabled = isPlayerNameLocked();
-      }
-      if (playerNameConfirmBtn) {
-        playerNameConfirmBtn.disabled = isPlayerNameLocked();
       }
       if (stored && stored !== "PLAYER") {
         setPlayerNameStatus("このユーザー名で固定されています", "is-available");
@@ -3295,7 +3289,6 @@
       const name = sanitizePlayerName(value);
       if (!name) return "";
       localStorage.setItem(PLAYER_NAME_KEY, name);
-      localStorage.setItem(PLAYER_NAME_LOCK_KEY, "1");
       if (versusRoomState) {
         versusRoomState.players.local.name = name;
         renderVersusRoomHud();
@@ -3396,43 +3389,6 @@
         await releaseReservedPlayerName(previousName).catch(() => {});
       }
       return { ok: true, name: setStoredPlayerNameLocal(name) };
-    }
-
-    async function confirmPlayerName() {
-      if (isPlayerNameLocked()) {
-        syncPlayerNameInput();
-        return true;
-      }
-      const candidate = sanitizePlayerName(playerNameInputEl?.value || "");
-      if (!candidate) {
-        titleModeNoteEl.textContent = "ユーザーネームを入力してください。";
-        titleModeNoteEl.classList.remove("is-info");
-        titleModeNoteEl.classList.add("is-warning");
-        setPlayerNameStatus("ユーザー名を入力してください");
-        playerNameInputEl?.focus();
-        return false;
-      }
-      const accepted = window.confirm("一度決定すると変更できないですがよろしいですか？");
-      if (!accepted) return false;
-      const result = await claimAndSavePlayerName(candidate);
-      if (!result.ok) {
-        titleModeNoteEl.textContent = result.reason === "duplicate"
-          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
-          : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
-        titleModeNoteEl.classList.remove("is-info");
-        titleModeNoteEl.classList.add("is-warning");
-        setPlayerNameStatus(result.reason === "duplicate"
-          ? "このユーザー名はすでに使われています"
-          : "ユーザー名の確認に失敗しました", result.reason === "duplicate" ? "is-taken" : "");
-        playerNameInputEl?.focus();
-        return false;
-      }
-      titleModeNoteEl.textContent = `ユーザー名「${result.name}」を確定しました。`;
-      titleModeNoteEl.classList.remove("is-warning");
-      titleModeNoteEl.classList.add("is-info");
-      syncPlayerNameInput();
-      renderTitleRoomSlots();
-      return true;
     }
 
     function getTodayKey() {
@@ -4842,12 +4798,25 @@
     async function startSelectedMode() {
       unlockAudio();
       let shouldStart = true;
-      const savedName = getStoredPlayerName();
-      if (!isPlayerNameLocked() || !savedName || savedName === "PLAYER") {
-        titleModeNoteEl.textContent = "ユーザーネームを入力してOKで確定してください。";
+      const lockedName = getStoredPlayerName();
+      const claimedName = isPlayerNameLocked()
+        ? { ok: true, name: lockedName, locked: true }
+        : await claimAndSavePlayerName(playerNameInputEl.value);
+      const savedName = claimedName.ok ? claimedName.name : lockedName;
+      if (!savedName || savedName === "PLAYER") {
+        titleModeNoteEl.textContent = "先にユーザー名を入力してください。ランキングと対戦相手表示に使います。";
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
-        setPlayerNameStatus("ユーザー名を確定してください");
+        setPlayerNameStatus("ユーザー名を入力してください");
+        playerNameInputEl.focus();
+        return;
+      }
+      if (!claimedName.ok) {
+        titleModeNoteEl.textContent = claimedName.reason === "duplicate"
+          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
+          : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
         playerNameInputEl.focus();
         return;
       }
@@ -5369,16 +5338,27 @@
         });
       }, 280);
     });
-    playerNameInputEl.addEventListener("change", () => {
-      syncPlayerNameInput();
-      renderTitleRoomSlots();
-    });
-    playerNameConfirmBtn.addEventListener("click", () => {
-      confirmPlayerName().catch(() => {
-        titleModeNoteEl.textContent = "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
+    playerNameInputEl.addEventListener("change", async () => {
+      if (isPlayerNameLocked()) {
+        syncPlayerNameInput();
+        renderTitleRoomSlots();
+        return;
+      }
+      const result = await claimAndSavePlayerName(playerNameInputEl.value);
+      if (!result.ok && playerNameInputEl.value.trim()) {
+        titleModeNoteEl.textContent = result.reason === "duplicate"
+          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
+          : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
-      });
+        setPlayerNameStatus(result.reason === "duplicate"
+          ? "このユーザー名はすでに使われています"
+          : "ユーザー名の確認に失敗しました", result.reason === "duplicate" ? "is-taken" : "");
+      } else if (result.ok) {
+        setPlayerNameStatus("このユーザー名は使用できます", "is-available");
+      }
+      syncPlayerNameInput();
+      renderTitleRoomSlots();
     });
     titleRankingBtn.addEventListener("click", () => {
       openRankingModal();
