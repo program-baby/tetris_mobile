@@ -4212,19 +4212,21 @@
             versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手参加を確認しました。開始同期を準備しています。`;
           }
         }
-        const roomSync = bothReady && roomPhase === "sync" && !!room.startAt;
-        const roomCountdown = bothReady && roomPhase === "countdown" && !!room.startAt;
-        const roomPlaying = roomPhase === "playing" && !!room.startAt;
-        if (roomSync && !versusMatchStarted) {
-          beginVersusMatch(`FIREBASE ROOM ${roomId}: 同期中です。まもなく対戦を開始します。`, room.startAt);
-        } else if (roomCountdown && !versusMatchStarted) {
-          if (!versusStartAtMs) {
-            beginVersusMatch(`FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`, room.startAt);
+        const hasSharedStart = bothReady && !!room.startAt;
+        if (hasSharedStart && !versusMatchStarted) {
+          const sharedStartAt = room.startAt;
+          const effectiveStartAt = Math.max(sharedStartAt || 0, versusStartAtMs || 0);
+          const sharedStatus = roomPhase === "playing"
+            ? `FIREBASE ROOM ${roomId}: 対戦を開始します。`
+            : Date.now() >= sharedStartAt - 3000
+              ? `FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`
+              : `FIREBASE ROOM ${roomId}: 同期中です。まもなく対戦を開始します。`;
+          if (!versusStartAtMs || Math.abs(versusStartAtMs - sharedStartAt) > 120) {
+            beginVersusMatch(sharedStatus, sharedStartAt);
           }
-          beginVersusCountdown(`FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`);
-        } else if (roomPlaying && !versusMatchStarted) {
-          if (!versusStartAtMs) beginVersusMatch(`FIREBASE ROOM ${roomId}: 対戦を開始します。`, room.startAt);
-          const effectiveStartAt = Math.max(room.startAt || 0, versusStartAtMs || 0);
+          if (Date.now() >= sharedStartAt - 3000 && !versusCountdownEndsAt) {
+            beginVersusCountdown(`FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`);
+          }
           if (Date.now() >= effectiveStartAt - 120) {
             completeVersusMatchStart(`FIREBASE ROOM ${roomId}: 対戦を開始します。`);
           }
