@@ -2028,6 +2028,24 @@
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
     const PLAY_COUNT_KEY = "tetrisPlayCountV1";
     const PLAY_COUNT_DAILY_KEY = "tetrisPlayCountDailyV1";
+    const ROOM_PHASE = Object.freeze({
+      WAITING: "waiting",
+      SYNC: "sync",
+      COUNTDOWN: "countdown",
+      PLAYING: "playing",
+      FINISHED: "finished"
+    });
+    const ROOM_EVENT = Object.freeze({
+      CREATE: "room:create",
+      JOIN: "room:join",
+      SYNC_START: "room:sync-start",
+      COUNTDOWN: "room:countdown",
+      GAME_START: "game:start",
+      STATE_UPDATE: "state:update",
+      GARBAGE_SEND: "garbage:send",
+      ROOM_FINISHED: "room:finished",
+      ROOM_LEAVE: "room:leave"
+    });
     const BOARD_OFFSET_KEY = "tetrisBoardOffsetV1";
 
     const COLORS = [
@@ -3582,15 +3600,15 @@
     function createRoomPayload(roomId, hostName) {
       return {
         roomId,
-        status: "waiting",
-        phase: "waiting",
+        status: ROOM_PHASE.WAITING,
+        phase: ROOM_PHASE.WAITING,
         startAt: null,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         hostId: firebaseAuth?.currentUser?.uid || null,
         guestId: null,
         lastEvent: {
-          type: "room:create",
+          type: ROOM_EVENT.CREATE,
           at: Date.now()
         },
         host: {
@@ -3722,6 +3740,26 @@
       scheduleVersusFinishReturn(returnMessage, `${releaseReason}-return`, statusDuration);
     }
 
+    function finalizeLocalVersusLose(roomId, releaseReason = "room:finished-lose", statusDuration = 1800) {
+      versusMatchStarted = false;
+      versusTerminal = true;
+      waitingForOpponent = false;
+      state.paused = true;
+      clearVersusCountdown();
+      if (versusRoomState) {
+        versusRoomState.phase = "finished";
+        versusRoomState.players.local.state = "LOSE";
+        versusRoomState.players.remote.state = "WIN";
+        renderVersusRoomHud();
+      }
+      versusResultLabel = "YOU LOSE";
+      versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: あなたがゲームオーバーです。相手の勝利です。`;
+      setStatus(state, "YOU LOSE", statusDuration);
+      updateHUD(state);
+      releaseFinishedVersusRoom(releaseReason).catch(() => {});
+      scheduleVersusFinishReturn("あなたは負けました。タイトル画面へ戻りました。", `${releaseReason}-return`, statusDuration);
+    }
+
     function handleRemoteLeftWhileWaiting(roomId) {
       waitingForOpponent = false;
       versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手が退出しました。部屋を作り直してください。`;
@@ -3732,7 +3770,7 @@
     }
 
     function syncVersusStartFromRoom(roomId, roomPhase, roomStartAt, bothReady, roomFinished, localRole) {
-      if (bothReady && localRole === "host" && (!roomStartAt || roomPhase === "ready" || roomPhase === "waiting")) {
+      if (bothReady && localRole === "host" && (!roomStartAt || roomPhase === "ready" || roomPhase === ROOM_PHASE.WAITING)) {
         ensureFirebaseRoomStartAt(roomId).catch(() => {});
         if (!versusStartAtMs && !versusMatchStarted) {
           versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手参加を確認しました。開始同期を準備しています。`;
@@ -3741,9 +3779,9 @@
 
       const hasSharedStart = bothReady && !!roomStartAt && !roomFinished;
       if (hasSharedStart && !versusMatchStarted) {
-        const sharedStatus = roomPhase === "countdown"
+        const sharedStatus = roomPhase === ROOM_PHASE.COUNTDOWN
           ? `FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`
-          : roomPhase === "playing"
+          : roomPhase === ROOM_PHASE.PLAYING
             ? `FIREBASE ROOM ${roomId}: 対戦を開始します。`
             : `FIREBASE ROOM ${roomId}: 同期中です。まもなく対戦を開始します。`;
         if (!versusStartAtMs || Math.abs(versusStartAtMs - roomStartAt) > 120) {
@@ -3760,6 +3798,73 @@
         state.paused = true;
         updateHUD(state);
       }
+    }
+
+    function applyVersusRoomSnapshot(room, localRole, remoteRole) {
+      const local = room[localRole] || {};
+      const remote = room[remoteRole] || {};
+      const baseState = versusRoomState || createVersusRoomState();
+      const roomPhase = room.phase || room.status || "waiting";
+      baseState.phase = roomPhase;
+      baseState.lastEvent = room.lastEvent?.type || "none";
+      baseState.players.local.name = local.name || firebaseSession.playerName || "PLAYER";
+      baseState.players.local.ready = !!local.ready;
+      baseState.players.local.state = local.state || "READY";
+      baseState.players.local.garbageSent = local.garbageSent || 0;
+      baseState.players.local.garbagePending = local.garbageQueue?.pending || 0;
+      baseState.players.remote.name = remote.name || "WAITING...";
+      baseState.players.remote.ready = !!remote.ready;
+      baseState.players.remote.state = remote.state || "WAIT";
+      baseState.players.remote.garbageSent = remote.garbageSent || 0;
+      baseState.players.remote.garbagePending = remote.garbageQueue?.pending || 0;
+      baseState.garbageQueue.outgoing = [];
+      baseState.garbageQueue.incoming = Object.values(local.garbageQueue?.items || {}).map((item) => item.lines || 0);
+      versusRoomState = baseState;
+      waitingStartedAt = room.createdAt || waitingStartedAt || Date.now();
+      return { local, remote, roomPhase };
+    }
+
+    function syncRemoteGameState(roomId, remote) {
+      if (remote.game) {
+        remoteState = remote.game;
+        updateRemoteHud(remote.game);
+        if (remote.game.gameOver && !state.gameOver) {
+          finalizeLocalVersusWin(
+            `FIREBASE ROOM ${roomId}: 相手がゲームオーバーしました。あなたの勝利です。`,
+            "YOU WIN",
+            "LOSE",
+            "room:finished-win",
+            "あなたの勝利です。タイトル画面へ戻りました。"
+          );
+        }
+      } else {
+        remoteState = null;
+        updateRemoteHud(null);
+      }
+    }
+
+    function syncIncomingGarbageQueue(local) {
+      const incomingItems = Object.entries(local.garbageQueue?.items || {})
+        .sort((a, b) => (a[1]?.createdAt || 0) - (b[1]?.createdAt || 0));
+      for (const [itemId, item] of incomingItems) {
+        if (processedGarbageIds.has(itemId)) continue;
+        processedGarbageIds.add(itemId);
+        enqueueIncomingGarbage(state, item.lines || 0);
+        consumeFirebaseGarbage(itemId, item.lines || 0).catch(() => {});
+      }
+    }
+
+    function isVersusRoomFinished(roomPhase, local, remote) {
+      return versusTerminal
+        || roomPhase === ROOM_PHASE.FINISHED
+        || !!local.game?.gameOver
+        || !!remote.game?.gameOver
+        || local.state === "LOSE"
+        || remote.state === "LOSE"
+        || local.state === "WIN"
+        || remote.state === "WIN"
+        || local.state === "LEFT"
+        || remote.state === "LEFT";
     }
 
     async function returnToTitleFromVersus(message = "", reason = "room:leave") {
@@ -3844,12 +3949,12 @@
           game: null
         };
         current.guestId = firebaseAuth?.currentUser?.uid || null;
-        current.status = "sync";
-        current.phase = "sync";
+        current.status = ROOM_PHASE.SYNC;
+        current.phase = ROOM_PHASE.SYNC;
         current.startAt = Date.now() + 7000;
         current.updatedAt = Date.now();
         current.lastEvent = {
-          type: "room:join",
+          type: ROOM_EVENT.JOIN,
           at: Date.now()
         };
         return current;
@@ -3880,16 +3985,16 @@
         const result = await roomRef.transaction((current) => {
           if (!current?.host?.ready || !current?.guest?.ready) return current;
           const hasFutureStart = !!current.startAt && current.startAt > Date.now() + 200;
-          const currentPhase = current.phase || current.status || "waiting";
-          if (hasFutureStart || currentPhase === "countdown" || currentPhase === "playing" || currentPhase === "finished") {
+          const currentPhase = current.phase || current.status || ROOM_PHASE.WAITING;
+          if (hasFutureStart || currentPhase === ROOM_PHASE.COUNTDOWN || currentPhase === ROOM_PHASE.PLAYING || currentPhase === ROOM_PHASE.FINISHED) {
             return current;
           }
-          current.status = "sync";
-          current.phase = "sync";
+          current.status = ROOM_PHASE.SYNC;
+          current.phase = ROOM_PHASE.SYNC;
           current.startAt = Date.now() + 7000;
           current.updatedAt = Date.now();
           current.lastEvent = {
-            type: "room:sync-start",
+            type: ROOM_EVENT.SYNC_START,
             at: Date.now()
           };
           return current;
@@ -3920,8 +4025,8 @@
       const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
       await roomRef.child(`${role}/game`).set(snapshot);
       await roomRef.update(buildFirebaseRoomPhaseUpdate(
-        snapshot.gameOver ? "finished" : "playing",
-        "state:update",
+        snapshot.gameOver ? ROOM_PHASE.FINISHED : ROOM_PHASE.PLAYING,
+        ROOM_EVENT.STATE_UPDATE,
         {
           [`${role}/state`]: snapshot.gameOver ? "LOSE" : snapshot.paused ? "READY" : "LIVE"
         }
@@ -3948,7 +4053,7 @@
       await roomRef.update({
         updatedAt: Date.now(),
         lastEvent: {
-          type: "garbage:send",
+          type: ROOM_EVENT.GARBAGE_SEND,
           at: Date.now()
         }
       });
@@ -3977,46 +4082,12 @@
         if (!room || !firebaseSession) return;
         const localRole = firebaseSession.role;
         const remoteRole = localRole === "host" ? "guest" : "host";
-        const local = room[localRole] || {};
-        const remote = room[remoteRole] || {};
-        const baseState = versusRoomState || createVersusRoomState();
-        const roomPhase = room.phase || room.status || "waiting";
-        baseState.phase = roomPhase;
-        baseState.lastEvent = room.lastEvent?.type || "none";
-        baseState.players.local.name = local.name || firebaseSession.playerName || "PLAYER";
-        baseState.players.local.ready = !!local.ready;
-        baseState.players.local.state = local.state || "READY";
-        baseState.players.local.garbageSent = local.garbageSent || 0;
-        baseState.players.local.garbagePending = local.garbageQueue?.pending || 0;
-        baseState.players.remote.name = remote.name || "WAITING...";
-        baseState.players.remote.ready = !!remote.ready;
-        baseState.players.remote.state = remote.state || "WAIT";
-        baseState.players.remote.garbageSent = remote.garbageSent || 0;
-        baseState.players.remote.garbagePending = remote.garbageQueue?.pending || 0;
-        baseState.garbageQueue.outgoing = [];
-        baseState.garbageQueue.incoming = Object.values(local.garbageQueue?.items || {}).map((item) => item.lines || 0);
-        versusRoomState = baseState;
-        waitingStartedAt = room.createdAt || waitingStartedAt || Date.now();
+        const { local, remote, roomPhase } = applyVersusRoomSnapshot(room, localRole, remoteRole);
         if (!versusStartAtMs && !versusMatchStarted) {
           versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: ${roomPhase}`;
         }
         renderVersusRoomHud();
-        if (remote.game) {
-          remoteState = remote.game;
-          updateRemoteHud(remote.game);
-          if (remote.game.gameOver && !state.gameOver) {
-            finalizeLocalVersusWin(
-              `FIREBASE ROOM ${roomId}: 相手がゲームオーバーしました。あなたの勝利です。`,
-              "YOU WIN",
-              "LOSE",
-              "room:finished-win",
-              "あなたの勝利です。タイトル画面へ戻りました。"
-            );
-          }
-        } else {
-          remoteState = null;
-          updateRemoteHud(null);
-        }
+        syncRemoteGameState(roomId, remote);
         if (remote.state === "LEFT") {
           if (versusMatchStarted && !state.gameOver) {
             finalizeLocalVersusWin(
@@ -4031,18 +4102,8 @@
             handleRemoteLeftWhileWaiting(roomId);
           }
         }
-        const incomingItems = Object.entries(local.garbageQueue?.items || {})
-          .sort((a, b) => (a[1]?.createdAt || 0) - (b[1]?.createdAt || 0));
-        for (const [itemId, item] of incomingItems) {
-          if (processedGarbageIds.has(itemId)) continue;
-          processedGarbageIds.add(itemId);
-          enqueueIncomingGarbage(state, item.lines || 0);
-          consumeFirebaseGarbage(itemId, item.lines || 0).catch(() => {});
-        }
-        const roomFinished = versusTerminal || roomPhase === "finished" || !!local.game?.gameOver || !!remote.game?.gameOver
-          || local.state === "LOSE" || remote.state === "LOSE"
-          || local.state === "WIN" || remote.state === "WIN"
-          || local.state === "LEFT" || remote.state === "LEFT";
+        syncIncomingGarbageQueue(local);
+        const roomFinished = isVersusRoomFinished(roomPhase, local, remote);
         const bothReady = !!local.ready && !!remote.ready;
         syncVersusStartFromRoom(roomId, roomPhase, room.startAt, bothReady, roomFinished, localRole);
       };
@@ -4245,7 +4306,7 @@
     async function markFirebaseRoomPlaying() {
       if (!firebaseSession || !firebaseReady) return false;
       const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
-      await roomRef.update(buildFirebaseRoomPhaseUpdate("playing", "game:start"));
+      await roomRef.update(buildFirebaseRoomPhaseUpdate(ROOM_PHASE.PLAYING, ROOM_EVENT.GAME_START));
       return true;
     }
 
@@ -4254,14 +4315,14 @@
       const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
       const result = await roomRef.transaction((current) => {
         if (!current?.host?.ready || !current?.guest?.ready) return current;
-        const currentPhase = current.phase || current.status || "waiting";
-        if (currentPhase === "countdown" || currentPhase === "playing" || currentPhase === "finished") return current;
-        current.status = "countdown";
-        current.phase = "countdown";
+        const currentPhase = current.phase || current.status || ROOM_PHASE.WAITING;
+        if (currentPhase === ROOM_PHASE.COUNTDOWN || currentPhase === ROOM_PHASE.PLAYING || currentPhase === ROOM_PHASE.FINISHED) return current;
+        current.status = ROOM_PHASE.COUNTDOWN;
+        current.phase = ROOM_PHASE.COUNTDOWN;
         current.startAt = current.startAt || versusStartAtMs;
         current.updatedAt = Date.now();
         current.lastEvent = {
-          type: "room:countdown",
+          type: ROOM_EVENT.COUNTDOWN,
           at: Date.now()
         };
         return current;
@@ -4890,12 +4951,7 @@
         }
         emitGameEvent("gameOver", { score: state.score, lines: state.lines });
         if (currentGameMode === "versus") {
-          versusResultLabel = "YOU LOSE";
-          versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: あなたがゲームオーバーです。相手の勝利です。`;
-          setStatus(state, "YOU LOSE", 1800);
-          updateHUD(state);
-          releaseFinishedVersusRoom("room:finished-lose").catch(() => {});
-          scheduleVersusFinishReturn("あなたは負けました。タイトル画面へ戻りました。", "room:finished-lose-return");
+          finalizeLocalVersusLose(roomId);
         } else {
           setStatus(state, "画面をタップしてタイトルへ戻る", 60 * 60 * 1000);
           updateHUD(state);
