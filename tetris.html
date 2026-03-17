@@ -2092,6 +2092,7 @@
 
     const SOLO_RANKING_LIMIT = 10;
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
+    const PLAYER_NAME_LOCK_KEY = "tetrisPlayerNameLockedV1";
     const PLAY_COUNT_KEY = "tetrisPlayCountV1";
     const PLAY_COUNT_DAILY_KEY = "tetrisPlayCountDailyV1";
     const BOARD_OFFSET_KEY = "tetrisBoardOffsetV1";
@@ -2631,6 +2632,7 @@
       await firebaseDb.ref(`usernames/${getPlayerNameKey(safeName)}`).remove();
       if (getStoredPlayerName() === safeName) {
         localStorage.removeItem(PLAYER_NAME_KEY);
+        localStorage.removeItem(PLAYER_NAME_LOCK_KEY);
         if (versusRoomState) {
           versusRoomState.players.local.name = "PLAYER";
           renderVersusRoomHud();
@@ -3263,8 +3265,7 @@
     }
 
     function isPlayerNameLocked() {
-      const stored = getStoredPlayerName();
-      return !!stored && stored !== "PLAYER";
+      return localStorage.getItem(PLAYER_NAME_LOCK_KEY) === "1";
     }
 
     function syncPlayerNameInput() {
@@ -3294,6 +3295,7 @@
       const name = sanitizePlayerName(value);
       if (!name) return "";
       localStorage.setItem(PLAYER_NAME_KEY, name);
+      localStorage.setItem(PLAYER_NAME_LOCK_KEY, "1");
       if (versusRoomState) {
         versusRoomState.players.local.name = name;
         renderVersusRoomHud();
