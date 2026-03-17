@@ -3876,8 +3876,10 @@
       if (versusRoomReleased || !firebaseSession || !firebaseReady) return false;
       versusRoomReleased = true;
       const finishedRoomId = firebaseSession.roomId;
+      clearFirebaseDisconnectHandlers();
       try {
-        await leaveFirebaseRoom(reason);
+        const roomRef = firebaseDb.ref(`rooms/${finishedRoomId}`);
+        await roomRef.remove();
       } catch (_) {}
       if (firebaseRoomRef && firebaseRoomListener) {
         firebaseRoomRef.off("value", firebaseRoomListener);
