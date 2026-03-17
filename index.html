@@ -3105,13 +3105,19 @@
       return sanitizePlayerName(localStorage.getItem(PLAYER_NAME_KEY)) || "PLAYER";
     }
 
-    function syncPlayerNameInput() {
-      if (playerNameInputEl) {
-        playerNameInputEl.value = getStoredPlayerName() === "PLAYER" ? "" : getStoredPlayerName();
-      }
+    function isPlayerNameLocked() {
       const stored = getStoredPlayerName();
+      return !!stored && stored !== "PLAYER";
+    }
+
+    function syncPlayerNameInput() {
+      const stored = getStoredPlayerName();
+      if (playerNameInputEl) {
+        playerNameInputEl.value = stored === "PLAYER" ? "" : stored;
+        playerNameInputEl.disabled = isPlayerNameLocked();
+      }
       if (stored && stored !== "PLAYER") {
-        setPlayerNameStatus("現在のユーザー名です", "is-available");
+        setPlayerNameStatus("このユーザー名で固定されています", "is-available");
       } else {
         setPlayerNameStatus("ユーザー名を入力してください");
       }
@@ -3159,6 +3165,10 @@
     }
 
     async function validatePlayerNameInputLive(value) {
+      if (isPlayerNameLocked()) {
+        setPlayerNameStatus("このユーザー名で固定されています", "is-available");
+        return;
+      }
       const requestToken = ++playerNameCheckToken;
       const name = sanitizePlayerName(value);
       if (!name) {
@@ -3190,6 +3200,10 @@
     }
 
     async function claimAndSavePlayerName(value) {
+      if (isPlayerNameLocked()) {
+        const lockedName = getStoredPlayerName();
+        return { ok: !!lockedName && lockedName !== "PLAYER", name: lockedName, locked: true };
+      }
       const name = sanitizePlayerName(value);
       if (!name) return { ok: false, reason: "empty" };
       if (!hasFirebaseConfig()) {
@@ -4629,8 +4643,11 @@
     async function startSelectedMode() {
       unlockAudio();
       let shouldStart = true;
-      const claimedName = await claimAndSavePlayerName(playerNameInputEl.value);
-      const savedName = claimedName.ok ? claimedName.name : getStoredPlayerName();
+      const lockedName = getStoredPlayerName();
+      const claimedName = isPlayerNameLocked()
+        ? { ok: true, name: lockedName, locked: true }
+        : await claimAndSavePlayerName(playerNameInputEl.value);
+      const savedName = claimedName.ok ? claimedName.name : lockedName;
       if (!savedName || savedName === "PLAYER") {
         titleModeNoteEl.textContent = "先にユーザー名を入力してください。ランキングと対戦相手表示に使います。";
         titleModeNoteEl.classList.remove("is-info");
@@ -5146,6 +5163,11 @@
       }, { passive: false });
     });
     playerNameInputEl.addEventListener("input", () => {
+      if (isPlayerNameLocked()) {
+        playerNameInputEl.value = getStoredPlayerName();
+        setPlayerNameStatus("このユーザー名で固定されています", "is-available");
+        return;
+      }
       playerNameInputEl.value = sanitizePlayerName(playerNameInputEl.value);
       if (playerNameCheckTimer) clearTimeout(playerNameCheckTimer);
       const currentValue = playerNameInputEl.value;
@@ -5161,6 +5183,11 @@
       }, 280);
     });
     playerNameInputEl.addEventListener("change", async () => {
+      if (isPlayerNameLocked()) {
+        syncPlayerNameInput();
+        renderTitleRoomSlots();
+        return;
+      }
       const result = await claimAndSavePlayerName(playerNameInputEl.value);
       if (!result.ok && playerNameInputEl.value.trim()) {
         titleModeNoteEl.textContent = result.reason === "duplicate"
