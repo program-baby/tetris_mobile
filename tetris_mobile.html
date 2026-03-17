@@ -3222,6 +3222,7 @@
       return {
         roomId,
         status: "waiting",
+        phase: "waiting",
         startAt: null,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -3412,7 +3413,8 @@
         current[role].state = "READY";
         const bothReady = !!current.host.rematchReady && !!current.guest.rematchReady;
         if (bothReady) {
-          current.status = "countdown";
+          current.status = "sync";
+          current.phase = "sync";
           current.startAt = Date.now() + 7000;
           current.host.game = null;
           current.guest.game = null;
@@ -3455,7 +3457,8 @@
           game: null
         };
         current.guestId = firebaseAuth?.currentUser?.uid || null;
-        current.status = "countdown";
+        current.status = "sync";
+        current.phase = "sync";
         current.startAt = Date.now() + 7000;
         current.updatedAt = Date.now();
         current.lastEvent = {
@@ -3490,8 +3493,10 @@
         const result = await roomRef.transaction((current) => {
           if (!current?.host?.ready || !current?.guest?.ready) return current;
           const hasFutureStart = !!current.startAt && current.startAt > Date.now() + 200;
-          if (hasFutureStart && (current.status === "countdown" || current.status === "playing")) return current;
-          current.status = "countdown";
+          const currentPhase = current.phase || current.status || "waiting";
+          if (hasFutureStart && (currentPhase === "sync" || currentPhase === "countdown" || currentPhase === "playing")) return current;
+          current.status = "sync";
+          current.phase = "sync";
           current.startAt = Date.now() + 7000;
           current.updatedAt = Date.now();
           current.lastEvent = {
@@ -3514,6 +3519,7 @@
       await roomRef.update({
         updatedAt: Date.now(),
         status: snapshot.gameOver ? "finished" : "playing",
+        phase: snapshot.gameOver ? "finished" : "playing",
         lastEvent: {
           type: "state:update",
           at: Date.now()
@@ -3575,7 +3581,8 @@
         const remote = room[remoteRole] || {};
         const baseState = versusRoomState || createVersusRoomState();
         const rematchTriggered = room.lastEvent?.type === "room:rematch";
-        baseState.phase = room.status || "lobby";
+        const roomPhase = room.phase || room.status || "waiting";
+        baseState.phase = roomPhase;
         baseState.lastEvent = room.lastEvent?.type || "none";
         baseState.players.local.name = local.name || firebaseSession.playerName || "PLAYER";
         baseState.players.local.ready = !!local.ready;
@@ -3596,7 +3603,7 @@
           waitingStartedAt = Date.now();
         }
         if (!versusStartAtMs && !versusMatchStarted) {
-          versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: ${room.status || "waiting"}`;
+          versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: ${roomPhase}`;
         }
         renderVersusRoomHud();
         if (remote.game) {
@@ -3654,16 +3661,22 @@
           consumeFirebaseGarbage(itemId, item.lines || 0).catch(() => {});
         }
         const bothReady = !!local.ready && !!remote.ready;
-        if (bothReady && localRole === "host" && (!room.startAt || room.status === "ready" || room.status === "waiting")) {
+        if (bothReady && localRole === "host" && (!room.startAt || roomPhase === "ready" || roomPhase === "waiting")) {
           ensureFirebaseRoomCountdown(roomId).catch(() => {});
           if (!versusStartAtMs && !versusMatchStarted) {
             versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手参加を確認しました。開始同期を準備しています。`;
           }
         }
-        const roomReady = bothReady && (room.status === "countdown" || room.status === "ready") && !!room.startAt;
-        const roomPlaying = room.status === "playing" && !!room.startAt;
-        if (roomReady && !versusMatchStarted) {
+        const roomSync = bothReady && roomPhase === "sync" && !!room.startAt;
+        const roomCountdown = bothReady && roomPhase === "countdown" && !!room.startAt;
+        const roomPlaying = roomPhase === "playing" && !!room.startAt;
+        if (roomSync && !versusMatchStarted) {
           beginVersusMatch(`FIREBASE ROOM ${roomId}: 同期中です。まもなく対戦を開始します。`, room.startAt);
+        } else if (roomCountdown && !versusMatchStarted) {
+          if (!versusStartAtMs) {
+            beginVersusMatch(`FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`, room.startAt);
+          }
+          beginVersusCountdown(`FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`);
         } else if (roomPlaying && !versusMatchStarted) {
           if (!versusStartAtMs) beginVersusMatch(`FIREBASE ROOM ${roomId}: 対戦を開始します。`, room.startAt);
           const effectiveStartAt = Math.max(room.startAt || 0, versusStartAtMs || 0);
@@ -3873,6 +3886,7 @@
       const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
       await roomRef.update({
         status: "playing",
+        phase: "playing",
         updatedAt: Date.now(),
         lastEvent: {
           type: "game:start",
@@ -3880,6 +3894,26 @@
         }
       });
       return true;
+    }
+
+    async function markFirebaseRoomCountdown() {
+      if (!firebaseSession || !firebaseReady || firebaseSession.role !== "host" || !versusStartAtMs) return false;
+      const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
+      const result = await roomRef.transaction((current) => {
+        if (!current?.host?.ready || !current?.guest?.ready) return current;
+        const currentPhase = current.phase || current.status || "waiting";
+        if (currentPhase === "countdown" || currentPhase === "playing" || currentPhase === "finished") return current;
+        current.status = "countdown";
+        current.phase = "countdown";
+        current.startAt = current.startAt || versusStartAtMs;
+        current.updatedAt = Date.now();
+        current.lastEvent = {
+          type: "room:countdown",
+          at: Date.now()
+        };
+        return current;
+      });
+      return !!result.committed;
     }
 
     function completeVersusMatchStart(statusText = "") {
@@ -4450,8 +4484,16 @@
 
       if (currentGameMode === "versus" && versusStartAtMs && !versusMatchStarted && !versusCountdownEndsAt) {
         const countdownStartAt = versusStartAtMs - 3000;
-        if (Date.now() >= countdownStartAt) {
-          beginVersusCountdown(`FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`);
+        if (firebaseSession) {
+          if (
+            firebaseSession.role === "host" &&
+            versusRoomState?.phase === "sync" &&
+            Date.now() >= countdownStartAt
+          ) {
+            markFirebaseRoomCountdown().catch(() => {});
+          }
+        } else if (Date.now() >= countdownStartAt) {
+          beginVersusCountdown(`LOCAL ROOM ${roomId}: 3秒後に対戦を開始します。`);
         }
       }
 
