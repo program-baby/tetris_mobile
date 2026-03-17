@@ -1897,7 +1897,6 @@
       debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
     }
 
-    const RANKING_KEY = "tetrisLocalTop10V1";
     const SOLO_RANKING_LIMIT = 10;
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
     const PLAY_COUNT_KEY = "tetrisPlayCountV1";
@@ -2134,17 +2133,7 @@
     }
 
     function loadRanking() {
-      try {
-        const raw = localStorage.getItem(RANKING_KEY);
-        if (!raw) return [];
-        return normalizeRankingList(JSON.parse(raw));
-      } catch {
-        return [];
-      }
-    }
-
-    function saveRanking(list) {
-      localStorage.setItem(RANKING_KEY, JSON.stringify(list.slice(0, 10)));
+      return sharedSoloRanking?.length ? sharedSoloRanking : [];
     }
 
     function buildRankingItemHtml(entry, idx) {
@@ -2392,7 +2381,10 @@
 
     async function registerRankingScore(state) {
       if (currentGameMode !== "single" || !state.gameOver || state.score <= 0) return;
-      const ranking = sharedSoloRanking?.length ? sharedSoloRanking : loadRanking();
+      if (hasFirebaseConfig() && !firebaseReady) {
+        await initFirebaseAdapter().catch(() => false);
+      }
+      const ranking = loadRanking();
       const previousBest = getBestEntry(ranking)?.score ?? 0;
       const cutoff = ranking.length < 10 ? -1 : ranking[9].score;
       if (state.score <= cutoff) {
@@ -2420,9 +2412,7 @@
 
       ranking.push(entry);
       ranking.sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date);
-      const top10 = ranking.slice(0, 10);
-      saveRanking(top10);
-      let finalRanking = top10;
+      let finalRanking = ranking.slice(0, 10);
       if (firebaseReady) {
         const shared = await submitSharedSoloRanking(entry).catch(() => null);
         if (shared?.length) {
