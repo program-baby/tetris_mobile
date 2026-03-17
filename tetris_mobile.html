@@ -660,6 +660,58 @@
       flex-wrap: wrap;
     }
 
+    .admin-usernames {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid rgba(71, 85, 105, 0.72);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.56);
+    }
+
+    .admin-usernames-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      color: #f8fafc;
+      font-size: 0.88rem;
+    }
+
+    .admin-usernames-list {
+      display: grid;
+      gap: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .admin-user-item {
+      display: grid;
+      gap: 6px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(51, 65, 85, 0.7);
+      background: rgba(2, 6, 23, 0.46);
+    }
+
+    .admin-user-name {
+      color: #f8fafc;
+      font-size: 0.9rem;
+    }
+
+    .admin-user-meta {
+      color: #94a3b8;
+      font-size: 0.72rem;
+      line-height: 1.4;
+    }
+
+    .admin-user-empty {
+      color: #94a3b8;
+      font-size: 0.76rem;
+      padding: 6px 2px;
+    }
+
     .record-celebration {
       position: fixed;
       inset: 0;
@@ -1696,6 +1748,7 @@
       <div class="player-name-box">
         <label for="player-name-input" class="player-name-label">ユーザー名</label>
         <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
+        <button id="player-name-confirm" class="ghost tool-btn" type="button">OK</button>
         <div id="player-name-status" class="player-name-status" aria-live="polite"></div>
       </div>
       <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
@@ -1762,6 +1815,14 @@
       <div class="admin-room-actions">
         <button id="admin-reset-name" class="ghost tool-btn" type="button">自分の名前をリセット</button>
         <button id="admin-reset-all" class="danger tool-btn" type="button">全ルーム解放</button>
+      </div>
+      <div class="admin-usernames">
+        <div class="admin-usernames-head">
+          <strong>登録ユーザー名</strong>
+          <span id="admin-user-count" class="admin-usage-badge">0件</span>
+        </div>
+        <input id="admin-user-search" class="lobby-input" type="text" inputmode="text" placeholder="ユーザー名で検索">
+        <div id="admin-user-list" class="admin-usernames-list"></div>
       </div>
       <div id="admin-room-list" class="admin-room-list"></div>
     </div>
@@ -1870,6 +1931,9 @@
     const adminResetNameBtn = document.getElementById("admin-reset-name");
     const adminResetAllBtn = document.getElementById("admin-reset-all");
     const adminRoomListEl = document.getElementById("admin-room-list");
+    const adminUserSearchEl = document.getElementById("admin-user-search");
+    const adminUserListEl = document.getElementById("admin-user-list");
+    const adminUserCountEl = document.getElementById("admin-user-count");
     const adminUsageBadgeEl = document.getElementById("admin-usage-badge");
     const adminUsageFillEl = document.getElementById("admin-usage-fill");
     const adminUsageTodayEl = document.getElementById("admin-usage-today");
@@ -1884,6 +1948,7 @@
     const versusRoomBackBtn = document.getElementById("versus-room-back");
     const titleRoomSlotEls = Array.from(document.querySelectorAll("[data-room-slot]"));
     const playerNameInputEl = document.getElementById("player-name-input");
+    const playerNameConfirmBtn = document.getElementById("player-name-confirm");
     const playerNameStatusEl = document.getElementById("player-name-status");
     const titleModeNoteEl = document.getElementById("title-mode-note");
     const titleRankingBtn = document.getElementById("title-ranking");
@@ -2019,6 +2084,7 @@
     let selectedLobbyRoomId = "";
     let titleRoomSnapshots = {};
     let titleRoomRefs = [];
+    let adminUsernames = [];
 
     if (debugHudEl) {
       debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
@@ -2440,6 +2506,41 @@
       adminUsageRankingEl.textContent = String(rankingEntries);
     }
 
+    function renderAdminUserList() {
+      if (!adminUserListEl) return;
+      const query = sanitizePlayerName(adminUserSearchEl?.value || "").toLowerCase();
+      const list = adminUsernames
+        .filter((entry) => !query || entry.name.toLowerCase().includes(query))
+        .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+      adminUserCountEl.textContent = `${adminUsernames.length}件`;
+      adminUserListEl.innerHTML = "";
+      if (!list.length) {
+        const empty = document.createElement("div");
+        empty.className = "admin-user-empty";
+        empty.textContent = query ? "検索条件に一致するユーザー名はありません。" : "登録ユーザー名はまだありません。";
+        adminUserListEl.appendChild(empty);
+        return;
+      }
+      list.forEach((entry) => {
+        const item = document.createElement("div");
+        item.className = "admin-user-item";
+        const updated = entry.updatedAt ? new Date(entry.updatedAt).toLocaleString("ja-JP") : "-";
+        item.innerHTML = `
+          <div class="admin-user-name">${entry.name}</div>
+          <div class="admin-user-meta">owner: ${entry.ownerUid || "-"}<br>updated: ${updated}</div>
+          <div class="admin-room-actions">
+            <button class="ghost tool-btn" type="button" data-admin-reset-name="${entry.name}">${entry.name} をリセット</button>
+          </div>
+        `;
+        adminUserListEl.appendChild(item);
+      });
+      adminUserListEl.querySelectorAll("[data-admin-reset-name]").forEach((button) => {
+        button.addEventListener("click", () => {
+          resetNamedPlayer(button.dataset.adminResetName).catch(() => {});
+        });
+      });
+    }
+
     function renderAdminRoomList() {
       if (!adminRoomListEl) return;
       renderAdminUsage();
@@ -2473,6 +2574,7 @@
       }
       if (!ensureAdminUnlocked()) return;
       renderAdminRoomList();
+      loadAdminUsernames().catch(() => {});
       adminModalEl.classList.add("is-open");
       adminModalEl.setAttribute("aria-hidden", "false");
     }
@@ -2504,6 +2606,45 @@
       titleModeNoteEl.classList.add("is-info");
     }
 
+    async function loadAdminUsernames() {
+      const ok = await initFirebaseAdapter();
+      if (!ok) return false;
+      const snapshot = await firebaseDb.ref("usernames").once("value");
+      const raw = snapshot.val() || {};
+      adminUsernames = Object.values(raw)
+        .filter((entry) => entry && typeof entry.name === "string")
+        .map((entry) => ({
+          name: sanitizePlayerName(entry.name),
+          ownerUid: entry.ownerUid || "",
+          updatedAt: entry.updatedAt || 0
+        }))
+        .filter((entry) => entry.name);
+      renderAdminUserList();
+      return true;
+    }
+
+    async function resetNamedPlayer(name) {
+      const safeName = sanitizePlayerName(name);
+      if (!safeName) return false;
+      const ok = await initFirebaseAdapter();
+      if (!ok) return false;
+      await firebaseDb.ref(`usernames/${getPlayerNameKey(safeName)}`).remove();
+      if (getStoredPlayerName() === safeName) {
+        localStorage.removeItem(PLAYER_NAME_KEY);
+        if (versusRoomState) {
+          versusRoomState.players.local.name = "PLAYER";
+          renderVersusRoomHud();
+        }
+        syncPlayerNameInput();
+        renderTitleRoomSlots();
+      }
+      titleModeNoteEl.textContent = `${safeName} をリセットしました。`;
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+      await loadAdminUsernames().catch(() => {});
+      return true;
+    }
+
     async function resetCurrentPlayerName() {
       const currentName = getStoredPlayerName();
       if (!currentName || currentName === "PLAYER") {
@@ -2513,19 +2654,9 @@
         syncPlayerNameInput();
         return false;
       }
-      await releaseReservedPlayerName(currentName).catch(() => {});
-      localStorage.removeItem(PLAYER_NAME_KEY);
-      if (versusRoomState) {
-        versusRoomState.players.local.name = "PLAYER";
-        renderVersusRoomHud();
-      }
-      syncPlayerNameInput();
-      renderTitleRoomSlots();
-      titleModeNoteEl.textContent = "ユーザー名の固定を解除しました。新しい名前を入力できます。";
-      titleModeNoteEl.classList.remove("is-warning");
-      titleModeNoteEl.classList.add("is-info");
-      if (playerNameInputEl) playerNameInputEl.focus();
-      return true;
+      const result = await resetNamedPlayer(currentName);
+      if (result && playerNameInputEl) playerNameInputEl.focus();
+      return result;
     }
 
     function openRecordCelebration(score) {
@@ -3142,6 +3273,9 @@
         playerNameInputEl.value = stored === "PLAYER" ? "" : stored;
         playerNameInputEl.disabled = isPlayerNameLocked();
       }
+      if (playerNameConfirmBtn) {
+        playerNameConfirmBtn.disabled = isPlayerNameLocked();
+      }
       if (stored && stored !== "PLAYER") {
         setPlayerNameStatus("このユーザー名で固定されています", "is-available");
       } else {
@@ -3260,6 +3394,43 @@
         await releaseReservedPlayerName(previousName).catch(() => {});
       }
       return { ok: true, name: setStoredPlayerNameLocal(name) };
+    }
+
+    async function confirmPlayerName() {
+      if (isPlayerNameLocked()) {
+        syncPlayerNameInput();
+        return true;
+      }
+      const candidate = sanitizePlayerName(playerNameInputEl?.value || "");
+      if (!candidate) {
+        titleModeNoteEl.textContent = "ユーザーネームを入力してください。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        setPlayerNameStatus("ユーザー名を入力してください");
+        playerNameInputEl?.focus();
+        return false;
+      }
+      const accepted = window.confirm("一度決定すると変更できないですがよろしいですか？");
+      if (!accepted) return false;
+      const result = await claimAndSavePlayerName(candidate);
+      if (!result.ok) {
+        titleModeNoteEl.textContent = result.reason === "duplicate"
+          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
+          : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        setPlayerNameStatus(result.reason === "duplicate"
+          ? "このユーザー名はすでに使われています"
+          : "ユーザー名の確認に失敗しました", result.reason === "duplicate" ? "is-taken" : "");
+        playerNameInputEl?.focus();
+        return false;
+      }
+      titleModeNoteEl.textContent = `ユーザー名「${result.name}」を確定しました。`;
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+      syncPlayerNameInput();
+      renderTitleRoomSlots();
+      return true;
     }
 
     function getTodayKey() {
@@ -4669,24 +4840,12 @@
     async function startSelectedMode() {
       unlockAudio();
       let shouldStart = true;
-      const lockedName = getStoredPlayerName();
-      const claimedName = isPlayerNameLocked()
-        ? { ok: true, name: lockedName, locked: true }
-        : await claimAndSavePlayerName(playerNameInputEl.value);
-      const savedName = claimedName.ok ? claimedName.name : lockedName;
-      if (!savedName || savedName === "PLAYER") {
-        titleModeNoteEl.textContent = "先にユーザー名を入力してください。ランキングと対戦相手表示に使います。";
+      const savedName = getStoredPlayerName();
+      if (!isPlayerNameLocked() || !savedName || savedName === "PLAYER") {
+        titleModeNoteEl.textContent = "ユーザーネームを入力してOKで確定してください。";
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
-        playerNameInputEl.focus();
-        return;
-      }
-      if (!claimedName.ok) {
-        titleModeNoteEl.textContent = claimedName.reason === "duplicate"
-          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
-          : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
-        titleModeNoteEl.classList.remove("is-info");
-        titleModeNoteEl.classList.add("is-warning");
+        setPlayerNameStatus("ユーザー名を確定してください");
         playerNameInputEl.focus();
         return;
       }
@@ -5208,33 +5367,25 @@
         });
       }, 280);
     });
-    playerNameInputEl.addEventListener("change", async () => {
-      if (isPlayerNameLocked()) {
-        syncPlayerNameInput();
-        renderTitleRoomSlots();
-        return;
-      }
-      const result = await claimAndSavePlayerName(playerNameInputEl.value);
-      if (!result.ok && playerNameInputEl.value.trim()) {
-        titleModeNoteEl.textContent = result.reason === "duplicate"
-          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
-          : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
-        titleModeNoteEl.classList.remove("is-info");
-        titleModeNoteEl.classList.add("is-warning");
-        setPlayerNameStatus(result.reason === "duplicate"
-          ? "このユーザー名はすでに使われています"
-          : "ユーザー名の確認に失敗しました", result.reason === "duplicate" ? "is-taken" : "");
-      } else if (result.ok) {
-        setPlayerNameStatus("このユーザー名は使用できます", "is-available");
-      }
+    playerNameInputEl.addEventListener("change", () => {
       syncPlayerNameInput();
       renderTitleRoomSlots();
+    });
+    playerNameConfirmBtn.addEventListener("click", () => {
+      confirmPlayerName().catch(() => {
+        titleModeNoteEl.textContent = "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+      });
     });
     titleRankingBtn.addEventListener("click", () => {
       openRankingModal();
     });
     titleAdminBtn.addEventListener("click", () => {
       openAdminModal();
+    });
+    adminUserSearchEl.addEventListener("input", () => {
+      renderAdminUserList();
     });
     adminResetNameBtn.addEventListener("click", () => {
       resetCurrentPlayerName().catch(() => {});
