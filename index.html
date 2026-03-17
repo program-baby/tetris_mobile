@@ -547,6 +547,87 @@
       line-height: 1.5;
     }
 
+    .admin-usage {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid rgba(71, 85, 105, 0.72);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.56);
+    }
+
+    .admin-usage-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      color: #f8fafc;
+      font-size: 0.88rem;
+    }
+
+    .admin-usage-badge {
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      color: #e2e8f0;
+      background: rgba(71, 85, 105, 0.48);
+    }
+
+    .admin-usage-badge.is-safe {
+      background: rgba(34, 197, 94, 0.18);
+      color: #86efac;
+    }
+
+    .admin-usage-badge.is-caution {
+      background: rgba(234, 179, 8, 0.18);
+      color: #fde68a;
+    }
+
+    .admin-usage-badge.is-high {
+      background: rgba(239, 68, 68, 0.18);
+      color: #fca5a5;
+    }
+
+    .admin-usage-meter {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(30, 41, 59, 0.88);
+      overflow: hidden;
+    }
+
+    .admin-usage-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #22c55e, #f59e0b, #ef4444);
+      transition: width 0.2s ease;
+    }
+
+    .admin-usage-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .admin-usage-stat {
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.46);
+      border: 1px solid rgba(51, 65, 85, 0.7);
+    }
+
+    .admin-usage-stat span {
+      display: block;
+      color: #94a3b8;
+      font-size: 0.7rem;
+      margin-bottom: 4px;
+    }
+
+    .admin-usage-stat strong {
+      color: #f8fafc;
+      font-size: 1rem;
+    }
+
     .admin-room-list {
       display: grid;
       gap: 10px;
@@ -1245,6 +1326,25 @@
       letter-spacing: 0.04em;
     }
 
+    .player-name-status {
+      min-height: 1.3em;
+      color: #94a3b8;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+
+    .player-name-status.is-checking {
+      color: #cbd5e1;
+    }
+
+    .player-name-status.is-available {
+      color: #4ade80;
+    }
+
+    .player-name-status.is-taken {
+      color: #fbbf24;
+    }
+
     .title-session {
       display: grid;
       gap: 8px;
@@ -1596,6 +1696,7 @@
       <div class="player-name-box">
         <label for="player-name-input" class="player-name-label">ユーザー名</label>
         <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
+        <div id="player-name-status" class="player-name-status" aria-live="polite"></div>
       </div>
       <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
       <p id="title-mode-note" class="title-note">1人用はボタンを押すと開始、対戦用は ROOM を選ぶと待機/参加できます。下の使い方を確認してから始められます。</p>
@@ -1642,7 +1743,22 @@
         <h2 class="ranking-modal-title">管理画面</h2>
         <button id="admin-close" class="ghost ranking-close" type="button">閉じる</button>
       </div>
-      <p class="admin-note">詰まった公開ルームを手動で解放できます。必要な部屋だけリセットするか、全ルーム解放を実行してください。</p>
+      <p class="admin-note">詰まった公開ルームを手動で解放できます。下の無料枠表示は Firebase の正確な残量ではなく、今日のプレイ数と稼働状況から見た運用目安です。</p>
+      <div class="admin-usage">
+        <div class="admin-usage-head">
+          <strong>無料枠の目安</strong>
+          <span id="admin-usage-badge" class="admin-usage-badge">計測中</span>
+        </div>
+        <div class="admin-usage-meter">
+          <div id="admin-usage-fill" class="admin-usage-fill"></div>
+        </div>
+        <div class="admin-usage-grid">
+          <div class="admin-usage-stat"><span>今日のプレイ数</span><strong id="admin-usage-today">0</strong></div>
+          <div class="admin-usage-stat"><span>稼働中ルーム</span><strong id="admin-usage-rooms">0</strong></div>
+          <div class="admin-usage-stat"><span>接続中プレイヤー推定</span><strong id="admin-usage-users">0</strong></div>
+          <div class="admin-usage-stat"><span>ランキング件数</span><strong id="admin-usage-ranking">0</strong></div>
+        </div>
+      </div>
       <div class="admin-room-actions">
         <button id="admin-reset-all" class="danger tool-btn" type="button">全ルーム解放</button>
       </div>
@@ -1752,6 +1868,12 @@
     const adminCloseBtn = document.getElementById("admin-close");
     const adminResetAllBtn = document.getElementById("admin-reset-all");
     const adminRoomListEl = document.getElementById("admin-room-list");
+    const adminUsageBadgeEl = document.getElementById("admin-usage-badge");
+    const adminUsageFillEl = document.getElementById("admin-usage-fill");
+    const adminUsageTodayEl = document.getElementById("admin-usage-today");
+    const adminUsageRoomsEl = document.getElementById("admin-usage-rooms");
+    const adminUsageUsersEl = document.getElementById("admin-usage-users");
+    const adminUsageRankingEl = document.getElementById("admin-usage-ranking");
     const titleScreenEl = document.getElementById("title-screen");
     const titleCardEl = titleScreenEl.querySelector(".title-card");
     const modeSingleBtn = document.getElementById("mode-single");
@@ -1760,6 +1882,7 @@
     const versusRoomBackBtn = document.getElementById("versus-room-back");
     const titleRoomSlotEls = Array.from(document.querySelectorAll("[data-room-slot]"));
     const playerNameInputEl = document.getElementById("player-name-input");
+    const playerNameStatusEl = document.getElementById("player-name-status");
     const titleModeNoteEl = document.getElementById("title-mode-note");
     const titleRankingBtn = document.getElementById("title-ranking");
     const titleAdminBtn = document.getElementById("title-admin");
@@ -1889,6 +2012,8 @@
     let waitingTimer = null;
     let localRematchRequested = false;
     let rematchWaitTimer = null;
+    let playerNameCheckTimer = null;
+    let playerNameCheckToken = 0;
     let selectedLobbyRoomId = "";
     let titleRoomSnapshots = {};
     let titleRoomRefs = [];
@@ -2286,8 +2411,36 @@
       return { host, guest, status, memberCount };
     }
 
+    function renderAdminUsage() {
+      if (!adminUsageBadgeEl) return;
+      const rooms = TITLE_PUBLIC_ROOMS
+        .map((roomKey) => titleRoomSnapshots[roomKey])
+        .filter((room) => room && room.host && room.host.state !== "LEFT");
+      const activeRooms = rooms.length;
+      const activeUsers = rooms.reduce((sum, room) => {
+        const hostActive = room?.host?.name && room.host.state !== "LEFT" ? 1 : 0;
+        const guestActive = room?.guest?.name && room.guest.state !== "LEFT" ? 1 : 0;
+        return sum + hostActive + guestActive;
+      }, 0);
+      const todayPlays = globalPlayStats.today || 0;
+      const rankingEntries = sharedSoloRanking?.length || 0;
+      const usagePercent = Math.min(100, Math.round(Math.min(todayPlays / 200, 1) * 65 + Math.min(activeUsers / 20, 1) * 35));
+      const usageLabel = usagePercent >= 80 ? "高負荷" : usagePercent >= 45 ? "注意" : "安定";
+      const usageClass = usagePercent >= 80 ? "is-high" : usagePercent >= 45 ? "is-caution" : "is-safe";
+
+      adminUsageBadgeEl.textContent = `${usageLabel} ${usagePercent}%`;
+      adminUsageBadgeEl.classList.remove("is-safe", "is-caution", "is-high");
+      adminUsageBadgeEl.classList.add(usageClass);
+      adminUsageFillEl.style.width = `${usagePercent}%`;
+      adminUsageTodayEl.textContent = String(todayPlays);
+      adminUsageRoomsEl.textContent = String(activeRooms);
+      adminUsageUsersEl.textContent = String(activeUsers);
+      adminUsageRankingEl.textContent = String(rankingEntries);
+    }
+
     function renderAdminRoomList() {
       if (!adminRoomListEl) return;
+      renderAdminUsage();
       adminRoomListEl.innerHTML = "";
       TITLE_PUBLIC_ROOMS.forEach((roomKey) => {
         const meta = getAdminRoomText(roomKey);
@@ -2399,7 +2552,12 @@
           renderRanking(ranking);
           return;
         }
-        name = savePlayerName(input) || "PLAYER";
+        const claimed = await claimAndSavePlayerName(input);
+        if (!claimed.ok) {
+          renderRanking(ranking);
+          return;
+        }
+        name = claimed.name || "PLAYER";
       }
 
       const entry = {
@@ -2951,9 +3109,22 @@
       if (playerNameInputEl) {
         playerNameInputEl.value = getStoredPlayerName() === "PLAYER" ? "" : getStoredPlayerName();
       }
+      const stored = getStoredPlayerName();
+      if (stored && stored !== "PLAYER") {
+        setPlayerNameStatus("現在のユーザー名です", "is-available");
+      } else {
+        setPlayerNameStatus("ユーザー名を入力してください");
+      }
     }
 
-    function savePlayerName(value) {
+    function setPlayerNameStatus(text = "", kind = "") {
+      if (!playerNameStatusEl) return;
+      playerNameStatusEl.textContent = text;
+      playerNameStatusEl.classList.remove("is-checking", "is-available", "is-taken");
+      if (kind) playerNameStatusEl.classList.add(kind);
+    }
+
+    function setStoredPlayerNameLocal(value) {
       const name = sanitizePlayerName(value);
       if (!name) return "";
       localStorage.setItem(PLAYER_NAME_KEY, name);
@@ -2963,6 +3134,92 @@
         renderTitleSessionInfo();
       }
       return name;
+    }
+
+    function getPlayerNameKey(name) {
+      return sanitizePlayerName(name).toLowerCase();
+    }
+
+    async function checkPlayerNameAvailability(value) {
+      const name = sanitizePlayerName(value);
+      if (!name) return { ok: false, reason: "empty" };
+      if (!hasFirebaseConfig()) return { ok: true, name };
+      const ok = await initFirebaseAdapter();
+      if (!ok || !firebaseAuth?.currentUser?.uid) {
+        return { ok: false, reason: "firebase-unavailable" };
+      }
+      const uid = firebaseAuth.currentUser.uid;
+      const key = getPlayerNameKey(name);
+      const snapshot = await firebaseDb.ref(`usernames/${key}`).once("value");
+      const current = snapshot.val();
+      if (!current || current.ownerUid === uid) {
+        return { ok: true, name };
+      }
+      return { ok: false, reason: "duplicate", name };
+    }
+
+    async function validatePlayerNameInputLive(value) {
+      const requestToken = ++playerNameCheckToken;
+      const name = sanitizePlayerName(value);
+      if (!name) {
+        setPlayerNameStatus("ユーザー名を入力してください");
+        return;
+      }
+      setPlayerNameStatus("使用可否を確認中...", "is-checking");
+      const result = await checkPlayerNameAvailability(name).catch(() => ({ ok: false, reason: "firebase-unavailable" }));
+      if (requestToken !== playerNameCheckToken) return;
+      if (result.ok) {
+        setPlayerNameStatus("このユーザー名は使用できます", "is-available");
+      } else if (result.reason === "duplicate") {
+        setPlayerNameStatus("このユーザー名はすでに使われています", "is-taken");
+      } else {
+        setPlayerNameStatus("ユーザー名の確認に失敗しました");
+      }
+    }
+
+    async function releaseReservedPlayerName(name) {
+      const key = getPlayerNameKey(name);
+      if (!firebaseReady || !firebaseAuth?.currentUser?.uid || !key) return false;
+      const uid = firebaseAuth.currentUser.uid;
+      const ref = firebaseDb.ref(`usernames/${key}`);
+      await ref.transaction((current) => {
+        if (!current || current.ownerUid !== uid) return current;
+        return null;
+      });
+      return true;
+    }
+
+    async function claimAndSavePlayerName(value) {
+      const name = sanitizePlayerName(value);
+      if (!name) return { ok: false, reason: "empty" };
+      if (!hasFirebaseConfig()) {
+        return { ok: true, name: setStoredPlayerNameLocal(name) };
+      }
+      const ok = await initFirebaseAdapter();
+      if (!ok || !firebaseAuth?.currentUser?.uid) {
+        return { ok: false, reason: "firebase-unavailable" };
+      }
+      const uid = firebaseAuth.currentUser.uid;
+      const key = getPlayerNameKey(name);
+      const ref = firebaseDb.ref(`usernames/${key}`);
+      const result = await ref.transaction((current) => {
+        if (!current || current.ownerUid === uid) {
+          return {
+            name,
+            ownerUid: uid,
+            updatedAt: Date.now()
+          };
+        }
+        return;
+      });
+      if (!result.committed) {
+        return { ok: false, reason: "duplicate" };
+      }
+      const previousName = getStoredPlayerName();
+      if (previousName && previousName !== "PLAYER" && getPlayerNameKey(previousName) !== key) {
+        await releaseReservedPlayerName(previousName).catch(() => {});
+      }
+      return { ok: true, name: setStoredPlayerNameLocal(name) };
     }
 
     function getTodayKey() {
@@ -2994,6 +3251,7 @@
       globalPlayStats.total = Math.max(0, Math.floor(total || 0));
       if (playCountTodayEl) playCountTodayEl.textContent = String(globalPlayStats.today);
       if (playCountTotalEl) playCountTotalEl.textContent = String(globalPlayStats.total);
+      renderAdminUsage();
     }
 
     async function subscribeGlobalPlayStats() {
@@ -3014,6 +3272,7 @@
         const list = normalizeRankingList(snapshot.val());
         sharedSoloRanking = list;
         renderRanking(list);
+        renderAdminUsage();
       };
       firebaseSoloRankingRef.on("value", firebaseSoloRankingListener);
     }
@@ -4370,9 +4629,19 @@
     async function startSelectedMode() {
       unlockAudio();
       let shouldStart = true;
-      const savedName = savePlayerName(playerNameInputEl.value) || getStoredPlayerName();
+      const claimedName = await claimAndSavePlayerName(playerNameInputEl.value);
+      const savedName = claimedName.ok ? claimedName.name : getStoredPlayerName();
       if (!savedName || savedName === "PLAYER") {
         titleModeNoteEl.textContent = "先にユーザー名を入力してください。ランキングと対戦相手表示に使います。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        playerNameInputEl.focus();
+        return;
+      }
+      if (!claimedName.ok) {
+        titleModeNoteEl.textContent = claimedName.reason === "duplicate"
+          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
+          : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
         playerNameInputEl.focus();
@@ -4878,9 +5147,33 @@
     });
     playerNameInputEl.addEventListener("input", () => {
       playerNameInputEl.value = sanitizePlayerName(playerNameInputEl.value);
+      if (playerNameCheckTimer) clearTimeout(playerNameCheckTimer);
+      const currentValue = playerNameInputEl.value;
+      if (!currentValue.trim()) {
+        playerNameCheckToken++;
+        setPlayerNameStatus("ユーザー名を入力してください");
+        return;
+      }
+      playerNameCheckTimer = setTimeout(() => {
+        validatePlayerNameInputLive(currentValue).catch(() => {
+          setPlayerNameStatus("ユーザー名の確認に失敗しました");
+        });
+      }, 280);
     });
-    playerNameInputEl.addEventListener("change", () => {
-      savePlayerName(playerNameInputEl.value);
+    playerNameInputEl.addEventListener("change", async () => {
+      const result = await claimAndSavePlayerName(playerNameInputEl.value);
+      if (!result.ok && playerNameInputEl.value.trim()) {
+        titleModeNoteEl.textContent = result.reason === "duplicate"
+          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
+          : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        setPlayerNameStatus(result.reason === "duplicate"
+          ? "このユーザー名はすでに使われています"
+          : "ユーザー名の確認に失敗しました", result.reason === "duplicate" ? "is-taken" : "");
+      } else if (result.ok) {
+        setPlayerNameStatus("このユーザー名は使用できます", "is-available");
+      }
       syncPlayerNameInput();
       renderTitleRoomSlots();
     });
