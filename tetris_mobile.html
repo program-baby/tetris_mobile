@@ -1365,7 +1365,7 @@
         <button id="restart" class="danger tool-btn" type="button">リセット長押し</button>
         <div class="landscape-ranking">
           <div class="landscape-ranking-head">
-            <div class="landscape-ranking-title">LOCAL TOP 10</div>
+            <div class="landscape-ranking-title">ひとり用 TOP 10</div>
             <div id="landscape-best-score" class="landscape-best">BEST 0</div>
           </div>
           <ol id="landscape-ranking-list" class="landscape-ranking-list"></ol>
@@ -1600,7 +1600,7 @@
       <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
       <p id="title-mode-note" class="title-note">1人用はボタンを押すと開始、対戦用は ROOM を選ぶと待機/参加できます。下の使い方を確認してから始められます。</p>
       <div class="title-actions">
-        <button id="title-ranking" class="ghost title-start-btn" type="button">ランキング</button>
+        <button id="title-ranking" class="ghost title-start-btn" type="button">ひとり用ランキング</button>
         <button id="title-admin" class="ghost title-start-btn" type="button">管理</button>
       </div>
     </div>
@@ -1609,7 +1609,7 @@
   <section id="ranking-modal" class="ranking-modal" aria-hidden="true">
     <div class="ranking-modal-card">
       <div class="ranking-modal-head">
-        <h2 class="ranking-modal-title">LOCAL TOP 10</h2>
+        <h2 class="ranking-modal-title">ひとり用 TOP 10</h2>
         <button id="ranking-close" class="ghost ranking-close" type="button">閉じる</button>
       </div>
       <ol id="ranking-modal-list" class="ranking-modal-list"></ol>
@@ -1875,9 +1875,12 @@
     let firebaseDisconnectRef = null;
     let firebaseStatsRef = null;
     let firebaseStatsListener = null;
+    let firebaseSoloRankingRef = null;
+    let firebaseSoloRankingListener = null;
     let firebaseSession = null;
     let firebaseCountdownSyncPending = false;
     let globalPlayStats = { today: 0, total: 0 };
+    let sharedSoloRanking = null;
     let processedGarbageIds = new Set();
     let playCountCommittedForMatch = false;
     let versusRoomReleased = false;
@@ -1895,6 +1898,7 @@
     }
 
     const RANKING_KEY = "tetrisLocalTop10V1";
+    const SOLO_RANKING_LIMIT = 10;
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
     const PLAY_COUNT_KEY = "tetrisPlayCountV1";
     const PLAY_COUNT_DAILY_KEY = "tetrisPlayCountDailyV1";
@@ -2110,21 +2114,30 @@
       });
     }
 
+    function normalizeRankingList(value) {
+      const list = Array.isArray(value)
+        ? value
+        : value && typeof value === "object"
+          ? Object.values(value)
+          : [];
+      return list
+        .filter((r) => Number.isFinite(r.score) && typeof r.name === "string")
+        .map((r) => ({
+          name: r.name.slice(0, 12) || "PLAYER",
+          score: Math.max(0, Math.floor(r.score)),
+          lines: Math.max(0, Math.floor(r.lines || 0)),
+          level: Math.max(1, Math.floor(r.level || 1)),
+          date: Number.isFinite(r.date) ? r.date : Date.now()
+        }))
+        .sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date)
+        .slice(0, SOLO_RANKING_LIMIT);
+    }
+
     function loadRanking() {
       try {
         const raw = localStorage.getItem(RANKING_KEY);
         if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return [];
-        return parsed
-          .filter((r) => Number.isFinite(r.score) && typeof r.name === "string")
-          .map((r) => ({
-            name: r.name.slice(0, 12) || "PLAYER",
-            score: Math.max(0, Math.floor(r.score)),
-            lines: Math.max(0, Math.floor(r.lines || 0)),
-            level: Math.max(1, Math.floor(r.level || 1)),
-            date: Number.isFinite(r.date) ? r.date : Date.now()
-          }));
+        return normalizeRankingList(JSON.parse(raw));
       } catch {
         return [];
       }
@@ -2149,7 +2162,7 @@
       if (list.length === 0) {
         const empty = document.createElement("li");
         empty.className = "ranking-empty";
-        empty.textContent = "No scores yet";
+        empty.textContent = "まだスコアがありません";
         rankingModalListEl.appendChild(empty);
         return;
       }
@@ -2165,7 +2178,7 @@
       const best = getBestEntry(list);
       if (!best) {
         if (rankingTickerEl) {
-          rankingTickerEl.innerHTML = `<div class="ranking-empty">No scores yet</div>`;
+          rankingTickerEl.innerHTML = `<div class="ranking-empty">まだスコアがありません</div>`;
         }
         boardBestScoreEl.textContent = "0";
         if (landscapeBestScoreEl) landscapeBestScoreEl.textContent = "BEST 0";
@@ -2197,7 +2210,7 @@
       if (list.length === 0) {
         const empty = document.createElement("li");
         empty.className = "ranking-empty";
-        empty.textContent = "No scores yet";
+        empty.textContent = "まだスコアがありません";
         landscapeRankingListEl.appendChild(empty);
         return;
       }
@@ -2377,9 +2390,9 @@
       forcedRankingByOrientation = false;
     }
 
-    function registerRankingScore(state) {
-      if (!state.gameOver || state.score <= 0) return;
-      const ranking = loadRanking();
+    async function registerRankingScore(state) {
+      if (currentGameMode !== "single" || !state.gameOver || state.score <= 0) return;
+      const ranking = sharedSoloRanking?.length ? sharedSoloRanking : loadRanking();
       const previousBest = getBestEntry(ranking)?.score ?? 0;
       const cutoff = ranking.length < 10 ? -1 : ranking[9].score;
       if (state.score <= cutoff) {
@@ -2397,18 +2410,28 @@
         name = savePlayerName(input) || "PLAYER";
       }
 
-      ranking.push({
+      const entry = {
         name,
         score: state.score,
         lines: state.lines,
         level: state.level,
         date: Date.now()
-      });
+      };
+
+      ranking.push(entry);
       ranking.sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date);
       const top10 = ranking.slice(0, 10);
       saveRanking(top10);
+      let finalRanking = top10;
+      if (firebaseReady) {
+        const shared = await submitSharedSoloRanking(entry).catch(() => null);
+        if (shared?.length) {
+          sharedSoloRanking = shared;
+          finalRanking = shared;
+        }
+      }
       const isNewBest = state.score > previousBest;
-      renderRanking(top10, isNewBest);
+      renderRanking(finalRanking, isNewBest);
       if (isNewBest) openRecordCelebration(state.score);
     }
 
@@ -2994,6 +3017,28 @@
       firebaseStatsRef.on("value", firebaseStatsListener);
     }
 
+    async function subscribeSharedSoloRanking() {
+      if (!firebaseReady || firebaseSoloRankingRef) return;
+      firebaseSoloRankingRef = firebaseDb.ref("leaderboards/soloTop10");
+      firebaseSoloRankingListener = (snapshot) => {
+        const list = normalizeRankingList(snapshot.val());
+        sharedSoloRanking = list;
+        renderRanking(list);
+      };
+      firebaseSoloRankingRef.on("value", firebaseSoloRankingListener);
+    }
+
+    async function submitSharedSoloRanking(entry) {
+      if (!firebaseReady) return null;
+      const rankingRef = firebaseDb.ref("leaderboards/soloTop10");
+      const result = await rankingRef.transaction((current) => {
+        const list = normalizeRankingList(current);
+        list.push(entry);
+        return normalizeRankingList(list);
+      });
+      return result.snapshot?.val() ? normalizeRankingList(result.snapshot.val()) : null;
+    }
+
     function incrementLocalPlayCount(amount) {
       const safeAmount = Math.max(0, Math.floor(amount));
       const dailyRaw = localStorage.getItem(PLAY_COUNT_DAILY_KEY);
@@ -3214,6 +3259,7 @@
       }
       firebaseReady = true;
       subscribeGlobalPlayStats().catch(() => {});
+      subscribeSharedSoloRanking().catch(() => {});
       subscribeTitleRoomSlots();
       return true;
     }
@@ -4550,7 +4596,7 @@
           setStatus(state, "画面をタップしてタイトルへ戻る", 60 * 60 * 1000);
           updateHUD(state);
         }
-        registerRankingScore(state);
+        registerRankingScore(state).catch(() => {});
       } else if (!state.gameOver) {
         gameOverHandled = false;
       }
