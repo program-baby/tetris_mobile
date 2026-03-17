@@ -1760,6 +1760,7 @@
         </div>
       </div>
       <div class="admin-room-actions">
+        <button id="admin-reset-name" class="ghost tool-btn" type="button">自分の名前をリセット</button>
         <button id="admin-reset-all" class="danger tool-btn" type="button">全ルーム解放</button>
       </div>
       <div id="admin-room-list" class="admin-room-list"></div>
@@ -1866,6 +1867,7 @@
     const rulesCloseBtn = document.getElementById("rules-close");
     const adminModalEl = document.getElementById("admin-modal");
     const adminCloseBtn = document.getElementById("admin-close");
+    const adminResetNameBtn = document.getElementById("admin-reset-name");
     const adminResetAllBtn = document.getElementById("admin-reset-all");
     const adminRoomListEl = document.getElementById("admin-room-list");
     const adminUsageBadgeEl = document.getElementById("admin-usage-badge");
@@ -2500,6 +2502,30 @@
       titleModeNoteEl.textContent = "公開ルームをすべて解放しました。";
       titleModeNoteEl.classList.remove("is-warning");
       titleModeNoteEl.classList.add("is-info");
+    }
+
+    async function resetCurrentPlayerName() {
+      const currentName = getStoredPlayerName();
+      if (!currentName || currentName === "PLAYER") {
+        titleModeNoteEl.textContent = "リセットできる固定ユーザー名がありません。";
+        titleModeNoteEl.classList.remove("is-warning");
+        titleModeNoteEl.classList.add("is-info");
+        syncPlayerNameInput();
+        return false;
+      }
+      await releaseReservedPlayerName(currentName).catch(() => {});
+      localStorage.removeItem(PLAYER_NAME_KEY);
+      if (versusRoomState) {
+        versusRoomState.players.local.name = "PLAYER";
+        renderVersusRoomHud();
+      }
+      syncPlayerNameInput();
+      renderTitleRoomSlots();
+      titleModeNoteEl.textContent = "ユーザー名の固定を解除しました。新しい名前を入力できます。";
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+      if (playerNameInputEl) playerNameInputEl.focus();
+      return true;
     }
 
     function openRecordCelebration(score) {
@@ -5209,6 +5235,9 @@
     });
     titleAdminBtn.addEventListener("click", () => {
       openAdminModal();
+    });
+    adminResetNameBtn.addEventListener("click", () => {
+      resetCurrentPlayerName().catch(() => {});
     });
     adminCloseBtn.addEventListener("click", closeAdminModal);
     adminModalEl.addEventListener("click", (e) => {
