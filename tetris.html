@@ -3731,6 +3731,37 @@
       }
     }
 
+    function syncVersusStartFromRoom(roomId, roomPhase, roomStartAt, bothReady, roomFinished, localRole) {
+      if (bothReady && localRole === "host" && (!roomStartAt || roomPhase === "ready" || roomPhase === "waiting")) {
+        ensureFirebaseRoomStartAt(roomId).catch(() => {});
+        if (!versusStartAtMs && !versusMatchStarted) {
+          versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手参加を確認しました。開始同期を準備しています。`;
+        }
+      }
+
+      const hasSharedStart = bothReady && !!roomStartAt && !roomFinished;
+      if (hasSharedStart && !versusMatchStarted) {
+        const sharedStatus = roomPhase === "countdown"
+          ? `FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`
+          : roomPhase === "playing"
+            ? `FIREBASE ROOM ${roomId}: 対戦を開始します。`
+            : `FIREBASE ROOM ${roomId}: 同期中です。まもなく対戦を開始します。`;
+        if (!versusStartAtMs || Math.abs(versusStartAtMs - roomStartAt) > 120) {
+          beginVersusMatch(sharedStatus, roomStartAt);
+        } else if (!versusCountdownEndsAt) {
+          versusStatusEl.textContent = `${sharedStatus} 同期完了後に3カウントを開始します。`;
+        }
+        return;
+      }
+
+      if (!versusMatchStarted) {
+        clearVersusCountdown();
+        waitingForOpponent = true;
+        state.paused = true;
+        updateHUD(state);
+      }
+    }
+
     async function returnToTitleFromVersus(message = "", reason = "room:leave") {
       clearVersusFinishTimer();
       if (currentGameMode === "versus" && firebaseSession) {
@@ -3839,7 +3870,7 @@
       };
     }
 
-    async function ensureFirebaseRoomCountdown(roomId) {
+    async function ensureFirebaseRoomStartAt(roomId) {
       if (!firebaseReady || !firebaseSession || firebaseSession.role !== "host" || !roomId || firebaseCountdownSyncPending) {
         return false;
       }
@@ -3850,7 +3881,9 @@
           if (!current?.host?.ready || !current?.guest?.ready) return current;
           const hasFutureStart = !!current.startAt && current.startAt > Date.now() + 200;
           const currentPhase = current.phase || current.status || "waiting";
-          if (hasFutureStart && (currentPhase === "sync" || currentPhase === "countdown" || currentPhase === "playing")) return current;
+          if (hasFutureStart || currentPhase === "countdown" || currentPhase === "playing" || currentPhase === "finished") {
+            return current;
+          }
           current.status = "sync";
           current.phase = "sync";
           current.startAt = Date.now() + 7000;
@@ -3867,21 +3900,32 @@
       }
     }
 
+    function buildFirebaseRoomPhaseUpdate(phase, eventType, extra = {}) {
+      const now = Date.now();
+      return {
+        updatedAt: now,
+        status: phase,
+        phase,
+        lastEvent: {
+          type: eventType,
+          at: now
+        },
+        ...extra
+      };
+    }
+
     async function sendFirebaseStateUpdate(snapshot) {
       if (!firebaseSession || !firebaseReady) return false;
       const role = firebaseSession.role;
       const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
       await roomRef.child(`${role}/game`).set(snapshot);
-      await roomRef.update({
-        updatedAt: Date.now(),
-        status: snapshot.gameOver ? "finished" : "playing",
-        phase: snapshot.gameOver ? "finished" : "playing",
-        lastEvent: {
-          type: "state:update",
-          at: Date.now()
-        },
-        [`${role}/state`]: snapshot.gameOver ? "LOSE" : snapshot.paused ? "READY" : "LIVE"
-      });
+      await roomRef.update(buildFirebaseRoomPhaseUpdate(
+        snapshot.gameOver ? "finished" : "playing",
+        "state:update",
+        {
+          [`${role}/state`]: snapshot.gameOver ? "LOSE" : snapshot.paused ? "READY" : "LIVE"
+        }
+      ));
       return true;
     }
 
@@ -4000,31 +4044,7 @@
           || local.state === "WIN" || remote.state === "WIN"
           || local.state === "LEFT" || remote.state === "LEFT";
         const bothReady = !!local.ready && !!remote.ready;
-        if (bothReady && localRole === "host" && (!room.startAt || roomPhase === "ready" || roomPhase === "waiting")) {
-          ensureFirebaseRoomCountdown(roomId).catch(() => {});
-          if (!versusStartAtMs && !versusMatchStarted) {
-            versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手参加を確認しました。開始同期を準備しています。`;
-          }
-        }
-        const hasSharedStart = bothReady && !!room.startAt && !roomFinished;
-        if (hasSharedStart && !versusMatchStarted) {
-          const sharedStartAt = room.startAt;
-          const sharedStatus = roomPhase === "countdown"
-            ? `FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`
-            : roomPhase === "playing"
-              ? `FIREBASE ROOM ${roomId}: 対戦を開始します。`
-              : `FIREBASE ROOM ${roomId}: 同期中です。まもなく対戦を開始します。`;
-          if (!versusStartAtMs || Math.abs(versusStartAtMs - sharedStartAt) > 120) {
-            beginVersusMatch(sharedStatus, sharedStartAt);
-          } else if (!versusCountdownEndsAt && !versusMatchStarted) {
-            versusStatusEl.textContent = `${sharedStatus} 同期完了後に3カウントを開始します。`;
-          }
-        } else if (!versusMatchStarted) {
-          clearVersusCountdown();
-          waitingForOpponent = true;
-          state.paused = true;
-          updateHUD(state);
-        }
+        syncVersusStartFromRoom(roomId, roomPhase, room.startAt, bothReady, roomFinished, localRole);
       };
       firebaseRoomRef.on("value", firebaseRoomListener);
       return true;
@@ -4225,15 +4245,7 @@
     async function markFirebaseRoomPlaying() {
       if (!firebaseSession || !firebaseReady) return false;
       const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
-      await roomRef.update({
-        status: "playing",
-        phase: "playing",
-        updatedAt: Date.now(),
-        lastEvent: {
-          type: "game:start",
-          at: Date.now()
-        }
-      });
+      await roomRef.update(buildFirebaseRoomPhaseUpdate("playing", "game:start"));
       return true;
     }
 
@@ -4328,6 +4340,39 @@
       }
       if (statusText) versusStatusEl.textContent = `${statusText} 同期完了後に3カウントを開始します。`;
       updateHUD(state);
+    }
+
+    function handleVersusStartTiming() {
+      const versusFinished = currentGameMode === "versus" && (versusTerminal || versusRoomState?.phase === "finished");
+      if (currentGameMode !== "versus" || versusFinished || !versusStartAtMs || versusMatchStarted) {
+        return;
+      }
+
+      if (!versusCountdownEndsAt) {
+        const countdownStartAt = versusStartAtMs - 3000;
+        if (
+          firebaseSession &&
+          firebaseSession.role === "host" &&
+          versusRoomState?.phase === "sync" &&
+          Date.now() >= countdownStartAt
+        ) {
+          markFirebaseRoomCountdown().catch(() => {});
+        }
+
+        if (Date.now() >= countdownStartAt) {
+          const countdownLabel = firebaseSession
+            ? `FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`
+            : `LOCAL ROOM ${roomId}: 3秒後に対戦を開始します。`;
+          beginVersusCountdown(countdownLabel);
+        }
+      }
+
+      if (Date.now() >= versusStartAtMs) {
+        const startLabel = firebaseSession
+          ? `FIREBASE ROOM ${roomId}: 対戦を開始します。`
+          : `LOCAL ROOM ${roomId}: 対戦を開始します。`;
+        completeVersusMatchStart(startLabel);
+      }
     }
 
     function getGhostOffset(state) {
@@ -4809,30 +4854,7 @@
       const delta = time - state.lastTime;
       state.lastTime = time;
       const speed = Math.max(1000 - (state.level - 1) * 90, 120);
-      const versusFinished = currentGameMode === "versus" && (versusTerminal || versusRoomState?.phase === "finished");
-
-      if (currentGameMode === "versus" && !versusFinished && versusStartAtMs && !versusMatchStarted && !versusCountdownEndsAt) {
-        const countdownStartAt = versusStartAtMs - 3000;
-        if (firebaseSession) {
-          if (
-            firebaseSession.role === "host" &&
-            versusRoomState?.phase === "sync" &&
-            Date.now() >= countdownStartAt
-          ) {
-            markFirebaseRoomCountdown().catch(() => {});
-          }
-        }
-        if (Date.now() >= countdownStartAt) {
-          const countdownLabel = firebaseSession
-            ? `FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`
-            : `LOCAL ROOM ${roomId}: 3秒後に対戦を開始します。`;
-          beginVersusCountdown(countdownLabel);
-        }
-      }
-
-      if (currentGameMode === "versus" && !versusFinished && versusStartAtMs && !versusMatchStarted && Date.now() >= versusStartAtMs) {
-        completeVersusMatchStart(`FIREBASE ROOM ${roomId}: 対戦を開始します。`);
-      }
+      handleVersusStartTiming();
 
       if (state.clearing) {
         const elapsed = performance.now() - state.clearing.startedAt;
