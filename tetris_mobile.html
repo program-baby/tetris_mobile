@@ -1372,6 +1372,46 @@
       gap: 6px;
     }
 
+    .player-name-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .player-name-confirm {
+      min-width: 58px;
+      padding: 0 14px;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid rgba(34, 211, 238, 0.42);
+      background: rgba(15, 23, 42, 0.88);
+      color: #e2e8f0;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+    }
+
+    .player-name-confirm:hover:enabled {
+      transform: translateY(-1px);
+      border-color: rgba(34, 211, 238, 0.8);
+      background: rgba(17, 24, 39, 0.96);
+    }
+
+    .player-name-confirm.is-locked {
+      min-width: 50px;
+      font-size: 1rem;
+      cursor: default;
+      border-color: rgba(74, 222, 128, 0.45);
+      color: #4ade80;
+    }
+
+    .player-name-confirm:disabled {
+      cursor: default;
+      opacity: 0.72;
+    }
+
     .player-name-label {
       color: #cbd5e1;
       font-size: 0.74rem;
@@ -1747,7 +1787,10 @@
       </div>
       <div class="player-name-box">
         <label for="player-name-input" class="player-name-label">ユーザー名</label>
-        <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
+        <div class="player-name-row">
+          <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
+          <button id="player-name-confirm" class="player-name-confirm" type="button">OK</button>
+        </div>
         <div id="player-name-status" class="player-name-status" aria-live="polite"></div>
       </div>
       <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
@@ -1947,6 +1990,7 @@
     const versusRoomBackBtn = document.getElementById("versus-room-back");
     const titleRoomSlotEls = Array.from(document.querySelectorAll("[data-room-slot]"));
     const playerNameInputEl = document.getElementById("player-name-input");
+    const playerNameConfirmBtn = document.getElementById("player-name-confirm");
     const playerNameStatusEl = document.getElementById("player-name-status");
     const titleModeNoteEl = document.getElementById("title-mode-note");
     const titleRankingBtn = document.getElementById("title-ranking");
@@ -2244,9 +2288,9 @@
       return uaMobile || (hasTouch && compactScreen);
     }
 
-    function fitLayout() {
+    function fitLayout(force = false) {
       const { width: vw, height: vh } = getViewportSize();
-      if (Math.abs(vw - lastViewportW) <= 2 && Math.abs(vh - lastViewportH) <= 2) return;
+      if (!force && Math.abs(vw - lastViewportW) <= 2 && Math.abs(vh - lastViewportH) <= 2) return;
       lastViewportW = vw;
       lastViewportH = vh;
 
@@ -2296,11 +2340,11 @@
       applyBoardOffset(false);
     }
 
-    function scheduleFitLayout() {
+    function scheduleFitLayout(force = false) {
       if (layoutRaf) return;
       layoutRaf = requestAnimationFrame(() => {
         layoutRaf = 0;
-        fitLayout();
+        fitLayout(force);
       });
     }
 
@@ -3265,12 +3309,24 @@
       return !!stored && stored !== "PLAYER";
     }
 
+    function syncPlayerNameConfirmButton() {
+      if (!playerNameConfirmBtn) return;
+      const locked = isPlayerNameLocked();
+      const hasValue = !!sanitizePlayerName(playerNameInputEl?.value || "");
+      playerNameConfirmBtn.textContent = locked ? "🔒" : "OK";
+      playerNameConfirmBtn.classList.toggle("is-locked", locked);
+      playerNameConfirmBtn.disabled = locked || !hasValue;
+      playerNameConfirmBtn.setAttribute("aria-label", locked ? "ユーザー名は固定済みです" : "ユーザー名を確定");
+      playerNameConfirmBtn.title = locked ? "ユーザー名は固定済みです" : "この名前で確定";
+    }
+
     function syncPlayerNameInput() {
       const stored = getStoredPlayerName();
       if (playerNameInputEl) {
         playerNameInputEl.value = stored === "PLAYER" ? "" : stored;
         playerNameInputEl.disabled = isPlayerNameLocked();
       }
+      syncPlayerNameConfirmButton();
       if (stored && stored !== "PLAYER") {
         setPlayerNameStatus("このユーザー名で固定されています", "is-available");
       } else {
@@ -4351,7 +4407,12 @@
       titleScreenEl.classList.remove("is-open");
       titleScreenEl.scrollTop = 0;
       if (titleCardEl) titleCardEl.scrollTop = 0;
-      scheduleFitLayout();
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      } catch (_) {
+        window.scrollTo(0, 0);
+      }
+      scheduleFitLayout(true);
     }
 
     async function markFirebaseRoomPlaying() {
@@ -4413,6 +4474,8 @@
       }
       if (statusText) versusStatusEl.textContent = statusText;
       updateHUD(state);
+      scheduleFitLayout(true);
+      setTimeout(() => scheduleFitLayout(true), 60);
       playCountdownStartSound();
       emitGameEvent("start", { roomId });
       syncVersusPreview(true);
@@ -5322,9 +5385,11 @@
       if (isPlayerNameLocked()) {
         playerNameInputEl.value = getStoredPlayerName();
         setPlayerNameStatus("このユーザー名で固定されています", "is-available");
+        syncPlayerNameConfirmButton();
         return;
       }
       playerNameInputEl.value = sanitizePlayerName(playerNameInputEl.value);
+      syncPlayerNameConfirmButton();
       if (playerNameCheckTimer) clearTimeout(playerNameCheckTimer);
       const currentValue = playerNameInputEl.value;
       if (!currentValue.trim()) {
@@ -5344,8 +5409,15 @@
         renderTitleRoomSlots();
         return;
       }
-      const result = await claimAndSavePlayerName(playerNameInputEl.value);
-      if (!result.ok && playerNameInputEl.value.trim()) {
+      const currentValue = sanitizePlayerName(playerNameInputEl.value);
+      playerNameInputEl.value = currentValue;
+      syncPlayerNameConfirmButton();
+      if (!currentValue) {
+        setPlayerNameStatus("ユーザー名を入力してください");
+        return;
+      }
+      const result = await checkPlayerNameAvailability(currentValue).catch(() => ({ ok: false, reason: "firebase-unavailable" }));
+      if (!result.ok) {
         titleModeNoteEl.textContent = result.reason === "duplicate"
           ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
           : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
@@ -5354,9 +5426,39 @@
         setPlayerNameStatus(result.reason === "duplicate"
           ? "このユーザー名はすでに使われています"
           : "ユーザー名の確認に失敗しました", result.reason === "duplicate" ? "is-taken" : "");
-      } else if (result.ok) {
-        setPlayerNameStatus("このユーザー名は使用できます", "is-available");
       }
+    });
+    playerNameConfirmBtn.addEventListener("click", async () => {
+      if (isPlayerNameLocked()) {
+        syncPlayerNameInput();
+        return;
+      }
+      const typedName = sanitizePlayerName(playerNameInputEl.value);
+      if (!typedName) {
+        setPlayerNameStatus("ユーザー名を入力してください");
+        titleModeNoteEl.textContent = "先にユーザー名を入力してください。ランキングと対戦相手表示に使います。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        syncPlayerNameConfirmButton();
+        return;
+      }
+      setPlayerNameStatus("ユーザー名を確定しています...", "is-checking");
+      const result = await claimAndSavePlayerName(typedName);
+      if (!result.ok) {
+        titleModeNoteEl.textContent = result.reason === "duplicate"
+          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
+          : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        setPlayerNameStatus(result.reason === "duplicate"
+          ? "このユーザー名はすでに使われています"
+          : "ユーザー名の確認に失敗しました", result.reason === "duplicate" ? "is-taken" : "");
+        syncPlayerNameConfirmButton();
+        return;
+      }
+      titleModeNoteEl.textContent = `${result.name} さんで登録しました。この名前でランキングと対戦に参加します。`;
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
       syncPlayerNameInput();
       renderTitleRoomSlots();
     });
