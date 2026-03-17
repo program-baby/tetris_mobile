@@ -705,33 +705,6 @@
       transition: none;
     }
 
-    .board-menu {
-      position: absolute;
-      inset: auto auto 16px 50%;
-      transform: translateX(-50%);
-      z-index: 7;
-      display: none;
-      grid-template-columns: repeat(3, auto);
-      gap: 6px;
-      padding: 8px;
-      border-radius: 12px;
-      border: 1px solid rgba(103, 232, 249, 0.35);
-      background: rgba(2, 6, 23, 0.88);
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-    }
-
-    .board-menu.is-open {
-      display: grid;
-    }
-
-    .board-menu-btn {
-      min-width: 72px;
-      min-height: 36px;
-      font-size: 0.74rem;
-      padding: 8px 10px;
-      white-space: nowrap;
-    }
-
     .board-score-hud {
       position: absolute;
       top: 0;
@@ -1044,7 +1017,8 @@
     .title-card.is-versus .title-eyebrow,
     .title-card.is-versus .title-hero,
     .title-card.is-versus .title-sub,
-    .title-card.is-versus .mode-grid {
+    .title-card.is-versus .mode-grid,
+    .title-card.is-versus .title-guide {
       display: none;
     }
 
@@ -1178,6 +1152,42 @@
       display: block;
       color: #94a3b8;
       font-size: 0.75rem;
+      line-height: 1.45;
+    }
+
+    .title-guide {
+      display: grid;
+      gap: 10px;
+    }
+
+    .title-guide-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .title-guide-block {
+      display: grid;
+      gap: 6px;
+      padding: 12px;
+      border: 1px solid rgba(71, 85, 105, 0.78);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.58);
+    }
+
+    .title-guide-head {
+      color: #67e8f9;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+
+    .title-guide-list {
+      margin: 0;
+      padding-left: 16px;
+      display: grid;
+      gap: 4px;
+      color: #cbd5e1;
+      font-size: 0.74rem;
       line-height: 1.45;
     }
 
@@ -1317,6 +1327,10 @@
     }
 
     @media (min-width: 760px) {
+      .title-guide-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
       .title-card.is-versus .title-versus-stage {
         grid-template-columns: minmax(230px, 260px) minmax(0, 1fr);
         align-items: start;
@@ -1348,7 +1362,6 @@
       <aside id="leftTools" class="panel left-tools">
         <button id="title-return-top" class="ghost tool-btn" type="button">タイトルへ戻る</button>
         <button id="pause" class="ghost tool-btn" type="button">一時停止</button>
-        <button id="rules-open" class="ghost tool-btn" type="button">ルール</button>
         <button id="restart" class="danger tool-btn" type="button">リセット長押し</button>
         <div class="landscape-ranking">
           <div class="landscape-ranking-head">
@@ -1383,11 +1396,6 @@
             <div class="combo-bar"><div id="combo-bar-fill" class="combo-bar-fill"></div></div>
           </div>
           <div id="combo-bonus" class="combo-bonus">+0</div>
-        </div>
-        <div id="board-menu" class="board-menu" aria-label="盤面メニュー">
-          <button id="board-menu-smaller" class="ghost board-menu-btn" type="button">縮小</button>
-          <button id="board-menu-larger" class="ghost board-menu-btn" type="button">拡大</button>
-          <button id="board-menu-move" class="ghost board-menu-btn" type="button">移動</button>
         </div>
         <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
       </div>
@@ -1472,18 +1480,6 @@
         <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
         <div class="next-label">HOLD</div>
         <canvas id="hold" width="76" height="76" aria-label="Hold piece"></canvas>
-        <div class="rules-panel">
-          <h2 class="rules-title">RULES</h2>
-          <ol class="rules-list">
-            <li>横向き中はゲーム一時停止</li>
-            <li>縦向きに戻すと再開</li>
-            <li>1〜4ライン同時消去で x1〜x4（4は金）</li>
-            <li>コンボは6.5秒以内に次のライン消去</li>
-            <li>HOLD: ホールド枠タップ</li>
-            <li>DROP: 長押し0.2秒</li>
-            <li>RESET: 長押し0.7秒</li>
-          </ol>
-        </div>
       </aside>
     </section>
 
@@ -1520,6 +1516,38 @@
           <span class="mode-option-copy">通信対戦用の入口です。現状はロビー準備中です。</span>
         </button>
       </div>
+      <section class="title-guide" aria-label="使い方ガイド">
+        <div class="title-guide-grid">
+          <article class="title-guide-block">
+            <div class="title-guide-head">基本操作</div>
+            <ol class="title-guide-list">
+              <li>1人用はボタンを押すとすぐ開始します</li>
+              <li>対戦用は公開ルームを選ぶと待機または参加できます</li>
+              <li>左のボタンで横移動、右のボタンで回転します</li>
+              <li>▼でゆっくり下げ、DROP長押しで一気に落とします</li>
+              <li>HOLD枠タップで今のブロックを保管できます</li>
+            </ol>
+          </article>
+          <article class="title-guide-block">
+            <div class="title-guide-head">得点ルール</div>
+            <ol class="title-guide-list">
+              <li>1〜4ライン同時消去で倍率アップします</li>
+              <li>4ライン同時消去は金色の特別表示です</li>
+              <li>6.5秒以内に続けて消すとコンボが継続します</li>
+              <li>ハイスコア更新時は特別演出が入ります</li>
+            </ol>
+          </article>
+          <article class="title-guide-block">
+            <div class="title-guide-head">対戦の流れ</div>
+            <ol class="title-guide-list">
+              <li>公開ルームで待機中の相手がいる部屋に参加できます</li>
+              <li>2人そろうと同期後に3秒カウントダウンで開始します</li>
+              <li>2ライン以上消すと相手におじゃまを送れます</li>
+              <li>どちらかがゲームオーバーになると勝敗が決まります</li>
+            </ol>
+          </article>
+        </div>
+      </section>
       <div id="title-versus-stage" class="title-versus-stage">
         <aside id="title-room-panel" class="title-room-panel" aria-live="polite">
           <div class="title-room-panel-head">公開ルーム</div>
@@ -1570,7 +1598,7 @@
         <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
       </div>
       <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
-      <p id="title-mode-note" class="title-note">1人用はボタンを押すと開始、対戦用は ROOM を選ぶと待機/参加します。</p>
+      <p id="title-mode-note" class="title-note">1人用はボタンを押すと開始、対戦用は ROOM を選ぶと待機/参加できます。下の使い方を確認してから始められます。</p>
       <div class="title-actions">
         <button id="title-ranking" class="ghost title-start-btn" type="button">ランキング</button>
         <button id="title-admin" class="ghost title-start-btn" type="button">管理</button>
@@ -1591,17 +1619,19 @@
   <section id="rules-modal" class="ranking-modal" aria-hidden="true">
     <div class="ranking-modal-card">
       <div class="ranking-modal-head">
-        <h2 class="ranking-modal-title">RULES</h2>
+        <h2 class="ranking-modal-title">使い方</h2>
         <button id="rules-close" class="ghost ranking-close" type="button">閉じる</button>
       </div>
-      <p class="rules-modal-copy">1人用も対戦用も、ゲームを止めずに読み返せるようにルールをまとめています。</p>
+      <p class="rules-modal-copy">ゲーム中に迷わないように、操作方法とルールを短くまとめています。</p>
       <ol class="rules-list">
-        <li>1〜4ライン同時消去で x1〜x4（4ラインは金色表示）</li>
-        <li>コンボは 6.5秒以内に次のラインを消すと継続</li>
-        <li>HOLD はホールド枠タップ</li>
-        <li>DROP は長押し 0.2 秒</li>
-        <li>RESET は長押し 0.7 秒</li>
-        <li>対戦用は ROOM を作成して、相手参加後に 3 秒カウントダウンで開始</li>
+        <li>1人用: タイトルで1人用を押すとすぐ始まります</li>
+        <li>対戦用: 公開ルームを選んで待機し、相手が入ると3秒後に開始します</li>
+        <li>左のボタンで横移動、右の回転ボタンで向きを変えます</li>
+        <li>▼で少しずつ下げ、DROPは長押し0.2秒で一気に落とします</li>
+        <li>HOLD枠をタップすると今のブロックを保管できます</li>
+        <li>1〜4ライン同時消去で倍率アップ、4ラインは金色表示です</li>
+        <li>6.5秒以内に続けてラインを消すとコンボが続きます</li>
+        <li>リセットは長押し0.7秒、タイトルへ戻るとゲームを抜けられます</li>
       </ol>
     </div>
   </section>
@@ -1781,10 +1811,6 @@
     const comboTimeValueEl = document.getElementById("combo-time-value");
     const comboBarFillEl = document.getElementById("combo-bar-fill");
     const comboBonusEl = document.getElementById("combo-bonus");
-    const boardMenuEl = document.getElementById("board-menu");
-    const boardMenuSmallerBtn = document.getElementById("board-menu-smaller");
-    const boardMenuLargerBtn = document.getElementById("board-menu-larger");
-    const boardMenuMoveBtn = document.getElementById("board-menu-move");
 
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
@@ -1817,7 +1843,6 @@
     let layoutRaf = 0;
     let lastViewportW = 0;
     let lastViewportH = 0;
-    let boardScale = 1;
     let boardOffsetX = 0;
     let boardOffsetY = 0;
     let boardDragTimer = null;
@@ -1827,7 +1852,6 @@
     let boardDragBaseX = 0;
     let boardDragBaseY = 0;
     let boardDragActive = false;
-    let boardMoveModeArmed = false;
     let selectedGameMode = "single";
     let currentGameMode = "single";
     let roomId = "----";
@@ -1875,7 +1899,6 @@
     const PLAY_COUNT_KEY = "tetrisPlayCountV1";
     const PLAY_COUNT_DAILY_KEY = "tetrisPlayCountDailyV1";
     const BOARD_OFFSET_KEY = "tetrisBoardOffsetV1";
-    const BOARD_SCALE_KEY = "tetrisBoardScaleV1";
 
     const COLORS = [
       null,
@@ -1932,24 +1955,6 @@
       }
     }
 
-    function setBoardScale(nextScale) {
-      const safe = Math.max(0.82, Math.min(1.18, Math.round(nextScale * 100) / 100));
-      boardScale = safe;
-      localStorage.setItem(BOARD_SCALE_KEY, String(safe));
-      if (boardMenuSmallerBtn) boardMenuSmallerBtn.disabled = safe <= 0.82;
-      if (boardMenuLargerBtn) boardMenuLargerBtn.disabled = safe >= 1.18;
-      scheduleFitLayout();
-    }
-
-    function loadBoardScale() {
-      const saved = Number(localStorage.getItem(BOARD_SCALE_KEY));
-      if (Number.isFinite(saved) && saved >= 0.82 && saved <= 1.18) {
-        setBoardScale(saved);
-      } else {
-        setBoardScale(1);
-      }
-    }
-
     function clampBoardOffsetX(value) {
       const { width } = getViewportSize();
       const limit = Math.max(36, Math.floor(width * 0.18));
@@ -1993,34 +1998,12 @@
       boardDragTimer = null;
       boardDragPointerId = null;
       boardDragActive = false;
-      boardMoveModeArmed = false;
       boardEl.classList.remove("drag-ready", "is-dragging");
-    }
-
-    function openBoardMenu() {
-      clearBoardDragState();
-      if (boardMenuEl) boardMenuEl.classList.add("is-open");
-      setStatusText("盤面メニューを選んでください", 0);
-    }
-
-    function closeBoardMenu() {
-      if (boardMenuEl) boardMenuEl.classList.remove("is-open");
     }
 
     function startBoardDragCandidate(e) {
       if (titleScreenEl.classList.contains("is-open")) return;
       if (e.target.closest("button")) return;
-      if (boardMoveModeArmed) {
-        boardDragPointerId = e.pointerId ?? null;
-        boardDragOriginX = e.clientX;
-        boardDragOriginY = e.clientY;
-        boardDragBaseX = boardOffsetX;
-        boardDragBaseY = boardOffsetY;
-        boardDragActive = true;
-        boardEl.classList.add("drag-ready", "is-dragging");
-        return;
-      }
-      if (boardMenuEl?.classList.contains("is-open")) return;
       if (boardDragTimer || boardDragActive) return;
       boardDragPointerId = e.pointerId ?? null;
       boardDragOriginX = e.clientX;
@@ -2028,8 +2011,10 @@
       boardDragBaseX = boardOffsetX;
       boardDragBaseY = boardOffsetY;
       boardDragTimer = setTimeout(() => {
+        boardDragActive = true;
         boardDragTimer = null;
-        openBoardMenu();
+        boardEl.classList.add("drag-ready", "is-dragging");
+        setStatusText("盤面を移動できます", 0);
       }, 320);
     }
 
@@ -2045,10 +2030,7 @@
     function finishBoardDrag(e) {
       if (boardDragPointerId !== null && e && e.pointerId !== boardDragPointerId) return;
       const wasDragging = boardDragActive;
-      boardDragPointerId = null;
-      boardDragActive = false;
-      boardMoveModeArmed = false;
-      boardEl.classList.remove("drag-ready", "is-dragging");
+      clearBoardDragState();
       if (wasDragging) {
         applyBoardOffset(true);
       }
@@ -2099,9 +2081,7 @@
       );
       const boardMaxWByHeight = Math.floor(boardMaxHByHeight / 2);
       const boardCap = isLandscape ? 520 : 420;
-      const baseBoardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
-      const scaledBoardW = Math.round(baseBoardW * boardScale);
-      const boardW = Math.max(132, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap, scaledBoardW));
+      const boardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
       document.documentElement.style.setProperty("--board-w", `${boardW}px`);
 
       const sideMin = currentGameMode === "versus" ? (compactSide ? 94 : 126) : (compactSide ? 78 : 84);
@@ -2260,6 +2240,7 @@
     }
 
     function openRulesModal() {
+      if (!rulesModalEl) return;
       rulesModalEl.classList.add("is-open");
       rulesModalEl.setAttribute("aria-hidden", "false");
       if (!state.paused && !state.gameOver) {
@@ -2272,6 +2253,7 @@
     }
 
     function closeRulesModal() {
+      if (!rulesModalEl) return;
       rulesModalEl.classList.remove("is-open");
       rulesModalEl.setAttribute("aria-hidden", "true");
       if (pausedByRulesModal && !state.gameOver) {
@@ -4598,7 +4580,6 @@
     appEl.addEventListener("touchstart", handleSingleGameOverTapReturn, { passive: false });
 
     loadSeVolume();
-    loadBoardScale();
     loadBoardOffset();
 
     function changeSeVolume(step) {
@@ -4765,34 +4746,11 @@
       }
     });
 
-    bindTap(boardMenuSmallerBtn, () => {
-      setBoardScale(boardScale - 0.08);
-      closeBoardMenu();
-    });
-
-    bindTap(boardMenuLargerBtn, () => {
-      setBoardScale(boardScale + 0.08);
-      closeBoardMenu();
-    });
-
-    bindTap(boardMenuMoveBtn, () => {
-      closeBoardMenu();
-      boardMoveModeArmed = true;
-      boardEl.classList.add("drag-ready");
-      setStatusText("盤面をドラッグして移動できます", 0);
-    });
-
     boardEl.addEventListener("pointerdown", startBoardDragCandidate);
     boardEl.addEventListener("pointermove", moveBoardDrag, { passive: false });
     boardEl.addEventListener("pointerup", finishBoardDrag);
     boardEl.addEventListener("pointercancel", finishBoardDrag);
     boardEl.addEventListener("pointerleave", finishBoardDrag);
-
-    document.addEventListener("pointerdown", (e) => {
-      if (!boardMenuEl.classList.contains("is-open")) return;
-      if (boardMenuEl.contains(e.target) || boardEl.contains(e.target)) return;
-      closeBoardMenu();
-    });
 
     hardBtn.addEventListener("click", (e) => e.preventDefault());
     hardBtn.addEventListener("mousedown", startHardDropHold);
@@ -4861,15 +4819,21 @@
     rankingModalEl.addEventListener("click", (e) => {
       if (e.target === rankingModalEl) closeRankingModal();
     });
-    rulesOpenBtn.addEventListener("click", openRulesModal);
-    rulesOpenBtn.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      openRulesModal();
-    }, { passive: false });
-    rulesCloseBtn.addEventListener("click", closeRulesModal);
-    rulesModalEl.addEventListener("click", (e) => {
-      if (e.target === rulesModalEl) closeRulesModal();
-    });
+    if (rulesOpenBtn) {
+      rulesOpenBtn.addEventListener("click", openRulesModal);
+      rulesOpenBtn.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        openRulesModal();
+      }, { passive: false });
+    }
+    if (rulesCloseBtn) {
+      rulesCloseBtn.addEventListener("click", closeRulesModal);
+    }
+    if (rulesModalEl) {
+      rulesModalEl.addEventListener("click", (e) => {
+        if (e.target === rulesModalEl) closeRulesModal();
+      });
+    }
 
     recordCelebrationEl.addEventListener("click", closeRecordCelebration);
     recordCelebrationEl.addEventListener("touchstart", (e) => {
