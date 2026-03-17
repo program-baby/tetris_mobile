@@ -3702,6 +3702,35 @@
       }, delay);
     }
 
+    function finalizeLocalVersusWin(statusText, hudStatus, remoteStateValue, releaseReason, returnMessage, statusDuration = 1500) {
+      state.paused = true;
+      versusMatchStarted = false;
+      versusTerminal = true;
+      waitingForOpponent = false;
+      clearVersusCountdown();
+      if (versusRoomState) {
+        versusRoomState.phase = "finished";
+        versusRoomState.players.local.state = "WIN";
+        versusRoomState.players.remote.state = remoteStateValue;
+        renderVersusRoomHud();
+      }
+      versusResultLabel = "YOU WIN";
+      versusStatusEl.textContent = statusText;
+      setStatus(state, hudStatus, statusDuration);
+      updateHUD(state);
+      releaseFinishedVersusRoom(releaseReason).catch(() => {});
+      scheduleVersusFinishReturn(returnMessage, `${releaseReason}-return`, statusDuration);
+    }
+
+    function handleRemoteLeftWhileWaiting(roomId) {
+      waitingForOpponent = false;
+      versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手が退出しました。部屋を作り直してください。`;
+      if (versusRoomState) {
+        versusRoomState.players.remote.state = "LEFT";
+        renderVersusRoomHud();
+      }
+    }
+
     async function returnToTitleFromVersus(message = "", reason = "room:leave") {
       clearVersusFinishTimer();
       if (currentGameMode === "versus" && firebaseSession) {
@@ -3907,7 +3936,6 @@
         const local = room[localRole] || {};
         const remote = room[remoteRole] || {};
         const baseState = versusRoomState || createVersusRoomState();
-        const rematchTriggered = room.lastEvent?.type === "room:rematch";
         const roomPhase = room.phase || room.status || "waiting";
         baseState.phase = roomPhase;
         baseState.lastEvent = room.lastEvent?.type || "none";
@@ -3925,10 +3953,6 @@
         baseState.garbageQueue.incoming = Object.values(local.garbageQueue?.items || {}).map((item) => item.lines || 0);
         versusRoomState = baseState;
         waitingStartedAt = room.createdAt || waitingStartedAt || Date.now();
-        if (rematchTriggered) {
-          resetVersusMatchLocalState();
-          waitingStartedAt = Date.now();
-        }
         if (!versusStartAtMs && !versusMatchStarted) {
           versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: ${roomPhase}`;
         }
@@ -3937,23 +3961,13 @@
           remoteState = remote.game;
           updateRemoteHud(remote.game);
           if (remote.game.gameOver && !state.gameOver) {
-            state.paused = true;
-            versusMatchStarted = false;
-            versusTerminal = true;
-            waitingForOpponent = false;
-            clearVersusCountdown();
-            if (versusRoomState) {
-              versusRoomState.phase = "finished";
-              versusRoomState.players.local.state = "WIN";
-              versusRoomState.players.remote.state = "LOSE";
-              renderVersusRoomHud();
-            }
-            versusResultLabel = "YOU WIN";
-            versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手がゲームオーバーしました。あなたの勝利です。`;
-            setStatus(state, "YOU WIN", 1500);
-            updateHUD(state);
-            releaseFinishedVersusRoom("room:finished-win").catch(() => {});
-            scheduleVersusFinishReturn("あなたの勝利です。タイトル画面へ戻りました。", "room:finished-win-return");
+            finalizeLocalVersusWin(
+              `FIREBASE ROOM ${roomId}: 相手がゲームオーバーしました。あなたの勝利です。`,
+              "YOU WIN",
+              "LOSE",
+              "room:finished-win",
+              "あなたの勝利です。タイトル画面へ戻りました。"
+            );
           }
         } else {
           remoteState = null;
@@ -3961,30 +3975,16 @@
         }
         if (remote.state === "LEFT") {
           if (versusMatchStarted && !state.gameOver) {
-            state.paused = true;
-            versusMatchStarted = false;
-            versusTerminal = true;
-            waitingForOpponent = false;
-            clearVersusCountdown();
-            if (versusRoomState) {
-              versusRoomState.phase = "finished";
-              versusRoomState.players.local.state = "WIN";
-              versusRoomState.players.remote.state = "LEFT";
-              renderVersusRoomHud();
-            }
-            versusResultLabel = "YOU WIN";
-            versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手が退出したため、あなたの勝利です。`;
-            setStatus(state, "WIN BY EXIT", 1800);
-            updateHUD(state);
-            releaseFinishedVersusRoom("room:finished-exit").catch(() => {});
-            scheduleVersusFinishReturn("相手が退出したため勝利しました。タイトル画面へ戻りました。", "room:finished-exit-return");
+            finalizeLocalVersusWin(
+              `FIREBASE ROOM ${roomId}: 相手が退出したため、あなたの勝利です。`,
+              "WIN BY EXIT",
+              "LEFT",
+              "room:finished-exit",
+              "相手が退出したため勝利しました。タイトル画面へ戻りました。",
+              1800
+            );
           } else if (!versusMatchStarted) {
-            waitingForOpponent = false;
-            versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手が退出しました。部屋を作り直してください。`;
-            if (versusRoomState) {
-              versusRoomState.players.remote.state = "LEFT";
-              renderVersusRoomHud();
-            }
+            handleRemoteLeftWhileWaiting(roomId);
           }
         }
         const incomingItems = Object.entries(local.garbageQueue?.items || {})
@@ -4009,20 +4009,15 @@
         const hasSharedStart = bothReady && !!room.startAt && !roomFinished;
         if (hasSharedStart && !versusMatchStarted) {
           const sharedStartAt = room.startAt;
-          const effectiveStartAt = Math.max(sharedStartAt || 0, versusStartAtMs || 0);
-          const sharedStatus = roomPhase === "playing"
-            ? `FIREBASE ROOM ${roomId}: 対戦を開始します。`
-            : Date.now() >= sharedStartAt - 3000
-              ? `FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`
+          const sharedStatus = roomPhase === "countdown"
+            ? `FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`
+            : roomPhase === "playing"
+              ? `FIREBASE ROOM ${roomId}: 対戦を開始します。`
               : `FIREBASE ROOM ${roomId}: 同期中です。まもなく対戦を開始します。`;
           if (!versusStartAtMs || Math.abs(versusStartAtMs - sharedStartAt) > 120) {
             beginVersusMatch(sharedStatus, sharedStartAt);
-          }
-          if (Date.now() >= sharedStartAt - 3000 && !versusCountdownEndsAt) {
-            beginVersusCountdown(`FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`);
-          }
-          if (Date.now() >= effectiveStartAt - 120) {
-            completeVersusMatchStart(`FIREBASE ROOM ${roomId}: 対戦を開始します。`);
+          } else if (!versusCountdownEndsAt && !versusMatchStarted) {
+            versusStatusEl.textContent = `${sharedStatus} 同期完了後に3カウントを開始します。`;
           }
         } else if (!versusMatchStarted) {
           clearVersusCountdown();
@@ -4826,8 +4821,12 @@
           ) {
             markFirebaseRoomCountdown().catch(() => {});
           }
-        } else if (Date.now() >= countdownStartAt) {
-          beginVersusCountdown(`LOCAL ROOM ${roomId}: 3秒後に対戦を開始します。`);
+        }
+        if (Date.now() >= countdownStartAt) {
+          const countdownLabel = firebaseSession
+            ? `FIREBASE ROOM ${roomId}: 3秒後に対戦を開始します。`
+            : `LOCAL ROOM ${roomId}: 3秒後に対戦を開始します。`;
+          beginVersusCountdown(countdownLabel);
         }
       }
 
