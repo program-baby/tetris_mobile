@@ -693,6 +693,43 @@
       align-items: flex-end;
       min-height: 0;
       padding-top: 26px;
+      transition: transform 120ms ease-out;
+    }
+
+    .board-wrap.drag-ready {
+      outline: 2px dashed rgba(103, 232, 249, 0.75);
+      outline-offset: 6px;
+    }
+
+    .board-wrap.is-dragging {
+      transition: none;
+    }
+
+    .board-menu {
+      position: absolute;
+      inset: auto auto 16px 50%;
+      transform: translateX(-50%);
+      z-index: 7;
+      display: none;
+      grid-template-columns: repeat(3, auto);
+      gap: 6px;
+      padding: 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(103, 232, 249, 0.35);
+      background: rgba(2, 6, 23, 0.88);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .board-menu.is-open {
+      display: grid;
+    }
+
+    .board-menu-btn {
+      min-width: 72px;
+      min-height: 36px;
+      font-size: 0.74rem;
+      padding: 8px 10px;
+      white-space: nowrap;
     }
 
     .board-score-hud {
@@ -1347,6 +1384,11 @@
           </div>
           <div id="combo-bonus" class="combo-bonus">+0</div>
         </div>
+        <div id="board-menu" class="board-menu" aria-label="盤面メニュー">
+          <button id="board-menu-smaller" class="ghost board-menu-btn" type="button">縮小</button>
+          <button id="board-menu-larger" class="ghost board-menu-btn" type="button">拡大</button>
+          <button id="board-menu-move" class="ghost board-menu-btn" type="button">移動</button>
+        </div>
         <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
       </div>
 
@@ -1739,6 +1781,10 @@
     const comboTimeValueEl = document.getElementById("combo-time-value");
     const comboBarFillEl = document.getElementById("combo-bar-fill");
     const comboBonusEl = document.getElementById("combo-bonus");
+    const boardMenuEl = document.getElementById("board-menu");
+    const boardMenuSmallerBtn = document.getElementById("board-menu-smaller");
+    const boardMenuLargerBtn = document.getElementById("board-menu-larger");
+    const boardMenuMoveBtn = document.getElementById("board-menu-move");
 
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
@@ -1771,6 +1817,17 @@
     let layoutRaf = 0;
     let lastViewportW = 0;
     let lastViewportH = 0;
+    let boardScale = 1;
+    let boardOffsetX = 0;
+    let boardOffsetY = 0;
+    let boardDragTimer = null;
+    let boardDragPointerId = null;
+    let boardDragOriginX = 0;
+    let boardDragOriginY = 0;
+    let boardDragBaseX = 0;
+    let boardDragBaseY = 0;
+    let boardDragActive = false;
+    let boardMoveModeArmed = false;
     let selectedGameMode = "single";
     let currentGameMode = "single";
     let roomId = "----";
@@ -1817,6 +1874,8 @@
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
     const PLAY_COUNT_KEY = "tetrisPlayCountV1";
     const PLAY_COUNT_DAILY_KEY = "tetrisPlayCountDailyV1";
+    const BOARD_OFFSET_KEY = "tetrisBoardOffsetV1";
+    const BOARD_SCALE_KEY = "tetrisBoardScaleV1";
 
     const COLORS = [
       null,
@@ -1873,6 +1932,128 @@
       }
     }
 
+    function setBoardScale(nextScale) {
+      const safe = Math.max(0.82, Math.min(1.18, Math.round(nextScale * 100) / 100));
+      boardScale = safe;
+      localStorage.setItem(BOARD_SCALE_KEY, String(safe));
+      if (boardMenuSmallerBtn) boardMenuSmallerBtn.disabled = safe <= 0.82;
+      if (boardMenuLargerBtn) boardMenuLargerBtn.disabled = safe >= 1.18;
+      scheduleFitLayout();
+    }
+
+    function loadBoardScale() {
+      const saved = Number(localStorage.getItem(BOARD_SCALE_KEY));
+      if (Number.isFinite(saved) && saved >= 0.82 && saved <= 1.18) {
+        setBoardScale(saved);
+      } else {
+        setBoardScale(1);
+      }
+    }
+
+    function clampBoardOffsetX(value) {
+      const { width } = getViewportSize();
+      const limit = Math.max(36, Math.floor(width * 0.18));
+      return Math.max(-limit, Math.min(limit, Math.round(value)));
+    }
+
+    function clampBoardOffsetY(value) {
+      const { height } = getViewportSize();
+      const limit = Math.max(48, Math.floor(height * 0.14));
+      return Math.max(-limit, Math.min(limit, Math.round(value)));
+    }
+
+    function applyBoardOffset(persist = false) {
+      boardOffsetX = clampBoardOffsetX(boardOffsetX);
+      boardOffsetY = clampBoardOffsetY(boardOffsetY);
+      boardEl.style.transform = `translate(${boardOffsetX}px, ${boardOffsetY}px)`;
+      if (persist) {
+        localStorage.setItem(BOARD_OFFSET_KEY, JSON.stringify({ x: boardOffsetX, y: boardOffsetY }));
+      }
+    }
+
+    function loadBoardOffset() {
+      try {
+        const raw = localStorage.getItem(BOARD_OFFSET_KEY);
+        if (!raw) {
+          applyBoardOffset(false);
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        boardOffsetX = Number.isFinite(parsed?.x) ? parsed.x : 0;
+        boardOffsetY = Number.isFinite(parsed?.y) ? parsed.y : 0;
+      } catch {
+        boardOffsetX = 0;
+        boardOffsetY = 0;
+      }
+      applyBoardOffset(false);
+    }
+
+    function clearBoardDragState() {
+      if (boardDragTimer) clearTimeout(boardDragTimer);
+      boardDragTimer = null;
+      boardDragPointerId = null;
+      boardDragActive = false;
+      boardMoveModeArmed = false;
+      boardEl.classList.remove("drag-ready", "is-dragging");
+    }
+
+    function openBoardMenu() {
+      clearBoardDragState();
+      if (boardMenuEl) boardMenuEl.classList.add("is-open");
+      setStatusText("盤面メニューを選んでください", 0);
+    }
+
+    function closeBoardMenu() {
+      if (boardMenuEl) boardMenuEl.classList.remove("is-open");
+    }
+
+    function startBoardDragCandidate(e) {
+      if (titleScreenEl.classList.contains("is-open")) return;
+      if (e.target.closest("button")) return;
+      if (boardMoveModeArmed) {
+        boardDragPointerId = e.pointerId ?? null;
+        boardDragOriginX = e.clientX;
+        boardDragOriginY = e.clientY;
+        boardDragBaseX = boardOffsetX;
+        boardDragBaseY = boardOffsetY;
+        boardDragActive = true;
+        boardEl.classList.add("drag-ready", "is-dragging");
+        return;
+      }
+      if (boardMenuEl?.classList.contains("is-open")) return;
+      if (boardDragTimer || boardDragActive) return;
+      boardDragPointerId = e.pointerId ?? null;
+      boardDragOriginX = e.clientX;
+      boardDragOriginY = e.clientY;
+      boardDragBaseX = boardOffsetX;
+      boardDragBaseY = boardOffsetY;
+      boardDragTimer = setTimeout(() => {
+        boardDragTimer = null;
+        openBoardMenu();
+      }, 320);
+    }
+
+    function moveBoardDrag(e) {
+      if (boardDragPointerId !== null && e.pointerId !== boardDragPointerId) return;
+      if (!boardDragActive) return;
+      e.preventDefault();
+      boardOffsetX = boardDragBaseX + (e.clientX - boardDragOriginX);
+      boardOffsetY = boardDragBaseY + (e.clientY - boardDragOriginY);
+      applyBoardOffset(false);
+    }
+
+    function finishBoardDrag(e) {
+      if (boardDragPointerId !== null && e && e.pointerId !== boardDragPointerId) return;
+      const wasDragging = boardDragActive;
+      boardDragPointerId = null;
+      boardDragActive = false;
+      boardMoveModeArmed = false;
+      boardEl.classList.remove("drag-ready", "is-dragging");
+      if (wasDragging) {
+        applyBoardOffset(true);
+      }
+    }
+
     function getViewportSize() {
       const vv = window.visualViewport;
       if (vv) return { width: Math.round(vv.width), height: Math.round(vv.height) };
@@ -1918,7 +2099,9 @@
       );
       const boardMaxWByHeight = Math.floor(boardMaxHByHeight / 2);
       const boardCap = isLandscape ? 520 : 420;
-      const boardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
+      const baseBoardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
+      const scaledBoardW = Math.round(baseBoardW * boardScale);
+      const boardW = Math.max(132, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap, scaledBoardW));
       document.documentElement.style.setProperty("--board-w", `${boardW}px`);
 
       const sideMin = currentGameMode === "versus" ? (compactSide ? 94 : 126) : (compactSide ? 78 : 84);
@@ -1935,6 +2118,8 @@
           `sideW:${sidePanelW}\n` +
           `compact:${compactSide ? "on" : "off"}`;
       }
+
+      applyBoardOffset(false);
     }
 
     function scheduleFitLayout() {
@@ -4413,6 +4598,8 @@
     appEl.addEventListener("touchstart", handleSingleGameOverTapReturn, { passive: false });
 
     loadSeVolume();
+    loadBoardScale();
+    loadBoardOffset();
 
     function changeSeVolume(step) {
       const current = Number(seVolumeValueEl.textContent.replace("%", ""));
@@ -4576,6 +4763,35 @@
       } else {
         returnToTitleFromSingle("タイトル画面へ戻りました。");
       }
+    });
+
+    bindTap(boardMenuSmallerBtn, () => {
+      setBoardScale(boardScale - 0.08);
+      closeBoardMenu();
+    });
+
+    bindTap(boardMenuLargerBtn, () => {
+      setBoardScale(boardScale + 0.08);
+      closeBoardMenu();
+    });
+
+    bindTap(boardMenuMoveBtn, () => {
+      closeBoardMenu();
+      boardMoveModeArmed = true;
+      boardEl.classList.add("drag-ready");
+      setStatusText("盤面をドラッグして移動できます", 0);
+    });
+
+    boardEl.addEventListener("pointerdown", startBoardDragCandidate);
+    boardEl.addEventListener("pointermove", moveBoardDrag, { passive: false });
+    boardEl.addEventListener("pointerup", finishBoardDrag);
+    boardEl.addEventListener("pointercancel", finishBoardDrag);
+    boardEl.addEventListener("pointerleave", finishBoardDrag);
+
+    document.addEventListener("pointerdown", (e) => {
+      if (!boardMenuEl.classList.contains("is-open")) return;
+      if (boardMenuEl.contains(e.target) || boardEl.contains(e.target)) return;
+      closeBoardMenu();
     });
 
     hardBtn.addEventListener("click", (e) => e.preventDefault());
