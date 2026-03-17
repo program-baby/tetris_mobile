@@ -2121,6 +2121,7 @@
     let waitingTimer = null;
     let localRematchRequested = false;
     let rematchWaitTimer = null;
+    let versusFinishTimer = null;
     let playerNameCheckTimer = null;
     let playerNameCheckToken = 0;
     let selectedLobbyRoomId = "";
@@ -3856,8 +3857,24 @@
       }
     }
 
+    function clearVersusFinishTimer() {
+      if (versusFinishTimer) {
+        clearTimeout(versusFinishTimer);
+        versusFinishTimer = null;
+      }
+    }
+
+    function scheduleVersusFinishReturn(message, reason = "room:finished-return", delay = 1800) {
+      clearVersusFinishTimer();
+      versusFinishTimer = setTimeout(() => {
+        versusFinishTimer = null;
+        returnToTitleFromVersus(message, reason).catch(() => {});
+      }, delay);
+    }
+
     async function returnToTitleFromVersus(message = "", reason = "room:leave") {
       clearRematchWaitTimer();
+      clearVersusFinishTimer();
       if (currentGameMode === "versus" && firebaseSession) {
         try {
           await leaveFirebaseRoom(reason);
@@ -3893,6 +3910,7 @@
     }
 
     function returnToTitleFromSingle(message = "タイトル画面へ戻りました。") {
+      clearVersusFinishTimer();
       state = createState();
       gameOverHandled = false;
       setGameMode("single");
@@ -3919,6 +3937,7 @@
       playCountCommittedForMatch = false;
       clearVersusCountdown();
       clearRematchWaitTimer();
+      clearVersusFinishTimer();
       processedGarbageIds = new Set();
       localRematchRequested = false;
       updateHUD(state);
@@ -4146,6 +4165,7 @@
             setStatus(state, "YOU WIN", 1500);
             updateHUD(state);
             releaseFinishedVersusRoom("room:finished-win").catch(() => {});
+            scheduleVersusFinishReturn("あなたの勝利です。タイトル画面へ戻りました。", "room:finished-win-return");
           }
         } else {
           remoteState = null;
@@ -4167,6 +4187,7 @@
             setStatus(state, "WIN BY EXIT", 1800);
             updateHUD(state);
             releaseFinishedVersusRoom("room:finished-exit").catch(() => {});
+            scheduleVersusFinishReturn("相手が退出したため勝利しました。タイトル画面へ戻りました。", "room:finished-exit-return");
           } else if (!versusMatchStarted) {
             waitingForOpponent = false;
             versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手が退出しました。部屋を作り直してください。`;
@@ -4240,14 +4261,9 @@
       const inText = versusRoomState.garbageQueue.incoming.length ? versusRoomState.garbageQueue.incoming.join(" + ") : "-";
       versusQueueViewEl.textContent = `out: ${outText} / in: ${inText}`;
       const showFinishActions = versusRoomState.phase === "finished";
-      versusFinishActionsEl.classList.toggle("is-open", showFinishActions);
-      if (showFinishActions) {
-        versusRematchBtn.textContent = localRematchRequested ? "再戦待機中" : "もう一戦";
-        versusRematchBtn.disabled = localRematchRequested;
-      } else {
-        versusRematchBtn.disabled = false;
-        versusRematchBtn.textContent = "もう一戦";
-      }
+      versusFinishActionsEl.classList.toggle("is-open", false);
+      versusRematchBtn.disabled = true;
+      versusRematchBtn.textContent = "再戦なし";
       renderTitleSessionInfo();
     }
 
@@ -4985,32 +5001,7 @@
     }
 
     async function requestVersusRematch() {
-      if (currentGameMode !== "versus" || !versusRoomState || versusRoomState.phase !== "finished") return;
-      if (!hasFirebaseConfig() || !firebaseSession) {
-        resetVersusMatchLocalState();
-        if (versusRoomState) {
-          versusRoomState.phase = "playing";
-          versusRoomState.players.local.state = "LIVE";
-          versusRoomState.players.remote.state = "LIVE";
-          renderVersusRoomHud();
-        }
-        beginVersusMatch(`LOCAL ROOM ${roomId}: もう一戦を開始します。`);
-        return;
-      }
-      localRematchRequested = true;
-      startRematchWaitTimer();
-      if (versusRoomState) {
-        versusRoomState.players.local.state = "READY";
-        versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 再戦待機中です。相手の準備を待っています。`;
-        renderVersusRoomHud();
-      }
-      const ok = await requestFirebaseRematch();
-      if (!ok) {
-        clearRematchWaitTimer();
-        localRematchRequested = false;
-        versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 再戦リクエストに失敗しました。`;
-        renderVersusRoomHud();
-      }
+      returnToTitleFromVersus("この対戦は1戦で終了です。タイトル画面へ戻りました。", "room:rematch-disabled").catch(() => {});
     }
 
     let state = createState();
@@ -5089,6 +5080,7 @@
         if (currentGameMode === "versus") {
           versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: あなたがゲームオーバーです。相手の勝利です。`;
           releaseFinishedVersusRoom("room:finished-lose").catch(() => {});
+          scheduleVersusFinishReturn("あなたは負けました。タイトル画面へ戻りました。", "room:finished-lose-return");
         } else {
           setStatus(state, "画面をタップしてタイトルへ戻る", 60 * 60 * 1000);
           updateHUD(state);
