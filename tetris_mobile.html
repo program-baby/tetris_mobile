@@ -4205,6 +4205,10 @@
           enqueueIncomingGarbage(state, item.lines || 0);
           consumeFirebaseGarbage(itemId, item.lines || 0).catch(() => {});
         }
+        const roomFinished = roomPhase === "finished" || !!local.game?.gameOver || !!remote.game?.gameOver
+          || local.state === "LOSE" || remote.state === "LOSE"
+          || local.state === "WIN" || remote.state === "WIN"
+          || local.state === "LEFT" || remote.state === "LEFT";
         const bothReady = !!local.ready && !!remote.ready;
         if (bothReady && localRole === "host" && (!room.startAt || roomPhase === "ready" || roomPhase === "waiting")) {
           ensureFirebaseRoomCountdown(roomId).catch(() => {});
@@ -4212,7 +4216,7 @@
             versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手参加を確認しました。開始同期を準備しています。`;
           }
         }
-        const hasSharedStart = bothReady && !!room.startAt;
+        const hasSharedStart = bothReady && !!room.startAt && !roomFinished;
         if (hasSharedStart && !versusMatchStarted) {
           const sharedStartAt = room.startAt;
           const effectiveStartAt = Math.max(sharedStartAt || 0, versusStartAtMs || 0);
