@@ -19,6 +19,8 @@
       --viewport-bottom-gap: 0px;
       --app-w: min(calc(100vw - 12px), 560px);
       --controls-h: 164px;
+      --controls-offset-y: 0px;
+      --controls-offset-y-positive: 0px;
       --board-w: 300px;
       --side-panel-w: 96px;
     }
@@ -49,7 +51,7 @@
       gap: 4px;
       align-content: stretch;
       padding-top: calc(4px + env(safe-area-inset-top));
-      padding-bottom: calc(var(--controls-h) + var(--viewport-bottom-gap) + 8px);
+      padding-bottom: calc(var(--controls-h) + var(--viewport-bottom-gap) + var(--controls-offset-y-positive) + 8px);
     }
 
     .arena {
@@ -919,6 +921,8 @@
       bottom: var(--viewport-bottom-gap);
       z-index: 10;
       padding-bottom: calc(6px + env(safe-area-inset-bottom));
+      transform: translateY(var(--controls-offset-y));
+      transition: box-shadow 120ms ease, opacity 120ms ease;
     }
 
     .controls-inner {
@@ -930,6 +934,20 @@
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
       box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .controls.drag-ready .controls-inner {
+      outline: 2px dashed rgba(103, 232, 249, 0.75);
+      outline-offset: -4px;
+      box-shadow: 0 -8px 26px rgba(34, 211, 238, 0.24);
+    }
+
+    .controls.is-dragging {
+      opacity: 0.98;
+    }
+
+    .controls.is-dragging button {
+      pointer-events: none;
     }
 
     .control-side {
@@ -1966,6 +1984,7 @@
     let pausedByRankingModal = false;
     let celebrationOpen = false;
     let pausedByCelebration = false;
+    let pausedByControlsAdjust = false;
     let layoutRaf = 0;
     let lastViewportW = 0;
     let lastViewportH = 0;
@@ -1978,6 +1997,15 @@
     let boardDragBaseX = 0;
     let boardDragBaseY = 0;
     let boardDragActive = false;
+    let controlsOffsetY = 0;
+    let controlsDragTimer = null;
+    let controlsDragPointerId = null;
+    let controlsDragOriginY = 0;
+    let controlsDragBaseY = 0;
+    let controlsDragActive = false;
+    let gameplayLayoutLocked = false;
+    let frozenViewportBottomGap = 0;
+    let frozenControlsHeight = 0;
     let selectedGameMode = "single";
     let currentGameMode = "single";
     let roomId = "----";
@@ -2052,6 +2080,7 @@
       ROOM_LEAVE: "room:leave"
     });
     const BOARD_OFFSET_KEY = "tetrisBoardOffsetV1";
+    const CONTROLS_OFFSET_KEY = "tetrisControlsOffsetV1";
 
     const COLORS = [
       null,
@@ -2120,6 +2149,13 @@
       return Math.max(-limit, Math.min(limit, Math.round(value)));
     }
 
+    function clampControlsOffsetY(value) {
+      const { height } = getViewportSize();
+      const upLimit = Math.max(72, Math.floor(height * 0.18));
+      const downLimit = Math.max(24, Math.floor(height * 0.08));
+      return Math.max(-upLimit, Math.min(downLimit, Math.round(value)));
+    }
+
     function applyBoardOffset(persist = false) {
       boardOffsetX = clampBoardOffsetX(boardOffsetX);
       boardOffsetY = clampBoardOffsetY(boardOffsetY);
@@ -2144,6 +2180,31 @@
         boardOffsetY = 0;
       }
       applyBoardOffset(false);
+      applyControlsOffset(false);
+    }
+
+    function applyControlsOffset(persist = false) {
+      controlsOffsetY = clampControlsOffsetY(controlsOffsetY);
+      document.documentElement.style.setProperty("--controls-offset-y", `${controlsOffsetY}px`);
+      document.documentElement.style.setProperty("--controls-offset-y-positive", `${Math.max(0, controlsOffsetY)}px`);
+      if (persist) {
+        localStorage.setItem(CONTROLS_OFFSET_KEY, JSON.stringify({ y: controlsOffsetY }));
+      }
+    }
+
+    function loadControlsOffset() {
+      try {
+        const raw = localStorage.getItem(CONTROLS_OFFSET_KEY);
+        if (!raw) {
+          applyControlsOffset(false);
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        controlsOffsetY = Number.isFinite(parsed?.y) ? parsed.y : 0;
+      } catch {
+        controlsOffsetY = 0;
+      }
+      applyControlsOffset(false);
     }
 
     function clearBoardDragState() {
@@ -2152,6 +2213,14 @@
       boardDragPointerId = null;
       boardDragActive = false;
       boardEl.classList.remove("drag-ready", "is-dragging");
+    }
+
+    function clearControlsDragState() {
+      if (controlsDragTimer) clearTimeout(controlsDragTimer);
+      controlsDragTimer = null;
+      controlsDragPointerId = null;
+      controlsDragActive = false;
+      controlsEl.classList.remove("drag-ready", "is-dragging");
     }
 
     function startBoardDragCandidate(e) {
@@ -2189,6 +2258,51 @@
       }
     }
 
+    function startControlsDragCandidate(e) {
+      if (titleScreenEl.classList.contains("is-open")) return;
+      if (controlsDragTimer || controlsDragActive) return;
+      controlsDragPointerId = e.pointerId ?? null;
+      controlsDragOriginY = e.clientY;
+      controlsDragBaseY = controlsOffsetY;
+      controlsDragTimer = setTimeout(() => {
+        controlsDragActive = true;
+        controlsDragTimer = null;
+        controlsEl.classList.add("drag-ready", "is-dragging");
+        if (!state.paused && !state.gameOver) {
+          pausedByControlsAdjust = true;
+          state.paused = true;
+        } else {
+          pausedByControlsAdjust = false;
+        }
+        updateHUD(state);
+        setStatus(state, "上下に動かして位置を調整できます", 0);
+      }, 320);
+    }
+
+    function moveControlsDrag(e) {
+      if (controlsDragPointerId !== null && e.pointerId !== controlsDragPointerId) return;
+      if (!controlsDragActive) return;
+      e.preventDefault();
+      controlsOffsetY = controlsDragBaseY + (e.clientY - controlsDragOriginY);
+      applyControlsOffset(false);
+      scheduleFitLayout(true);
+    }
+
+    function finishControlsDrag(e) {
+      if (controlsDragPointerId !== null && e && e.pointerId !== controlsDragPointerId) return;
+      const wasDragging = controlsDragActive;
+      clearControlsDragState();
+      if (wasDragging) {
+        applyControlsOffset(true);
+        scheduleFitLayout(true);
+        if (pausedByControlsAdjust && !state.gameOver && !titleScreenEl.classList.contains("is-open")) {
+          state.paused = false;
+        }
+        pausedByControlsAdjust = false;
+        updateHUD(state);
+      }
+    }
+
     function getViewportSize() {
       const vv = window.visualViewport;
       if (vv) return { width: Math.round(vv.width), height: Math.round(vv.height) };
@@ -2199,6 +2313,18 @@
       const vv = window.visualViewport;
       if (!vv) return 0;
       return Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop)));
+    }
+
+    function lockGameplayLayout() {
+      gameplayLayoutLocked = true;
+      frozenViewportBottomGap = getViewportBottomGap();
+      frozenControlsHeight = Math.ceil(controlsEl.getBoundingClientRect().height);
+    }
+
+    function unlockGameplayLayout() {
+      gameplayLayoutLocked = false;
+      frozenViewportBottomGap = 0;
+      frozenControlsHeight = 0;
     }
 
     function shouldUseMobileOrientationOverlay() {
@@ -2218,13 +2344,16 @@
       const isLandscape = vw > vh;
       const appCap = isLandscape ? 920 : currentGameMode === "versus" ? 640 : 560;
       const appW = Math.max(320, Math.min(vw - 12, appCap));
+      const viewportBottomGap = gameplayLayoutLocked ? frozenViewportBottomGap : getViewportBottomGap();
       document.documentElement.style.setProperty("--viewport-h", `${vh}px`);
-      document.documentElement.style.setProperty("--viewport-bottom-gap", `${getViewportBottomGap()}px`);
+      document.documentElement.style.setProperty("--viewport-bottom-gap", `${viewportBottomGap}px`);
       document.documentElement.style.setProperty("--app-w", `${appW}px`);
       const compactSide = isLandscape && vh < 460;
       sidePanelEl.classList.toggle("compact", compactSide);
 
-      const controlsH = Math.ceil(controlsEl.getBoundingClientRect().height);
+      const controlsH = gameplayLayoutLocked && frozenControlsHeight
+        ? frozenControlsHeight
+        : Math.ceil(controlsEl.getBoundingClientRect().height);
       document.documentElement.style.setProperty("--controls-h", `${controlsH}px`);
 
       const appRect = appEl.getBoundingClientRect();
@@ -3908,6 +4037,7 @@
 
     function returnToTitleFromSingle(message = "タイトル画面へ戻りました。") {
       clearVersusFinishTimer();
+      unlockGameplayLayout();
       state = createState();
       gameOverHandled = false;
       setGameMode("single");
@@ -4298,6 +4428,7 @@
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur?.();
       }
+      lockGameplayLayout();
       titleScreenEl.classList.remove("is-open");
       titleScreenEl.scrollTop = 0;
       if (titleCardEl) titleCardEl.scrollTop = 0;
@@ -4895,6 +5026,7 @@
     }
 
     function openTitleScreen() {
+      unlockGameplayLayout();
       titleScreenEl.classList.add("is-open");
       state.paused = true;
       syncPlayerNameInput();
@@ -5041,6 +5173,7 @@
 
     loadSeVolume();
     loadBoardOffset();
+    loadControlsOffset();
 
     function changeSeVolume(step) {
       const current = Number(seVolumeValueEl.textContent.replace("%", ""));
@@ -5208,6 +5341,12 @@
     boardEl.addEventListener("pointerup", finishBoardDrag);
     boardEl.addEventListener("pointercancel", finishBoardDrag);
     boardEl.addEventListener("pointerleave", finishBoardDrag);
+
+    controlsEl.addEventListener("pointerdown", startControlsDragCandidate);
+    controlsEl.addEventListener("pointermove", moveControlsDrag, { passive: false });
+    controlsEl.addEventListener("pointerup", finishControlsDrag);
+    controlsEl.addEventListener("pointercancel", finishControlsDrag);
+    controlsEl.addEventListener("pointerleave", finishControlsDrag);
 
     hardBtn.addEventListener("click", (e) => e.preventDefault());
     hardBtn.addEventListener("mousedown", startHardDropHold);
@@ -5385,6 +5524,7 @@
     restartBtn.addEventListener("touchcancel", cancelResetHold, { passive: false });
 
     const handleViewportChange = () => {
+      if (gameplayLayoutLocked) return;
       scheduleFitLayout();
     };
 
