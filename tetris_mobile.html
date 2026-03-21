@@ -235,17 +235,6 @@
       align-content: start;
     }
 
-    .app.mode-versus .versus-side {
-      grid-template-columns: 76px 44px;
-      gap: 6px;
-      align-items: start;
-    }
-
-    .versus-piece-slot {
-      display: grid;
-      align-content: start;
-    }
-
     .versus-opponent {
       display: grid;
       gap: 4px;
@@ -323,12 +312,6 @@
       font-size: 0.6rem;
     }
 
-    .app.mode-versus #next,
-    .app.mode-versus #hold {
-      width: 38px;
-      height: 38px;
-    }
-
     .versus-finish-actions {
       display: none;
       grid-template-columns: 1fr 1fr;
@@ -400,17 +383,6 @@
       font-size: 0.66rem;
       text-align: center;
       margin-top: 2px;
-    }
-
-    .piece-previews {
-      display: grid;
-      gap: 6px;
-    }
-
-    .piece-preview-card {
-      display: grid;
-      gap: 2px;
-      justify-items: center;
     }
 
     .audio-box {
@@ -1688,14 +1660,13 @@
                   <span id="opponent-name" class="versus-name">OPPONENT</span>
                   <span id="sync-badge" class="versus-sync">LOCAL SYNC</span>
                 </div>
-                <canvas id="opponent-board" width="76" height="152" aria-label="Opponent board"></canvas>
+                <canvas id="opponent-board" width="88" height="176" aria-label="Opponent board"></canvas>
                 <div class="versus-meta">
                   <div class="versus-meta-row"><span>SCORE</span><strong id="opponent-score">0</strong></div>
                   <div class="versus-meta-row"><span>LINES</span><strong id="opponent-lines">0</strong></div>
                   <div class="versus-meta-row"><span>STATE</span><strong id="opponent-state">WAIT</strong></div>
                 </div>
               </div>
-              <div id="versus-piece-slot" class="versus-piece-slot"></div>
             </div>
           </div>
         </div>
@@ -1706,18 +1677,10 @@
             <button id="se-up" class="ghost volume-btn" type="button">VOL+</button>
           </div>
         </div>
-        <div id="default-piece-slot">
-          <div id="piece-previews" class="piece-previews">
-            <div class="piece-preview-card">
-              <div class="next-label">NEXT</div>
-              <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
-            </div>
-            <div class="piece-preview-card">
-              <div class="next-label">HOLD</div>
-              <canvas id="hold" width="76" height="76" aria-label="Hold piece"></canvas>
-            </div>
-          </div>
-        </div>
+        <div class="next-label">NEXT</div>
+        <canvas id="next" width="76" height="76" aria-label="Next piece"></canvas>
+        <div class="next-label">HOLD</div>
+        <canvas id="hold" width="76" height="76" aria-label="Hold piece"></canvas>
       </aside>
     </section>
 
@@ -1970,9 +1933,6 @@
     const sidePanelEl = document.getElementById("sidePanel");
     const leftToolsEl = document.getElementById("leftTools");
     const debugHudEl = document.getElementById("debug-hud");
-    const piecePreviewsEl = document.getElementById("piece-previews");
-    const defaultPieceSlotEl = document.getElementById("default-piece-slot");
-    const versusPieceSlotEl = document.getElementById("versus-piece-slot");
 
     const nextCanvas = document.getElementById("next");
     const nextCtx = nextCanvas.getContext("2d");
@@ -4922,12 +4882,6 @@
       };
     }
 
-    function syncPiecePreviewHost() {
-      const host = currentGameMode === "versus" ? versusPieceSlotEl : defaultPieceSlotEl;
-      if (!host || !piecePreviewsEl || piecePreviewsEl.parentElement === host) return;
-      host.appendChild(piecePreviewsEl);
-    }
-
     function setGameMode(mode, options = {}) {
       currentGameMode = mode;
       appEl.classList.toggle("mode-versus", mode === "versus");
@@ -4983,7 +4937,6 @@
         renderTitleRoomSlots();
       }
       renderTitleSessionInfo();
-      syncPiecePreviewHost();
       scheduleFitLayout();
     }
 
