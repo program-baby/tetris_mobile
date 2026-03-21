@@ -218,7 +218,7 @@
 
     .versus-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 76px;
+      grid-template-columns: minmax(0, 1fr) 88px;
       gap: 8px;
       align-items: start;
     }
@@ -264,8 +264,8 @@
     }
 
     #opponent-board {
-      width: 76px;
-      height: 152px;
+      width: 88px;
+      height: 176px;
       border: 2px solid var(--line);
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
@@ -310,6 +310,12 @@
     .app.mode-versus .next-label {
       margin-top: 0;
       font-size: 0.6rem;
+    }
+
+    .app.mode-versus .next-label,
+    .app.mode-versus #next,
+    .app.mode-versus #hold {
+      display: none;
     }
 
     .versus-finish-actions {
@@ -1898,8 +1904,8 @@
     const HOLD_GRID = 4;
     const HOLD_CANVAS_PX = 76;
     const HOLD_BLOCK = HOLD_CANVAS_PX / HOLD_GRID;
-    const OPPONENT_CANVAS_W = 76;
-    const OPPONENT_CANVAS_H = 152;
+    const OPPONENT_CANVAS_W = 88;
+    const OPPONENT_CANVAS_H = 176;
     const OPPONENT_BLOCK = OPPONENT_CANVAS_W / COLS;
     const RESET_HOLD_MS = 700;
     const HARD_DROP_HOLD_MS = 200;
@@ -4835,6 +4841,7 @@
     }
 
     function hold(state) {
+      if (currentGameMode === "versus") return;
       if (state.gameOver || state.paused || state.clearing || state.holdUsed) return;
       const currentTemplate = { type: state.piece.type };
       if (!state.holdPiece) {
