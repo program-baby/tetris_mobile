@@ -16,6 +16,7 @@
       --danger: #475569;
       --danger-active: #334155;
       --viewport-h: 100dvh;
+      --viewport-bottom-gap: 0px;
       --app-w: min(calc(100vw - 12px), 560px);
       --controls-h: 164px;
       --board-w: 300px;
@@ -48,7 +49,7 @@
       gap: 4px;
       align-content: stretch;
       padding-top: calc(4px + env(safe-area-inset-top));
-      padding-bottom: calc(var(--controls-h) + env(safe-area-inset-bottom) + 8px);
+      padding-bottom: calc(var(--controls-h) + var(--viewport-bottom-gap) + 8px);
     }
 
     .arena {
@@ -915,7 +916,7 @@
       position: fixed;
       left: 0;
       right: 0;
-      bottom: 0;
+      bottom: var(--viewport-bottom-gap);
       z-index: 10;
       padding-bottom: calc(6px + env(safe-area-inset-bottom));
     }
@@ -992,6 +993,7 @@
     .hold-drop {
       outline: 2px solid #22d3ee;
       outline-offset: -2px;
+      background: linear-gradient(180deg, #0891b2, #0b7c89);
     }
 
     .hint {
@@ -2042,7 +2044,10 @@
       COUNTDOWN: "room:countdown",
       GAME_START: "game:start",
       STATE_UPDATE: "state:update",
+      PIECE_LOCK: "piece:lock",
+      LINE_CLEAR: "line:clear",
       GARBAGE_SEND: "garbage:send",
+      GAME_OVER: "game:over",
       ROOM_FINISHED: "room:finished",
       ROOM_LEAVE: "room:leave"
     });
@@ -2190,6 +2195,12 @@
       return { width: window.innerWidth, height: window.innerHeight };
     }
 
+    function getViewportBottomGap() {
+      const vv = window.visualViewport;
+      if (!vv) return 0;
+      return Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop)));
+    }
+
     function shouldUseMobileOrientationOverlay() {
       const { width, height } = getViewportSize();
       const hasTouch = window.matchMedia ? window.matchMedia("(pointer: coarse)").matches : false;
@@ -2208,6 +2219,7 @@
       const appCap = isLandscape ? 920 : currentGameMode === "versus" ? 640 : 560;
       const appW = Math.max(320, Math.min(vw - 12, appCap));
       document.documentElement.style.setProperty("--viewport-h", `${vh}px`);
+      document.documentElement.style.setProperty("--viewport-bottom-gap", `${getViewportBottomGap()}px`);
       document.documentElement.style.setProperty("--app-w", `${appW}px`);
       const compactSide = isLandscape && vh < 460;
       sidePanelEl.classList.toggle("compact", compactSide);
@@ -2603,19 +2615,10 @@
         return;
       }
 
-      let name = getStoredPlayerName();
+      const name = getStoredPlayerName();
       if (!name || name === "PLAYER") {
-        const input = window.prompt("GAME OVER - 名前を入力してください（12文字まで）", "PLAYER");
-        if (input === null) {
-          renderRanking(ranking);
-          return;
-        }
-        const claimed = await claimAndSavePlayerName(input);
-        if (!claimed.ok) {
-          renderRanking(ranking);
-          return;
-        }
-        name = claimed.name || "PLAYER";
+        renderRanking(ranking);
+        return;
       }
 
       const entry = {
@@ -3687,7 +3690,7 @@
       }
     }
 
-    async function leaveFirebaseRoom(reason = "room:leave") {
+    async function leaveFirebaseRoom(reason = ROOM_EVENT.ROOM_LEAVE) {
       if (!firebaseSession || !firebaseReady) return false;
       const { roomId: activeRoomId, role } = firebaseSession;
       clearFirebaseDisconnectHandlers();
@@ -3712,11 +3715,11 @@
       }
     }
 
-    function scheduleVersusFinishReturn(message, reason = "room:finished-return", delay = 1800) {
+    function scheduleVersusFinishReturn(message, delay = 1800) {
       clearVersusFinishTimer();
       versusFinishTimer = setTimeout(() => {
         versusFinishTimer = null;
-        returnToTitleFromVersus(message, reason).catch(() => {});
+        returnToTitleFromVersus(message).catch(() => {});
       }, delay);
     }
 
@@ -3737,7 +3740,7 @@
       setStatus(state, hudStatus, statusDuration);
       updateHUD(state);
       releaseFinishedVersusRoom(releaseReason).catch(() => {});
-      scheduleVersusFinishReturn(returnMessage, `${releaseReason}-return`, statusDuration);
+      scheduleVersusFinishReturn(returnMessage, statusDuration);
     }
 
     function finalizeLocalVersusLose(roomId, releaseReason = "room:finished-lose", statusDuration = 1800) {
@@ -3757,7 +3760,7 @@
       setStatus(state, "YOU LOSE", statusDuration);
       updateHUD(state);
       releaseFinishedVersusRoom(releaseReason).catch(() => {});
-      scheduleVersusFinishReturn("あなたは負けました。タイトル画面へ戻りました。", `${releaseReason}-return`, statusDuration);
+      scheduleVersusFinishReturn("あなたは負けました。タイトル画面へ戻りました。", statusDuration);
     }
 
     function handleRemoteLeftWhileWaiting(roomId) {
@@ -3770,7 +3773,7 @@
     }
 
     function syncVersusStartFromRoom(roomId, roomPhase, roomStartAt, bothReady, roomFinished, localRole) {
-      if (bothReady && localRole === "host" && (!roomStartAt || roomPhase === "ready" || roomPhase === ROOM_PHASE.WAITING)) {
+      if (bothReady && localRole === "host" && (!roomStartAt || roomPhase === ROOM_PHASE.WAITING)) {
         ensureFirebaseRoomStartAt(roomId).catch(() => {});
         if (!versusStartAtMs && !versusMatchStarted) {
           versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 相手参加を確認しました。開始同期を準備しています。`;
@@ -3867,7 +3870,7 @@
         || remote.state === "LEFT";
     }
 
-    async function returnToTitleFromVersus(message = "", reason = "room:leave") {
+    async function returnToTitleFromVersus(message = "", reason = ROOM_EVENT.ROOM_LEAVE) {
       clearVersusFinishTimer();
       if (currentGameMode === "versus" && firebaseSession) {
         try {
@@ -3883,7 +3886,7 @@
       }
     }
 
-    async function releaseFinishedVersusRoom(reason = "room:finished") {
+    async function releaseFinishedVersusRoom(reason = ROOM_EVENT.ROOM_FINISHED) {
       if (versusRoomReleased || !firebaseSession || !firebaseReady) return false;
       versusRoomReleased = true;
       const finishedRoomId = firebaseSession.roomId;
@@ -4177,10 +4180,10 @@
       const labelMap = {
         start: ROOM_EVENT.GAME_START,
         state: ROOM_EVENT.STATE_UPDATE,
-        lock: "piece:lock",
-        clear: "line:clear",
+        lock: ROOM_EVENT.PIECE_LOCK,
+        clear: ROOM_EVENT.LINE_CLEAR,
         garbage: ROOM_EVENT.GARBAGE_SEND,
-        gameOver: "game:over"
+        gameOver: ROOM_EVENT.GAME_OVER
       };
       const label = labelMap[type] || type;
       const detail = Object.keys(payload).length ? ` ${JSON.stringify(payload)}` : "";
@@ -4292,6 +4295,9 @@
     }
 
     function closeTitleScreenForGame() {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur?.();
+      }
       titleScreenEl.classList.remove("is-open");
       titleScreenEl.scrollTop = 0;
       if (titleCardEl) titleCardEl.scrollTop = 0;
@@ -5108,12 +5114,10 @@
       unlockAudio();
       if (state.gameOver || state.paused || hardDropTimer) return;
       hardBtn.classList.add("hold-drop");
-      hardBtn.textContent = "長押し中...";
       hardDropTimer = setTimeout(() => {
         hardDrop(state);
         hardDropTimer = null;
         hardBtn.classList.remove("hold-drop");
-        hardBtn.textContent = "DROP";
       }, HARD_DROP_HOLD_MS);
     }
 
@@ -5124,7 +5128,6 @@
         hardDropTimer = null;
       }
       hardBtn.classList.remove("hold-drop");
-      hardBtn.textContent = "DROP";
     }
 
     function clearMoveTimers(side) {
