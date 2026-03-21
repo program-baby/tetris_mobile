@@ -194,6 +194,25 @@
       letter-spacing: 0.06em;
     }
 
+    .versus-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 92px;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .versus-main {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .versus-side {
+      display: grid;
+      gap: 6px;
+      align-content: start;
+    }
+
     .versus-opponent {
       display: grid;
       gap: 4px;
@@ -223,8 +242,8 @@
     }
 
     #opponent-board {
-      width: 76px;
-      height: 152px;
+      width: 88px;
+      height: 176px;
       border: 2px solid var(--line);
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
@@ -936,6 +955,21 @@
       box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.3);
     }
 
+    .controls-drag-handle {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 18px;
+      margin-bottom: 2px;
+      border-radius: 999px;
+      color: rgba(226, 232, 240, 0.84);
+      font-size: 0.58rem;
+      letter-spacing: 0.08em;
+      background: rgba(15, 23, 42, 0.46);
+      border: 1px solid rgba(148, 163, 184, 0.26);
+    }
+
     .controls.drag-ready .controls-inner {
       outline: 2px dashed rgba(103, 232, 249, 0.75);
       outline-offset: -4px;
@@ -948,6 +982,11 @@
 
     .controls.is-dragging button {
       pointer-events: none;
+    }
+
+    .controls.is-dragging .controls-drag-handle {
+      color: #67e8f9;
+      border-color: rgba(103, 232, 249, 0.55);
     }
 
     .control-side {
@@ -1549,60 +1588,66 @@
         </div>
         <div id="status" class="status-text"></div>
         <div id="versus-box" class="versus-box">
-          <div class="versus-room">
-            <span class="versus-room-label">ROOM</span>
-            <span id="room-id" class="versus-room-id">----</span>
-          </div>
-          <div id="versus-status" class="versus-status">対戦ロビー初期化前です。</div>
-          <div class="versus-room-grid">
-            <div class="versus-player-card">
-              <div class="versus-player-head">
-                <span class="versus-player-tag">P1</span>
-                <span id="versus-local-state" class="versus-player-state">WAIT</span>
+          <div class="versus-layout">
+            <div class="versus-main">
+              <div class="versus-room">
+                <span class="versus-room-label">ROOM</span>
+                <span id="room-id" class="versus-room-id">----</span>
               </div>
-              <div id="versus-local-name" class="versus-player-name">YOU</div>
-              <div class="versus-player-stats">
-                <div class="versus-meta-row"><span>READY</span><strong id="versus-local-ready">YES</strong></div>
-                <div class="versus-meta-row"><span>GARBAGE SENT</span><strong id="versus-local-garbage-sent">0</strong></div>
-                <div class="versus-meta-row"><span>PENDING IN</span><strong id="versus-local-garbage-pending">0</strong></div>
+              <div id="versus-status" class="versus-status">対戦ロビー初期化前です。</div>
+              <div class="versus-room-grid">
+                <div class="versus-player-card">
+                  <div class="versus-player-head">
+                    <span class="versus-player-tag">P1</span>
+                    <span id="versus-local-state" class="versus-player-state">WAIT</span>
+                  </div>
+                  <div id="versus-local-name" class="versus-player-name">YOU</div>
+                  <div class="versus-player-stats">
+                    <div class="versus-meta-row"><span>READY</span><strong id="versus-local-ready">YES</strong></div>
+                    <div class="versus-meta-row"><span>GARBAGE SENT</span><strong id="versus-local-garbage-sent">0</strong></div>
+                    <div class="versus-meta-row"><span>PENDING IN</span><strong id="versus-local-garbage-pending">0</strong></div>
+                  </div>
+                </div>
+                <div class="versus-player-card">
+                  <div class="versus-player-head">
+                    <span class="versus-player-tag">P2</span>
+                    <span id="versus-remote-state" class="versus-player-state">WAIT</span>
+                  </div>
+                  <div id="versus-remote-name" class="versus-player-name">RIVAL BOT</div>
+                  <div class="versus-player-stats">
+                    <div class="versus-meta-row"><span>READY</span><strong id="versus-remote-ready">YES</strong></div>
+                    <div class="versus-meta-row"><span>GARBAGE SENT</span><strong id="versus-remote-garbage-sent">0</strong></div>
+                    <div class="versus-meta-row"><span>PENDING IN</span><strong id="versus-remote-garbage-pending">0</strong></div>
+                  </div>
+                </div>
               </div>
+              <div class="versus-garbage">
+                <div class="versus-garbage-title">GARBAGE PIPELINE</div>
+                <div class="versus-meta">
+                  <div class="versus-meta-row"><span>LAST EVENT</span><strong id="versus-last-event">none</strong></div>
+                  <div class="versus-meta-row"><span>EVENT COUNT</span><strong id="versus-event-count">0</strong></div>
+                  <div class="versus-meta-row"><span>OUT QUEUE</span><strong id="versus-out-queue">0</strong></div>
+                  <div class="versus-meta-row"><span>IN QUEUE</span><strong id="versus-in-queue">0</strong></div>
+                </div>
+                <div id="versus-queue-view" class="versus-log">out: - / in: -</div>
+              </div>
+              <div id="versus-log" class="versus-log">state:update をここに表示します。</div>
             </div>
-            <div class="versus-player-card">
-              <div class="versus-player-head">
-                <span class="versus-player-tag">P2</span>
-                <span id="versus-remote-state" class="versus-player-state">WAIT</span>
-              </div>
-              <div id="versus-remote-name" class="versus-player-name">RIVAL BOT</div>
-              <div class="versus-player-stats">
-                <div class="versus-meta-row"><span>READY</span><strong id="versus-remote-ready">YES</strong></div>
-                <div class="versus-meta-row"><span>GARBAGE SENT</span><strong id="versus-remote-garbage-sent">0</strong></div>
-                <div class="versus-meta-row"><span>PENDING IN</span><strong id="versus-remote-garbage-pending">0</strong></div>
+            <div class="versus-side">
+              <div class="versus-opponent">
+                <div class="versus-head">
+                  <span id="opponent-name" class="versus-name">OPPONENT</span>
+                  <span id="sync-badge" class="versus-sync">LOCAL SYNC</span>
+                </div>
+                <canvas id="opponent-board" width="88" height="176" aria-label="Opponent board"></canvas>
+                <div class="versus-meta">
+                  <div class="versus-meta-row"><span>SCORE</span><strong id="opponent-score">0</strong></div>
+                  <div class="versus-meta-row"><span>LINES</span><strong id="opponent-lines">0</strong></div>
+                  <div class="versus-meta-row"><span>STATE</span><strong id="opponent-state">WAIT</strong></div>
+                </div>
               </div>
             </div>
           </div>
-          <div class="versus-garbage">
-            <div class="versus-garbage-title">GARBAGE PIPELINE</div>
-            <div class="versus-meta">
-              <div class="versus-meta-row"><span>LAST EVENT</span><strong id="versus-last-event">none</strong></div>
-              <div class="versus-meta-row"><span>EVENT COUNT</span><strong id="versus-event-count">0</strong></div>
-              <div class="versus-meta-row"><span>OUT QUEUE</span><strong id="versus-out-queue">0</strong></div>
-              <div class="versus-meta-row"><span>IN QUEUE</span><strong id="versus-in-queue">0</strong></div>
-            </div>
-            <div id="versus-queue-view" class="versus-log">out: - / in: -</div>
-          </div>
-          <div class="versus-opponent">
-            <div class="versus-head">
-              <span id="opponent-name" class="versus-name">OPPONENT</span>
-              <span id="sync-badge" class="versus-sync">LOCAL SYNC</span>
-            </div>
-            <canvas id="opponent-board" width="76" height="152" aria-label="Opponent board"></canvas>
-            <div class="versus-meta">
-              <div class="versus-meta-row"><span>SCORE</span><strong id="opponent-score">0</strong></div>
-              <div class="versus-meta-row"><span>LINES</span><strong id="opponent-lines">0</strong></div>
-              <div class="versus-meta-row"><span>STATE</span><strong id="opponent-state">WAIT</strong></div>
-            </div>
-          </div>
-          <div id="versus-log" class="versus-log">state:update をここに表示します。</div>
         </div>
         <div class="audio-box">
           <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
@@ -1620,6 +1665,7 @@
 
     <section id="controls" class="controls">
       <div class="panel controls-inner">
+        <div id="controls-drag-handle" class="controls-drag-handle">CONTROL MOVE</div>
         <div class="control-side left-pad">
           <button id="left" type="button">◀</button>
           <button id="right" type="button">▶</button>
@@ -1633,7 +1679,7 @@
       </div>
     </section>
 
-    <p class="hint">リセット長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒)</p>
+    <p class="hint">リセット長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒) / CONTROL MOVE長押しで位置調整</p>
   </main>
 
   <section id="title-screen" class="title-screen is-open" aria-label="Title screen">
@@ -1832,8 +1878,8 @@
     const HOLD_GRID = 4;
     const HOLD_CANVAS_PX = 76;
     const HOLD_BLOCK = HOLD_CANVAS_PX / HOLD_GRID;
-    const OPPONENT_CANVAS_W = 76;
-    const OPPONENT_CANVAS_H = 152;
+    const OPPONENT_CANVAS_W = 88;
+    const OPPONENT_CANVAS_H = 176;
     const OPPONENT_BLOCK = OPPONENT_CANVAS_W / COLS;
     const RESET_HOLD_MS = 700;
     const HARD_DROP_HOLD_MS = 200;
@@ -1962,6 +2008,7 @@
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
     const titleReturnTopBtn = document.getElementById("title-return-top");
+    const controlsDragHandleEl = document.getElementById("controls-drag-handle");
     const leftBtn = document.getElementById("left");
     const rightBtn = document.getElementById("right");
     const rotateCcwBtn = document.getElementById("rotate-ccw");
@@ -2373,8 +2420,8 @@
       const boardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
       document.documentElement.style.setProperty("--board-w", `${boardW}px`);
 
-      const sideMin = currentGameMode === "versus" ? (compactSide ? 94 : 126) : (compactSide ? 78 : 84);
-      const sideMax = currentGameMode === "versus" ? 148 : 120;
+      const sideMin = currentGameMode === "versus" ? (compactSide ? 156 : 198) : (compactSide ? 78 : 84);
+      const sideMax = currentGameMode === "versus" ? 236 : 120;
       const sidePanelW = Math.max(sideMin, Math.min(sideMax, Math.floor((appRect.width - boardW - colGap - 8))));
       document.documentElement.style.setProperty("--side-panel-w", `${sidePanelW}px`);
 
@@ -3225,7 +3272,12 @@
       drawGrid(opponentCtx, COLS, ROWS);
       if (!remote) return;
       drawMatrix(opponentCtx, remote.board, { x: 0, y: 0 });
-      if (!remote.gameOver && remote.piece) {
+      if (
+        !remote.gameOver &&
+        remote.piece &&
+        Array.isArray(remote.piece.matrix) &&
+        remote.piece.pos
+      ) {
         drawMatrix(opponentCtx, remote.piece.matrix, remote.piece.pos);
       }
     }
@@ -4388,19 +4440,10 @@
       if (!force && now - remoteStateTimer < 120) return;
       remoteStateTimer = now;
       const snapshot = serializeGameState(state);
-      remoteState = {
-        ...snapshot,
-        board: snapshot.board.map((row) => [...row]),
-        score: Math.max(0, snapshot.score - 120),
-        lines: Math.max(0, snapshot.lines - 1),
-        paused: false,
-        gameOver: false
-      };
-      updateRemoteHud(remoteState);
       emitGameEvent("state", {
-        score: remoteState.score,
-        lines: remoteState.lines,
-        level: remoteState.level
+        score: snapshot.score,
+        lines: snapshot.lines,
+        level: snapshot.level
       });
       sendFirebaseStateUpdate(snapshot).catch(() => {});
     }
@@ -4842,8 +4885,8 @@
         roomIdEl.textContent = roomId;
         opponentNameEl.textContent = remoteName;
         versusStatusEl.textContent = options.statusText || "LOCAL ROOM: 相手参加待ちです。";
-        remoteState = options.remoteReady ? serializeGameState(state) : null;
-        updateRemoteHud(remoteState);
+        remoteState = null;
+        updateRemoteHud(null);
         renderVersusRoomHud();
         renderTitleRoomSlots();
       } else {
@@ -5342,11 +5385,11 @@
     boardEl.addEventListener("pointercancel", finishBoardDrag);
     boardEl.addEventListener("pointerleave", finishBoardDrag);
 
-    controlsEl.addEventListener("pointerdown", startControlsDragCandidate);
-    controlsEl.addEventListener("pointermove", moveControlsDrag, { passive: false });
-    controlsEl.addEventListener("pointerup", finishControlsDrag);
-    controlsEl.addEventListener("pointercancel", finishControlsDrag);
-    controlsEl.addEventListener("pointerleave", finishControlsDrag);
+    controlsDragHandleEl.addEventListener("pointerdown", startControlsDragCandidate);
+    controlsDragHandleEl.addEventListener("pointermove", moveControlsDrag, { passive: false });
+    controlsDragHandleEl.addEventListener("pointerup", finishControlsDrag);
+    controlsDragHandleEl.addEventListener("pointercancel", finishControlsDrag);
+    controlsDragHandleEl.addEventListener("pointerleave", finishControlsDrag);
 
     hardBtn.addEventListener("click", (e) => e.preventDefault());
     hardBtn.addEventListener("mousedown", startHardDropHold);
