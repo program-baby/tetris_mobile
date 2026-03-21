@@ -140,6 +140,11 @@
       gap: 6px;
     }
 
+    .app.mode-versus .versus-room-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+    }
+
     .versus-player-card {
       display: grid;
       gap: 4px;
@@ -147,6 +152,11 @@
       border: 1px solid rgba(148, 163, 184, 0.2);
       border-radius: 8px;
       background: rgba(2, 6, 23, 0.34);
+    }
+
+    .app.mode-versus .versus-player-card {
+      gap: 2px;
+      padding: 4px 6px;
     }
 
     .versus-player-head {
@@ -182,6 +192,14 @@
       color: #cbd5e1;
     }
 
+    .app.mode-versus .versus-player-stats,
+    .app.mode-versus .versus-garbage,
+    .app.mode-versus #versus-log,
+    .app.mode-versus .audio-box,
+    .app.mode-versus .status-text {
+      display: none;
+    }
+
     .versus-garbage {
       display: grid;
       gap: 4px;
@@ -200,7 +218,7 @@
 
     .versus-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 92px;
+      grid-template-columns: minmax(0, 1fr) 76px;
       gap: 8px;
       align-items: start;
     }
@@ -246,8 +264,8 @@
     }
 
     #opponent-board {
-      width: 88px;
-      height: 176px;
+      width: 76px;
+      height: 152px;
       border: 2px solid var(--line);
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
@@ -278,6 +296,20 @@
       color: #cbd5e1;
       font-size: 0.58rem;
       line-height: 1.35;
+    }
+
+    .app.mode-versus .title {
+      margin-bottom: 2px;
+    }
+
+    .app.mode-versus .stat-grid {
+      gap: 2px;
+      font-size: 0.72rem;
+    }
+
+    .app.mode-versus .next-label {
+      margin-top: 0;
+      font-size: 0.6rem;
     }
 
     .versus-finish-actions {
@@ -314,6 +346,10 @@
       display: grid;
       gap: 5px;
       align-content: start;
+    }
+
+    .app.mode-versus .right-info {
+      gap: 4px;
     }
 
     .right-info.compact .audio-box,
@@ -1862,8 +1898,8 @@
     const HOLD_GRID = 4;
     const HOLD_CANVAS_PX = 76;
     const HOLD_BLOCK = HOLD_CANVAS_PX / HOLD_GRID;
-    const OPPONENT_CANVAS_W = 88;
-    const OPPONENT_CANVAS_H = 176;
+    const OPPONENT_CANVAS_W = 76;
+    const OPPONENT_CANVAS_H = 152;
     const OPPONENT_BLOCK = OPPONENT_CANVAS_W / COLS;
     const RESET_HOLD_MS = 700;
     const HARD_DROP_HOLD_MS = 200;
@@ -2405,8 +2441,8 @@
       const boardW = Math.max(140, Math.min(boardMaxWByWidth, boardMaxWByHeight, boardCap));
       document.documentElement.style.setProperty("--board-w", `${boardW}px`);
 
-      const sideMin = currentGameMode === "versus" ? (compactSide ? 156 : 198) : (compactSide ? 78 : 84);
-      const sideMax = currentGameMode === "versus" ? 236 : 120;
+      const sideMin = currentGameMode === "versus" ? (compactSide ? 110 : 126) : (compactSide ? 78 : 84);
+      const sideMax = currentGameMode === "versus" ? 156 : 120;
       const sidePanelW = Math.max(sideMin, Math.min(sideMax, Math.floor((appRect.width - boardW - colGap - 8))));
       document.documentElement.style.setProperty("--side-panel-w", `${sidePanelW}px`);
 
