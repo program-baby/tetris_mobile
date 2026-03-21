@@ -46,12 +46,16 @@
     .app {
       width: var(--app-w);
       min-height: var(--viewport-h);
+      max-height: var(--viewport-h);
       display: grid;
       grid-template-rows: 1fr auto;
       gap: 4px;
       align-content: stretch;
       padding-top: calc(4px + env(safe-area-inset-top));
       padding-bottom: calc(var(--controls-h) + var(--viewport-bottom-gap) + var(--controls-offset-y-positive) + 8px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
     }
 
     .arena {
@@ -950,24 +954,10 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
+      padding-top: 10px;
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
       box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.3);
-    }
-
-    .controls-drag-handle {
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 18px;
-      margin-bottom: 2px;
-      border-radius: 999px;
-      color: rgba(226, 232, 240, 0.84);
-      font-size: 0.58rem;
-      letter-spacing: 0.08em;
-      background: rgba(15, 23, 42, 0.46);
-      border: 1px solid rgba(148, 163, 184, 0.26);
     }
 
     .controls.drag-ready .controls-inner {
@@ -982,11 +972,6 @@
 
     .controls.is-dragging button {
       pointer-events: none;
-    }
-
-    .controls.is-dragging .controls-drag-handle {
-      color: #67e8f9;
-      border-color: rgba(103, 232, 249, 0.55);
     }
 
     .control-side {
@@ -1665,7 +1650,6 @@
 
     <section id="controls" class="controls">
       <div class="panel controls-inner">
-        <div id="controls-drag-handle" class="controls-drag-handle">CONTROL MOVE</div>
         <div class="control-side left-pad">
           <button id="left" type="button">◀</button>
           <button id="right" type="button">▶</button>
@@ -1679,7 +1663,7 @@
       </div>
     </section>
 
-    <p class="hint">リセット長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒) / CONTROL MOVE長押しで位置調整</p>
+    <p class="hint">リセット長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒) / コントロール余白長押しで位置調整</p>
   </main>
 
   <section id="title-screen" class="title-screen is-open" aria-label="Title screen">
@@ -2008,7 +1992,6 @@
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
     const titleReturnTopBtn = document.getElementById("title-return-top");
-    const controlsDragHandleEl = document.getElementById("controls-drag-handle");
     const leftBtn = document.getElementById("left");
     const rightBtn = document.getElementById("right");
     const rotateCcwBtn = document.getElementById("rotate-ccw");
@@ -2307,6 +2290,8 @@
 
     function startControlsDragCandidate(e) {
       if (titleScreenEl.classList.contains("is-open")) return;
+      if (!e.target.closest(".controls-inner")) return;
+      if (e.target.closest("button")) return;
       if (controlsDragTimer || controlsDragActive) return;
       controlsDragPointerId = e.pointerId ?? null;
       controlsDragOriginY = e.clientY;
@@ -5385,11 +5370,11 @@
     boardEl.addEventListener("pointercancel", finishBoardDrag);
     boardEl.addEventListener("pointerleave", finishBoardDrag);
 
-    controlsDragHandleEl.addEventListener("pointerdown", startControlsDragCandidate);
-    controlsDragHandleEl.addEventListener("pointermove", moveControlsDrag, { passive: false });
-    controlsDragHandleEl.addEventListener("pointerup", finishControlsDrag);
-    controlsDragHandleEl.addEventListener("pointercancel", finishControlsDrag);
-    controlsDragHandleEl.addEventListener("pointerleave", finishControlsDrag);
+    controlsEl.addEventListener("pointerdown", startControlsDragCandidate);
+    controlsEl.addEventListener("pointermove", moveControlsDrag, { passive: false });
+    controlsEl.addEventListener("pointerup", finishControlsDrag);
+    controlsEl.addEventListener("pointercancel", finishControlsDrag);
+    controlsEl.addEventListener("pointerleave", finishControlsDrag);
 
     hardBtn.addEventListener("click", (e) => e.preventDefault());
     hardBtn.addEventListener("mousedown", startHardDropHold);
