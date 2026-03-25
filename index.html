@@ -1215,6 +1215,15 @@
       gap: 8px;
     }
 
+    .rules-modal-card {
+      width: min(96vw, 720px);
+    }
+
+    .rules-modal-grid {
+      display: grid;
+      gap: 10px;
+    }
+
     .title-room-slot {
       display: grid;
       gap: 4px;
@@ -1543,7 +1552,8 @@
     }
 
     @media (min-width: 760px) {
-      .title-guide-grid {
+      .title-guide-grid,
+      .rules-modal-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
@@ -1708,54 +1718,19 @@
     <p class="hint">リセット長押し(0.7秒) / HOLD枠タップ / DROP長押し(0.2秒) / コントロール余白長押しで位置調整</p>
   </main>
 
-  <section id="title-screen" class="title-screen is-open" aria-label="Title screen">
-    <div class="title-card">
-      <p class="title-eyebrow">Arcade Select</p>
-      <h1 class="title-hero">TETRIS<br>DUAL GATE</h1>
-      <p class="title-sub">1人用と対戦用を選べます。対戦用は通信対戦に向けた準備中です。</p>
-      <div class="mode-grid" role="list" aria-label="Game mode">
-        <button id="mode-single" class="mode-option is-active" type="button" data-mode="single">
-          <span class="mode-option-label">1人用</span>
-          <span class="mode-option-copy">ソロプレイのテトリスを開始します。</span>
-        </button>
-        <button id="mode-versus" class="mode-option" type="button" data-mode="versus">
-          <span class="mode-option-label">対戦用</span>
-          <span class="mode-option-copy">通信対戦用の入口です。現状はロビー準備中です。</span>
-        </button>
-      </div>
-      <section class="title-guide" aria-label="使い方ガイド">
-        <div class="title-guide-grid">
-          <article class="title-guide-block">
-            <div class="title-guide-head">基本操作</div>
-            <ol class="title-guide-list">
-              <li>1人用はボタンを押すとすぐ開始します</li>
-              <li>対戦用は公開ルームを選ぶと待機または参加できます</li>
-              <li>左のボタンで横移動、右のボタンで回転します</li>
-              <li>▼でゆっくり下げ、DROP長押しで一気に落とします</li>
-              <li>HOLD枠タップで今のブロックを保管できます</li>
-            </ol>
-          </article>
-          <article class="title-guide-block">
-            <div class="title-guide-head">得点ルール</div>
-            <ol class="title-guide-list">
-              <li>1〜4ライン同時消去で倍率アップします</li>
-              <li>4ライン同時消去は金色の特別表示です</li>
-              <li>6.5秒以内に続けて消すとコンボが継続します</li>
-              <li>ハイスコア更新時は特別演出が入ります</li>
-            </ol>
-          </article>
-          <article class="title-guide-block">
-            <div class="title-guide-head">対戦の流れ</div>
-            <ol class="title-guide-list">
-              <li>公開ルームで待機中の相手がいる部屋に参加できます</li>
-              <li>2人そろうと同期後に3秒カウントダウンで開始します</li>
-              <li>2ライン以上消すと相手におじゃまを送れます</li>
-              <li>どちらかがゲームオーバーになると勝敗が決まります</li>
-            </ol>
-          </article>
+    <section id="title-screen" class="title-screen is-open" aria-label="Title screen">
+      <div class="title-card">
+        <p class="title-eyebrow">Arcade Select</p>
+        <h1 class="title-hero">TETRIS<br>DUAL GATE</h1>
+        <div class="mode-grid" role="list" aria-label="Game mode">
+          <button id="mode-single" class="mode-option is-active" type="button" data-mode="single">
+            <span class="mode-option-label">ソロプレイ</span>
+          </button>
+          <button id="mode-versus" class="mode-option" type="button" data-mode="versus">
+            <span class="mode-option-label">対戦</span>
+          </button>
         </div>
-      </section>
-      <div id="title-versus-stage" class="title-versus-stage">
+        <div id="title-versus-stage" class="title-versus-stage">
         <aside id="title-room-panel" class="title-room-panel" aria-live="polite">
           <div class="title-room-panel-head">公開ルーム</div>
           <div class="title-room-list">
@@ -1808,16 +1783,64 @@
         </div>
         <div id="player-name-status" class="player-name-status" aria-live="polite"></div>
       </div>
-      <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
-      <p id="title-mode-note" class="title-note">1人用はボタンを押すと開始、対戦用は ROOM を選ぶと待機/参加できます。下の使い方を確認してから始められます。</p>
-      <div class="title-actions">
-        <button id="title-ranking" class="ghost title-start-btn" type="button">ランキング</button>
-        <button id="title-admin" class="ghost title-start-btn" type="button">管理</button>
+        <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
+        <p id="title-mode-note" class="title-note">ソロプレイはすぐ開始できます。対戦は ROOM を選ぶと待機または参加できます。</p>
+        <div class="title-actions">
+          <button id="title-rules" class="ghost title-start-btn" type="button">ルール</button>
+          <button id="title-ranking" class="ghost title-start-btn" type="button">ランキング</button>
+          <button id="title-admin" class="ghost title-start-btn" type="button">管理</button>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="ranking-modal" class="ranking-modal" aria-hidden="true">
+    <section id="rules-modal" class="ranking-modal" aria-hidden="true">
+      <div class="ranking-modal-card rules-modal-card">
+        <div class="ranking-modal-head">
+          <h2 class="ranking-modal-title">ルールと操作</h2>
+          <button id="rules-close" class="ghost ranking-close" type="button">閉じる</button>
+        </div>
+        <div class="rules-modal-grid">
+          <article class="title-guide-block">
+            <div class="title-guide-head">基本操作</div>
+            <ol class="title-guide-list">
+              <li>左ボタンで横移動、右ボタンで回転します</li>
+              <li>▼でソフトドロップ、DROP長押しでハードドロップします</li>
+              <li>ソロプレイでは HOLD 枠タップでブロックを保管できます</li>
+              <li>リセットは長押し 0.7 秒で反応します</li>
+            </ol>
+          </article>
+          <article class="title-guide-block">
+            <div class="title-guide-head">新機能</div>
+            <ol class="title-guide-list">
+              <li>コントロールの余白を長押しすると上下位置を調整できます</li>
+              <li>スマホではプレイ中のレイアウト揺れを抑えるよう調整しています</li>
+              <li>対戦では右カラムの NEXT/HOLD を外し、相手盤面を見やすくしています</li>
+              <li>対戦中は HOLD を無効化して誤操作を減らしています</li>
+            </ol>
+          </article>
+          <article class="title-guide-block">
+            <div class="title-guide-head">得点ルール</div>
+            <ol class="title-guide-list">
+              <li>1〜4ライン同時消去で得点が増えます</li>
+              <li>4ライン同時消去は特別表示になります</li>
+              <li>6.5秒以内に続けて消すとコンボが継続します</li>
+              <li>ハイスコア更新時は特別演出が入ります</li>
+            </ol>
+          </article>
+          <article class="title-guide-block">
+            <div class="title-guide-head">対戦の流れ</div>
+            <ol class="title-guide-list">
+              <li>公開ルームを選ぶと待機または参加できます</li>
+              <li>2人そろうと同期後に 3 秒カウントダウンで開始します</li>
+              <li>2ライン以上消すと相手におじゃまを送れます</li>
+              <li>どちらかがゲームオーバーになると勝敗が決まります</li>
+            </ol>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="ranking-modal" class="ranking-modal" aria-hidden="true">
     <div class="ranking-modal-card">
       <div class="ranking-modal-head">
         <h2 class="ranking-modal-title">ランキング TOP 10</h2>
@@ -1985,6 +2008,9 @@
     const playerNameConfirmBtn = document.getElementById("player-name-confirm");
     const playerNameStatusEl = document.getElementById("player-name-status");
     const titleModeNoteEl = document.getElementById("title-mode-note");
+    const rulesModalEl = document.getElementById("rules-modal");
+    const rulesCloseBtn = document.getElementById("rules-close");
+    const titleRulesBtn = document.getElementById("title-rules");
     const titleRankingBtn = document.getElementById("title-ranking");
     const titleAdminBtn = document.getElementById("title-admin");
     const playCountTodayEl = document.getElementById("play-count-today");
@@ -2577,6 +2603,16 @@
       }
       pausedByRankingModal = false;
       updateHUD(state);
+    }
+
+    function openRulesModal() {
+      rulesModalEl.classList.add("is-open");
+      rulesModalEl.setAttribute("aria-hidden", "false");
+    }
+
+    function closeRulesModal() {
+      rulesModalEl.classList.remove("is-open");
+      rulesModalEl.setAttribute("aria-hidden", "true");
     }
 
     function ensureAdminUnlocked() {
@@ -4372,13 +4408,13 @@
       const input = window.prompt("工事用パスワードを入力してください", "");
       if (input === null) return false;
       if (input.trim() !== VERSUS_DEV_PASSWORD) {
-        titleModeNoteEl.textContent = "パスワードが違います。対戦用は工事中です。";
+        titleModeNoteEl.textContent = "パスワードが違います。";
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
         return false;
       }
       sessionStorage.setItem(VERSUS_UNLOCK_KEY, "1");
-      titleModeNoteEl.textContent = "工事用パスワードを確認しました。このタブでは対戦用を開始できます。";
+        titleModeNoteEl.textContent = "工事用パスワードを確認しました。このタブでは対戦を開始できます。";
       titleModeNoteEl.classList.remove("is-warning");
       titleModeNoteEl.classList.add("is-info");
       return true;
@@ -4956,7 +4992,7 @@
       modeVersusBtn.classList.toggle("is-active", !isSingle);
       titleModeNoteEl.classList.remove("is-warning", "is-info");
       if (isSingle) {
-        titleModeNoteEl.textContent = "1人用ボタンを押すと、すぐにソロプレイを開始します。";
+        titleModeNoteEl.textContent = "ソロプレイはボタンを押すとすぐに開始します。";
       } else {
         if (hasFirebaseConfig()) {
           initFirebaseAdapter()
@@ -4966,7 +5002,7 @@
         renderTitleRoomSlots();
         updateLobbyAction(selectedLobbyAction);
         if (!isVersusUnlocked()) {
-          titleModeNoteEl.textContent = "対戦用は工事中です。工事用パスワードを入力した場合のみ入れます。";
+          titleModeNoteEl.textContent = "対戦は ROOM を選ぶと待機または参加できます。";
         }
         titleModeNoteEl.classList.add("is-info");
       }
@@ -5184,6 +5220,18 @@
         closeRecordCelebration();
         return;
       }
+      if (rulesModalEl.classList.contains("is-open")) {
+        if (e.key === "Escape") closeRulesModal();
+        return;
+      }
+      if (rankingModalEl.classList.contains("is-open")) {
+        if (e.key === "Escape") closeRankingModal();
+        return;
+      }
+      if (adminModalEl.classList.contains("is-open")) {
+        if (e.key === "Escape") closeAdminModal();
+        return;
+      }
       if (titleScreenEl.classList.contains("is-open")) {
         if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
           updateTitleSelection("single");
@@ -5193,10 +5241,6 @@
           updateTitleSelection("versus");
           return;
         }
-        return;
-      }
-      if (rankingModalEl.classList.contains("is-open")) {
-        if (e.key === "Escape") closeRankingModal();
         return;
       }
       if (e.key === "p" || e.key === "P") {
@@ -5534,6 +5578,13 @@
       titleModeNoteEl.classList.add("is-info");
       syncPlayerNameInput();
       renderTitleRoomSlots();
+    });
+    titleRulesBtn.addEventListener("click", () => {
+      openRulesModal();
+    });
+    rulesCloseBtn.addEventListener("click", closeRulesModal);
+    rulesModalEl.addEventListener("click", (e) => {
+      if (e.target === rulesModalEl) closeRulesModal();
     });
     titleRankingBtn.addEventListener("click", () => {
       openRankingModal();
