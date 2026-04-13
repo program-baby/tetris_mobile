@@ -349,9 +349,14 @@
       grid-column: 2;
       grid-row: 2;
       width: var(--side-panel-w);
+      min-width: var(--side-panel-w);
+      max-width: var(--side-panel-w);
       display: grid;
+      grid-template-columns: minmax(0, 1fr);
       gap: 5px;
       align-content: start;
+      justify-items: stretch;
+      contain: layout paint;
     }
 
     .app.mode-versus .right-info {
@@ -369,6 +374,8 @@
       color: var(--accent);
       letter-spacing: 0.05em;
       text-align: center;
+      height: 1em;
+      line-height: 1;
     }
 
     .stat-grid {
@@ -376,6 +383,15 @@
       gap: 4px;
       font-size: 0.76rem;
       line-height: 1.2;
+      grid-template-rows: repeat(3, 2.25em);
+      min-height: calc(3 * 2.25em + 8px);
+      overflow: hidden;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-grid div {
+      min-height: 2.25em;
+      overflow: hidden;
     }
 
     .stat-grid span {
@@ -392,7 +408,7 @@
     }
 
     .audio-box {
-      display: grid;
+      display: none;
       gap: 2px;
       margin-top: 2px;
     }
@@ -440,11 +456,34 @@
     }
 
     .status-text {
-      min-height: 1.05em;
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(70%, 210px);
+      z-index: 5;
+      pointer-events: none;
+      min-height: 1.6em;
       text-align: center;
       font-size: 0.68rem;
       color: #67e8f9;
       font-weight: 700;
+      height: 1.6em;
+      line-height: 1.6em;
+      padding: 0 8px;
+      border: 1px solid rgba(103, 232, 249, 0.28);
+      border-radius: 999px;
+      background: rgba(2, 6, 23, 0.72);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      opacity: 1;
+      transition: opacity 120ms ease;
+    }
+
+    .status-text:empty {
+      opacity: 0;
     }
 
     .status-text.line-1 { color: #67e8f9; }
@@ -1614,6 +1653,7 @@
           </div>
           <div id="combo-bonus" class="combo-bonus">+0</div>
         </div>
+        <div id="status" class="status-text"></div>
         <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
       </div>
 
@@ -1625,7 +1665,6 @@
           <div><span>Level</span><strong id="level">1</strong></div>
           <div><span>Combo</span><strong id="combo">-</strong></div>
         </div>
-        <div id="status" class="status-text"></div>
         <div id="versus-box" class="versus-box">
           <div class="versus-layout">
             <div class="versus-main">
