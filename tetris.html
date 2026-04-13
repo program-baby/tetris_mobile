@@ -408,7 +408,7 @@
     }
 
     .audio-box {
-      display: none;
+      display: grid;
       gap: 2px;
       margin-top: 2px;
     }
@@ -422,9 +422,13 @@
     }
 
     .volume-buttons {
-      display: grid;
+      display: none;
       grid-template-columns: 1fr 1fr;
       gap: 4px;
+    }
+
+    .se-volume-row {
+      display: none;
     }
 
     .volume-btn {
@@ -1866,10 +1870,14 @@
           </div>
         </div>
         <div class="audio-box">
-          <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
+          <div class="audio-row se-volume-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
           <div class="volume-buttons">
             <button id="se-down" class="ghost volume-btn" type="button">VOL-</button>
             <button id="se-up" class="ghost volume-btn" type="button">VOL+</button>
+          </div>
+          <div class="audio-row">
+            <span>BGM</span>
+            <button id="bgm-toggle" class="ghost volume-btn" type="button">ON</button>
           </div>
         </div>
         <div class="next-label">NEXT</div>
@@ -2007,6 +2015,7 @@
             <ol class="title-guide-list">
               <li>画面長押しで画面の移動ができます</li>
               <li>タイトル画面のロビーチャットで対戦の時間合わせができます</li>
+              <li>BGM はゲーム中だけ再生され、ON/OFF を切り替えできます</li>
               <li>スマホではプレイ中のレイアウト揺れを抑えるよう調整しています</li>
               <li>対戦では右カラムの NEXT/HOLD を外し、相手盤面を見やすくしています</li>
               <li>対戦中は HOLD を無効化して誤操作を減らしています</li>
@@ -2258,6 +2267,7 @@
     const comboTimeValueEl = document.getElementById("combo-time-value");
     const comboBarFillEl = document.getElementById("combo-bar-fill");
     const comboBonusEl = document.getElementById("combo-bonus");
+    const bgmToggleBtn = document.getElementById("bgm-toggle");
 
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
@@ -2279,6 +2289,9 @@
     let volumeRepeatTimer = null;
     let audioCtx = null;
     let masterSeVolume = 1.6;
+    let bgmEnabled = true;
+    let bgmTimer = null;
+    let bgmStep = 0;
     let gameOverHandled = false;
     let bestNeonTimer = null;
     let pausedByRankingModal = false;
@@ -2388,6 +2401,16 @@
     });
     const BOARD_OFFSET_KEY = "tetrisBoardOffsetV1";
     const CONTROLS_OFFSET_KEY = "tetrisControlsOffsetV1";
+    const BGM_ENABLED_KEY = "tetrisBgmEnabledV1";
+    const BGM_VOLUME = 0.45;
+    const BGM_STEP_MS = 170;
+    const BGM_LEAD = [
+      659, 0, 784, 880, 784, 659, 587, 0,
+      523, 587, 659, 784, 659, 587, 523, 0,
+      440, 0, 523, 587, 659, 587, 523, 0,
+      392, 440, 523, 659, 587, 523, 440, 0
+    ];
+    const BGM_BASS = [130, 196, 174, 196, 110, 165, 147, 165];
 
     const COLORS = [
       null,
@@ -2424,7 +2447,9 @@
       const ctx = ensureAudioContext();
       if (!ctx) return;
       if (ctx.state === "suspended") {
-        ctx.resume().catch(() => {});
+        ctx.resume().then(() => updateBgmPlayback()).catch(() => {});
+      } else {
+        updateBgmPlayback();
       }
     }
 
@@ -2442,6 +2467,88 @@
       } else {
         setSeVolume(160);
       }
+    }
+
+    function setBgmEnabled(enabled) {
+      bgmEnabled = !!enabled;
+      localStorage.setItem(BGM_ENABLED_KEY, bgmEnabled ? "1" : "0");
+      syncBgmUi();
+      updateBgmPlayback();
+    }
+
+    function syncBgmUi() {
+      if (!bgmToggleBtn) return;
+      bgmToggleBtn.textContent = bgmEnabled ? "ON" : "OFF";
+      bgmToggleBtn.classList.toggle("danger", !bgmEnabled);
+    }
+
+    function loadBgmSettings() {
+      const savedEnabled = localStorage.getItem(BGM_ENABLED_KEY);
+      bgmEnabled = savedEnabled === null ? true : savedEnabled === "1";
+      syncBgmUi();
+    }
+
+    function playBgmTone(freq, duration, type = "square", volume = 0.025, delay = 0) {
+      const ctx = ensureAudioContext();
+      if (!ctx || ctx.state !== "running" || !bgmEnabled || BGM_VOLUME <= 0 || !freq) return;
+
+      const now = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+
+      const level = Math.max(0.0001, volume * BGM_VOLUME);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(level, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    }
+
+    function shouldPlayBgm() {
+      return bgmEnabled
+        && BGM_VOLUME > 0
+        && !titleScreenEl.classList.contains("is-open")
+        && !state.paused
+        && !state.gameOver
+        && !celebrationOpen;
+    }
+
+    function playBgmStep() {
+      if (!shouldPlayBgm()) {
+        stopBgm();
+        return;
+      }
+      const lead = BGM_LEAD[bgmStep % BGM_LEAD.length];
+      const bass = BGM_BASS[Math.floor(bgmStep / 4) % BGM_BASS.length];
+
+      if (lead) playBgmTone(lead, 0.105, "square", 0.018);
+      if (bgmStep % 4 === 0) playBgmTone(bass, 0.22, "triangle", 0.032);
+      if (bgmStep % 8 === 6 && lead) playBgmTone(lead * 1.5, 0.07, "triangle", 0.011, 0.055);
+
+      bgmStep = (bgmStep + 1) % BGM_LEAD.length;
+    }
+
+    function startBgm() {
+      const ctx = ensureAudioContext();
+      if (!ctx || ctx.state !== "running" || bgmTimer || !shouldPlayBgm()) return;
+      playBgmStep();
+      bgmTimer = setInterval(playBgmStep, BGM_STEP_MS);
+    }
+
+    function stopBgm() {
+      if (!bgmTimer) return;
+      clearInterval(bgmTimer);
+      bgmTimer = null;
+    }
+
+    function updateBgmPlayback() {
+      if (shouldPlayBgm()) startBgm();
+      else stopBgm();
     }
 
     function clampBoardOffsetX(value) {
@@ -5563,6 +5670,7 @@
       }
       state.paused = selectedGameMode === "versus" ? waitingForOpponent : false;
       updateHUD(state);
+      updateBgmPlayback();
       if (currentGameMode === "versus" && versusMatchStarted) syncVersusPreview(true);
       scheduleFitLayout();
     }
@@ -5571,6 +5679,7 @@
       unlockGameplayLayout();
       titleScreenEl.classList.add("is-open");
       state.paused = true;
+      updateBgmPlayback();
       syncPlayerNameInput();
       updateTitleSelection(selectedGameMode);
       updateHUD(state);
@@ -5615,6 +5724,7 @@
         updateHUD(state);
       }
       updateComboHud(state);
+      updateBgmPlayback();
 
       if (state.gameOver && !gameOverHandled) {
         gameOverHandled = true;
@@ -5722,6 +5832,7 @@
     appEl.addEventListener("touchstart", handleSingleGameOverTapReturn, { passive: false });
 
     loadSeVolume();
+    loadBgmSettings();
     loadBoardOffset();
     loadControlsOffset();
 
@@ -6078,6 +6189,14 @@
     seUpBtn.addEventListener("touchstart", (e) => startVolumeHold(4, e), { passive: false });
     seUpBtn.addEventListener("touchend", stopVolumeHold, { passive: false });
     seUpBtn.addEventListener("touchcancel", stopVolumeHold, { passive: false });
+
+    if (bgmToggleBtn) {
+      bgmToggleBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        unlockAudio();
+        setBgmEnabled(!bgmEnabled);
+      });
+    }
 
     restartBtn.addEventListener("click", (e) => e.preventDefault());
     restartBtn.addEventListener("mousedown", startResetHold);
