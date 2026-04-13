@@ -349,9 +349,12 @@
       grid-column: 2;
       grid-row: 2;
       width: var(--side-panel-w);
+      min-width: var(--side-panel-w);
+      max-width: var(--side-panel-w);
       display: grid;
       gap: 5px;
       align-content: start;
+      contain: layout paint;
     }
 
     .app.mode-versus .right-info {
@@ -395,6 +398,11 @@
       display: grid;
       gap: 2px;
       margin-top: 2px;
+    }
+
+    .audio-box .se-audio-row,
+    .audio-box .se-volume-buttons {
+      display: none;
     }
 
     .audio-row {
@@ -445,6 +453,9 @@
       font-size: 0.68rem;
       color: #67e8f9;
       font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .status-text.line-1 { color: #67e8f9; }
@@ -1687,8 +1698,8 @@
           </div>
         </div>
         <div class="audio-box">
-          <div class="audio-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
-          <div class="volume-buttons">
+          <div class="audio-row se-audio-row"><span>SE Vol</span><span id="se-volume-value">160%</span></div>
+          <div class="volume-buttons se-volume-buttons">
             <button id="se-down" class="ghost volume-btn" type="button">VOL-</button>
             <button id="se-up" class="ghost volume-btn" type="button">VOL+</button>
           </div>
