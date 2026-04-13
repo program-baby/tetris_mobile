@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TETRIS BGM Preview</title>
+  <style>
+    :root {
+      --bg: #08111f;
+      --panel: rgba(10, 24, 42, 0.82);
+      --panel-strong: rgba(15, 35, 59, 0.94);
+      --line: rgba(148, 218, 255, 0.28);
+      --text: #e8f8ff;
+      --muted: #a8c7d8;
+      --accent: #18d5d5;
+      --accent-2: #ffb84d;
+      --danger: #ff6b6b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: var(--text);
+      font-family: "Trebuchet MS", "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(24, 213, 213, 0.28), transparent 28%),
+        radial-gradient(circle at 80% 10%, rgba(255, 184, 77, 0.16), transparent 30%),
+        linear-gradient(135deg, #06101d 0%, #0d2138 52%, #050914 100%);
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: radial-gradient(circle, black 0%, transparent 74%);
+    }
+
+    .preview-card {
+      width: min(680px, 100%);
+      position: relative;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: linear-gradient(145deg, var(--panel), var(--panel-strong));
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .pulse {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 18px var(--accent);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 8vw, 58px);
+      line-height: 0.95;
+      letter-spacing: 0.04em;
+    }
+
+    .lead {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 26px;
+    }
+
+    button,
+    a {
+      min-height: 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: var(--text);
+      font: inherit;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+    }
+
+    button {
+      background: linear-gradient(135deg, rgba(24, 213, 213, 0.94), rgba(17, 113, 183, 0.94));
+      box-shadow: 0 14px 34px rgba(24, 213, 213, 0.18);
+    }
+
+    button.is-playing {
+      background: linear-gradient(135deg, rgba(255, 107, 107, 0.92), rgba(219, 88, 47, 0.92));
+      box-shadow: 0 14px 34px rgba(255, 107, 107, 0.16);
+    }
+
+    a {
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    button:active,
+    a:active {
+      transform: scale(0.98);
+    }
+
+    .status {
+      min-height: 24px;
+      margin-top: 18px;
+      color: var(--accent-2);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .notes {
+      margin-top: 22px;
+      padding: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.045);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .meter {
+      display: grid;
+      grid-template-columns: repeat(16, 1fr);
+      gap: 4px;
+      margin-top: 24px;
+    }
+
+    .meter span {
+      height: 28px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.09);
+      transition: background 0.1s ease, transform 0.1s ease;
+    }
+
+    .meter span.is-lit {
+      background: linear-gradient(180deg, var(--accent), var(--accent-2));
+      transform: translateY(-5px);
+      box-shadow: 0 0 16px rgba(24, 213, 213, 0.45);
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 16px;
+      }
+
+      .preview-card {
+        padding: 22px;
+        border-radius: 22px;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview-card">
+    <div class="eyebrow"><span class="pulse"></span> BGM Preview</div>
+    <h1>テトリスBGM<br>試聴ページ</h1>
+    <p class="lead">
+      ゲーム中に流れるBGMと同じ生成音を再生します。音量調整はありません。
+      端末側の音量で聞きやすく調整してください。
+    </p>
+
+    <div class="controls">
+      <button id="play-toggle" type="button">再生</button>
+      <a href="index.html">ゲームへ戻る</a>
+    </div>
+
+    <div id="status" class="status">停止中</div>
+    <div id="meter" class="meter" aria-hidden="true"></div>
+
+    <div class="notes">
+      感想を聞くときは、このページのURLを共有してください。
+      スマホでは最初に「再生」を押すと音が出ます。
+    </div>
+  </main>
+
+  <script>
+    const BGM_VOLUME = 0.45;
+    const BGM_STEP_MS = 170;
+    const BGM_LEAD = [
+      659, 0, 784, 880, 784, 659, 587, 0,
+      523, 587, 659, 784, 659, 587, 523, 0,
+      440, 0, 523, 587, 659, 587, 523, 0,
+      392, 440, 523, 659, 587, 523, 440, 0
+    ];
+    const BGM_BASS = [130, 196, 174, 196, 110, 165, 147, 165];
+
+    const playToggle = document.getElementById("play-toggle");
+    const statusEl = document.getElementById("status");
+    const meterEl = document.getElementById("meter");
+    const meterBars = [];
+
+    let audioCtx = null;
+    let bgmTimer = null;
+    let bgmStep = 0;
+
+    for (let i = 0; i < 16; i += 1) {
+      const bar = document.createElement("span");
+      meterEl.appendChild(bar);
+      meterBars.push(bar);
+    }
+
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return null;
+        audioCtx = new AudioCtx();
+      }
+      return audioCtx;
+    }
+
+    function playBgmTone(freq, duration, type = "square", volume = 0.025, delay = 0) {
+      const ctx = ensureAudioContext();
+      if (!ctx || ctx.state !== "running" || BGM_VOLUME <= 0 || !freq) return;
+
+      const now = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+
+      const level = Math.max(0.0001, volume * BGM_VOLUME);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(level, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    }
+
+    function updateMeter() {
+      const active = bgmStep % meterBars.length;
+      meterBars.forEach((bar, index) => {
+        bar.classList.toggle("is-lit", index === active);
+      });
+    }
+
+    function playBgmStep() {
+      const lead = BGM_LEAD[bgmStep % BGM_LEAD.length];
+      const bass = BGM_BASS[Math.floor(bgmStep / 4) % BGM_BASS.length];
+
+      if (lead) playBgmTone(lead, 0.105, "square", 0.018);
+      if (bgmStep % 4 === 0) playBgmTone(bass, 0.22, "triangle", 0.032);
+      if (bgmStep % 8 === 6 && lead) playBgmTone(lead * 1.5, 0.07, "triangle", 0.011, 0.055);
+
+      updateMeter();
+      bgmStep = (bgmStep + 1) % BGM_LEAD.length;
+    }
+
+    async function startBgm() {
+      const ctx = ensureAudioContext();
+      if (!ctx || bgmTimer) return;
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
+      playBgmStep();
+      bgmTimer = setInterval(playBgmStep, BGM_STEP_MS);
+      playToggle.textContent = "停止";
+      playToggle.classList.add("is-playing");
+      statusEl.textContent = "再生中";
+    }
+
+    function stopBgm() {
+      if (bgmTimer) {
+        clearInterval(bgmTimer);
+        bgmTimer = null;
+      }
+      meterBars.forEach((bar) => bar.classList.remove("is-lit"));
+      playToggle.textContent = "再生";
+      playToggle.classList.remove("is-playing");
+      statusEl.textContent = "停止中";
+    }
+
+    playToggle.addEventListener("click", async () => {
+      if (bgmTimer) {
+        stopBgm();
+        return;
+      }
+      try {
+        await startBgm();
+      } catch (error) {
+        statusEl.textContent = "再生できませんでした。ブラウザの音声許可を確認してください。";
+      }
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stopBgm();
+    });
+  </script>
+</body>
+</html>
