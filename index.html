@@ -411,10 +411,6 @@
       gap: 4px;
     }
 
-    .volume-buttons.is-three {
-      grid-template-columns: 0.9fr 1fr 1fr;
-    }
-
     .volume-btn {
       font-size: 0.72rem;
       font-weight: 700;
@@ -1696,11 +1692,9 @@
             <button id="se-down" class="ghost volume-btn" type="button">VOL-</button>
             <button id="se-up" class="ghost volume-btn" type="button">VOL+</button>
           </div>
-          <div class="audio-row"><span>BGM Vol</span><span id="bgm-volume-value">45%</span></div>
-          <div class="volume-buttons is-three">
+          <div class="audio-row">
+            <span>BGM</span>
             <button id="bgm-toggle" class="ghost volume-btn" type="button">ON</button>
-            <button id="bgm-down" class="ghost volume-btn" type="button">BGM-</button>
-            <button id="bgm-up" class="ghost volume-btn" type="button">BGM+</button>
           </div>
         </div>
         <div class="next-label">NEXT</div>
@@ -1824,7 +1818,7 @@
             <ol class="title-guide-list">
               <li>画面長押しで画面の移動ができます</li>
               <li>スマホではプレイ中のレイアウト揺れを抑えるよう調整しています</li>
-              <li>BGM はゲーム中だけ再生され、音量と ON/OFF を調整できます</li>
+              <li>BGM はゲーム中だけ再生され、ON/OFF を切り替えできます</li>
               <li>対戦では右カラムの NEXT/HOLD を外し、相手盤面を見やすくしています</li>
               <li>対戦中は HOLD を無効化して誤操作を減らしています</li>
             </ol>
@@ -2067,10 +2061,7 @@
     const comboTimeValueEl = document.getElementById("combo-time-value");
     const comboBarFillEl = document.getElementById("combo-bar-fill");
     const comboBonusEl = document.getElementById("combo-bonus");
-    const bgmVolumeValueEl = document.getElementById("bgm-volume-value");
     const bgmToggleBtn = document.getElementById("bgm-toggle");
-    const bgmDownBtn = document.getElementById("bgm-down");
-    const bgmUpBtn = document.getElementById("bgm-up");
 
     const restartBtn = document.getElementById("restart");
     const pauseBtn = document.getElementById("pause");
@@ -2092,7 +2083,6 @@
     let volumeRepeatTimer = null;
     let audioCtx = null;
     let masterSeVolume = 1.6;
-    let masterBgmVolume = 0.45;
     let bgmEnabled = true;
     let bgmTimer = null;
     let bgmStep = 0;
@@ -2198,8 +2188,8 @@
     });
     const BOARD_OFFSET_KEY = "tetrisBoardOffsetV1";
     const CONTROLS_OFFSET_KEY = "tetrisControlsOffsetV1";
-    const BGM_VOLUME_KEY = "tetrisBgmVolumeV1";
     const BGM_ENABLED_KEY = "tetrisBgmEnabledV1";
+    const BGM_VOLUME = 0.45;
     const BGM_STEP_MS = 170;
     const BGM_LEAD = [
       659, 0, 784, 880, 784, 659, 587, 0,
@@ -2266,15 +2256,6 @@
       }
     }
 
-    function setBgmVolume(percent) {
-      const safe = Math.max(0, Math.min(100, percent));
-      masterBgmVolume = safe / 100;
-      if (bgmVolumeValueEl) bgmVolumeValueEl.textContent = `${safe}%`;
-      localStorage.setItem(BGM_VOLUME_KEY, String(safe));
-      syncBgmUi();
-      updateBgmPlayback();
-    }
-
     function setBgmEnabled(enabled) {
       bgmEnabled = !!enabled;
       localStorage.setItem(BGM_ENABLED_KEY, bgmEnabled ? "1" : "0");
@@ -2289,20 +2270,14 @@
     }
 
     function loadBgmSettings() {
-      const savedVolume = Number(localStorage.getItem(BGM_VOLUME_KEY));
       const savedEnabled = localStorage.getItem(BGM_ENABLED_KEY);
       bgmEnabled = savedEnabled === null ? true : savedEnabled === "1";
-      if (Number.isFinite(savedVolume) && savedVolume >= 0 && savedVolume <= 100) {
-        setBgmVolume(savedVolume);
-      } else {
-        setBgmVolume(45);
-      }
       syncBgmUi();
     }
 
     function playBgmTone(freq, duration, type = "square", volume = 0.025, delay = 0) {
       const ctx = ensureAudioContext();
-      if (!ctx || ctx.state !== "running" || !bgmEnabled || masterBgmVolume <= 0 || !freq) return;
+      if (!ctx || ctx.state !== "running" || !bgmEnabled || BGM_VOLUME <= 0 || !freq) return;
 
       const now = ctx.currentTime + delay;
       const osc = ctx.createOscillator();
@@ -2310,7 +2285,7 @@
       osc.type = type;
       osc.frequency.setValueAtTime(freq, now);
 
-      const level = Math.max(0.0001, volume * masterBgmVolume);
+      const level = Math.max(0.0001, volume * BGM_VOLUME);
       gain.gain.setValueAtTime(0.0001, now);
       gain.gain.exponentialRampToValueAtTime(level, now + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
@@ -2323,7 +2298,7 @@
 
     function shouldPlayBgm() {
       return bgmEnabled
-        && masterBgmVolume > 0
+        && BGM_VOLUME > 0
         && !titleScreenEl.classList.contains("is-open")
         && !state.paused
         && !state.gameOver
@@ -5427,12 +5402,6 @@
       setSeVolume(base + step);
     }
 
-    function changeBgmVolume(step) {
-      const current = Number(bgmVolumeValueEl.textContent.replace("%", ""));
-      const base = Number.isFinite(current) ? current : Math.round(masterBgmVolume * 100);
-      setBgmVolume(base + step);
-    }
-
     function clearVolumeTimers() {
       if (volumeStartTimer) clearTimeout(volumeStartTimer);
       if (volumeRepeatTimer) clearInterval(volumeRepeatTimer);
@@ -5778,16 +5747,6 @@
       e.preventDefault();
       unlockAudio();
       setBgmEnabled(!bgmEnabled);
-    });
-    bgmDownBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      unlockAudio();
-      changeBgmVolume(-5);
-    });
-    bgmUpBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      unlockAudio();
-      changeBgmVolume(5);
     });
 
     restartBtn.addEventListener("click", (e) => e.preventDefault());
