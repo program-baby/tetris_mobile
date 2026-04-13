@@ -1209,7 +1209,7 @@
     }
 
     .title-card.is-versus {
-      width: min(96vw, 760px);
+      width: min(96vw, 920px);
     }
 
     .title-card.is-versus .title-eyebrow,
@@ -1298,6 +1298,144 @@
       color: #94a3b8;
       font-size: 0.72rem;
       line-height: 1.35;
+    }
+
+    .lobby-chat {
+      display: grid;
+      gap: 9px;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid rgba(71, 85, 105, 0.78);
+      border-radius: 14px;
+      background: rgba(9, 16, 28, 0.74);
+    }
+
+    .lobby-chat-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      color: #67e8f9;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .lobby-chat-head small {
+      color: #94a3b8;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .lobby-chat-list {
+      display: grid;
+      align-content: start;
+      gap: 7px;
+      min-height: 168px;
+      max-height: 206px;
+      overflow-y: auto;
+      padding: 8px;
+      border: 1px solid rgba(51, 65, 85, 0.72);
+      border-radius: 11px;
+      background: rgba(2, 6, 23, 0.42);
+      scrollbar-width: thin;
+    }
+
+    .lobby-chat-message {
+      display: grid;
+      gap: 3px;
+      padding: 7px 8px;
+      border: 1px solid rgba(51, 65, 85, 0.55);
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .lobby-chat-message.is-own {
+      border-color: rgba(34, 211, 238, 0.48);
+      background: rgba(8, 145, 178, 0.18);
+    }
+
+    .lobby-chat-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: #94a3b8;
+      font-size: 0.64rem;
+      letter-spacing: 0.03em;
+    }
+
+    .lobby-chat-name {
+      color: #e5e7eb;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lobby-chat-text {
+      color: #e2e8f0;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .lobby-chat-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 7px;
+    }
+
+    .lobby-chat-input {
+      min-width: 0;
+      border: 1px solid rgba(71, 85, 105, 0.78);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.58);
+      color: #f8fafc;
+      font: inherit;
+      font-size: 0.78rem;
+      padding: 9px 10px;
+      outline: none;
+    }
+
+    .lobby-chat-input:focus {
+      border-color: rgba(34, 211, 238, 0.76);
+      box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.16);
+    }
+
+    .lobby-chat-send {
+      border: 0;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0891b2, #14b8a6);
+      color: #ecfeff;
+      font: inherit;
+      font-size: 0.74rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      padding: 0 11px;
+    }
+
+    .lobby-chat-send:disabled,
+    .lobby-chat-input:disabled {
+      cursor: not-allowed;
+      opacity: 0.52;
+    }
+
+    .lobby-chat-status,
+    .lobby-chat-empty {
+      color: #94a3b8;
+      font-size: 0.68rem;
+      line-height: 1.4;
+    }
+
+    .lobby-chat-status.is-warning {
+      color: #fbbf24;
+    }
+
+    .lobby-chat-status.is-muted {
+      color: #f87171;
     }
 
     .title-versus-main {
@@ -1599,7 +1737,7 @@
       }
 
       .title-card.is-versus .title-versus-stage {
-        grid-template-columns: minmax(230px, 260px) minmax(0, 1fr);
+        grid-template-columns: minmax(210px, 240px) minmax(0, 1fr) minmax(230px, 280px);
         align-items: start;
       }
     }
@@ -1815,6 +1953,20 @@
             </div>
           </div>
         </div>
+        <aside id="lobby-chat" class="lobby-chat" aria-label="ロビーチャット">
+          <div class="lobby-chat-head">
+            <span>ロビーチャット</span>
+            <small>時間合わせ用</small>
+          </div>
+          <div id="lobby-chat-list" class="lobby-chat-list" aria-live="polite">
+            <div class="lobby-chat-empty">チャットを読み込み中...</div>
+          </div>
+          <form id="lobby-chat-form" class="lobby-chat-form">
+            <input id="lobby-chat-input" class="lobby-chat-input" type="text" inputmode="text" maxlength="80" placeholder="例: GATE1で待ってます">
+            <button id="lobby-chat-send" class="lobby-chat-send" type="submit">送信</button>
+          </form>
+          <div id="lobby-chat-status" class="lobby-chat-status" aria-live="polite">ユーザー名を確定すると送信できます。</div>
+        </aside>
       </div>
       <div class="player-name-box">
         <label for="player-name-input" class="player-name-label">ユーザー名</label>
@@ -1854,6 +2006,7 @@
             <div class="title-guide-head">新機能</div>
             <ol class="title-guide-list">
               <li>画面長押しで画面の移動ができます</li>
+              <li>タイトル画面のロビーチャットで対戦の時間合わせができます</li>
               <li>スマホではプレイ中のレイアウト揺れを抑えるよう調整しています</li>
               <li>対戦では右カラムの NEXT/HOLD を外し、相手盤面を見やすくしています</li>
               <li>対戦中は HOLD を無効化して誤操作を減らしています</li>
@@ -1897,7 +2050,7 @@
         <h2 class="ranking-modal-title">管理画面</h2>
         <button id="admin-close" class="ghost ranking-close" type="button">閉じる</button>
       </div>
-      <p class="admin-note">詰まった公開ルームを手動で解放できます。下の無料枠表示は Firebase の正確な残量ではなく、今日のプレイ数と稼働状況から見た運用目安です。</p>
+      <p class="admin-note">詰まった公開ルームの解放、ユーザー名リセット、ロビーチャットのミュート解除ができます。下の無料枠表示は Firebase の正確な残量ではなく、今日のプレイ数と稼働状況から見た運用目安です。</p>
       <div class="admin-usage">
         <div class="admin-usage-head">
           <strong>無料枠の目安</strong>
@@ -1992,6 +2145,9 @@
     const VERSUS_UNLOCK_KEY = "tetrisVersusUnlockedV1";
     const FIREBASE_CONFIG = window.TETRIS_FIREBASE_CONFIG || null;
     const TITLE_PUBLIC_ROOMS = ["GATE1", "GATE2", "GATE3"];
+    const LOBBY_CHAT_LIMIT = 20;
+    const LOBBY_CHAT_MAX_LENGTH = 80;
+    const LOBBY_CHAT_COOLDOWN_MS = 5000;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -2063,6 +2219,11 @@
     const titleWaitingRoomEl = document.getElementById("title-waiting-room");
     const titleWaitingHostEl = document.getElementById("title-waiting-host");
     const titleWaitingRemoteEl = document.getElementById("title-waiting-remote");
+    const lobbyChatListEl = document.getElementById("lobby-chat-list");
+    const lobbyChatFormEl = document.getElementById("lobby-chat-form");
+    const lobbyChatInputEl = document.getElementById("lobby-chat-input");
+    const lobbyChatSendBtn = document.getElementById("lobby-chat-send");
+    const lobbyChatStatusEl = document.getElementById("lobby-chat-status");
     const versusBoxEl = document.getElementById("versus-box");
     const roomIdEl = document.getElementById("room-id");
     const versusStatusEl = document.getElementById("versus-status");
@@ -2188,6 +2349,13 @@
     let titleRoomSnapshots = {};
     let titleRoomRefs = [];
     let adminUsernames = [];
+    let lobbyChatRef = null;
+    let lobbyChatListener = null;
+    let lobbyMutedRef = null;
+    let lobbyMutedListener = null;
+    let lobbyChatMessages = [];
+    let mutedUsers = {};
+    let lastLobbyChatSentAt = 0;
 
     if (debugHudEl) {
       debugHudEl.classList.toggle("is-visible", DEBUG_LAYOUT);
@@ -2710,7 +2878,8 @@
       const list = adminUsernames
         .filter((entry) => !query || entry.name.toLowerCase().includes(query))
         .sort((a, b) => a.name.localeCompare(b.name, "ja"));
-      adminUserCountEl.textContent = `${adminUsernames.length}件`;
+      const mutedCount = Object.values(mutedUsers || {}).filter(Boolean).length;
+      adminUserCountEl.textContent = mutedCount ? `${adminUsernames.length}件 / ミュート${mutedCount}` : `${adminUsernames.length}件`;
       adminUserListEl.innerHTML = "";
       if (!list.length) {
         const empty = document.createElement("div");
@@ -2723,19 +2892,44 @@
         const item = document.createElement("div");
         item.className = "admin-user-item";
         const updated = entry.updatedAt ? new Date(entry.updatedAt).toLocaleString("ja-JP") : "-";
-        item.innerHTML = `
-          <div class="admin-user-name">${entry.name}</div>
-          <div class="admin-user-meta">owner: ${entry.ownerUid || "-"}<br>updated: ${updated}</div>
-          <div class="admin-room-actions">
-            <button class="ghost tool-btn" type="button" data-admin-reset-name="${entry.name}">${entry.name} をリセット</button>
-          </div>
-        `;
-        adminUserListEl.appendChild(item);
-      });
-      adminUserListEl.querySelectorAll("[data-admin-reset-name]").forEach((button) => {
-        button.addEventListener("click", () => {
-          resetNamedPlayer(button.dataset.adminResetName).catch(() => {});
+        const isMuted = isUidMuted(entry.ownerUid);
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "admin-user-name";
+        nameEl.textContent = isMuted ? `${entry.name}（ミュート中）` : entry.name;
+
+        const metaEl = document.createElement("div");
+        metaEl.className = "admin-user-meta";
+        metaEl.textContent = `owner: ${entry.ownerUid || "-"} / updated: ${updated}`;
+
+        const actionsEl = document.createElement("div");
+        actionsEl.className = "admin-room-actions";
+
+        const resetButton = document.createElement("button");
+        resetButton.className = "ghost tool-btn";
+        resetButton.type = "button";
+        resetButton.textContent = `${entry.name} をリセット`;
+        resetButton.addEventListener("click", () => {
+          resetNamedPlayer(entry.name).catch(() => {});
         });
+        actionsEl.appendChild(resetButton);
+
+        if (entry.ownerUid) {
+          const muteButton = document.createElement("button");
+          muteButton.className = isMuted ? "ghost tool-btn" : "danger tool-btn";
+          muteButton.type = "button";
+          muteButton.textContent = isMuted ? "ミュート解除" : "チャットミュート";
+          muteButton.addEventListener("click", () => {
+            const action = isMuted ? unmuteLobbyUser : muteLobbyUser;
+            action(entry.ownerUid, entry.name).catch(() => {});
+          });
+          actionsEl.appendChild(muteButton);
+        }
+
+        item.appendChild(nameEl);
+        item.appendChild(metaEl);
+        item.appendChild(actionsEl);
+        adminUserListEl.appendChild(item);
       });
     }
 
@@ -3479,6 +3673,7 @@
       } else {
         setPlayerNameStatus("ユーザー名を入力してください");
       }
+      syncLobbyChatInputState();
     }
 
     function setPlayerNameStatus(text = "", kind = "") {
@@ -3497,11 +3692,204 @@
         renderVersusRoomHud();
         renderTitleSessionInfo();
       }
+      syncLobbyChatInputState();
       return name;
     }
 
     function getPlayerNameKey(name) {
       return sanitizePlayerName(name).toLowerCase();
+    }
+
+    function sanitizeLobbyChatText(value) {
+      return (value || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, LOBBY_CHAT_MAX_LENGTH);
+    }
+
+    function formatLobbyChatTime(value) {
+      const timestamp = Number(value || 0);
+      if (!timestamp) return "--:--";
+      return new Date(timestamp).toLocaleTimeString("ja-JP", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function isUidMuted(uid) {
+      if (!uid) return false;
+      const record = mutedUsers?.[uid];
+      if (!record) return false;
+      const until = Number(record.until || 0);
+      return !until || until > Date.now();
+    }
+
+    function setLobbyChatStatus(message, className = "") {
+      if (!lobbyChatStatusEl) return;
+      lobbyChatStatusEl.textContent = message;
+      lobbyChatStatusEl.className = "lobby-chat-status";
+      if (className) lobbyChatStatusEl.classList.add(className);
+    }
+
+    function syncLobbyChatInputState() {
+      if (!lobbyChatInputEl || !lobbyChatSendBtn) return;
+      const uid = firebaseAuth?.currentUser?.uid || "";
+      const muted = isUidMuted(uid);
+      const lockedName = getStoredPlayerName();
+      const canSend = hasFirebaseConfig() && firebaseReady && !!uid && lockedName !== "PLAYER" && !muted;
+      lobbyChatInputEl.disabled = !canSend;
+      lobbyChatSendBtn.disabled = !canSend;
+      if (!hasFirebaseConfig()) {
+        setLobbyChatStatus("Firebase未設定のためチャットは使えません。", "is-warning");
+      } else if (!firebaseReady) {
+        setLobbyChatStatus("チャット接続中...");
+      } else if (muted) {
+        setLobbyChatStatus("このユーザーは管理者によりチャット送信を停止されています。", "is-muted");
+      } else if (lockedName === "PLAYER") {
+        setLobbyChatStatus("ユーザー名を確定すると送信できます。");
+      } else {
+        setLobbyChatStatus("対戦の時間合わせに使えます。短文でお願いします。");
+      }
+    }
+
+    function renderLobbyChatMessages() {
+      if (!lobbyChatListEl) return;
+      lobbyChatListEl.innerHTML = "";
+      const visibleMessages = lobbyChatMessages.filter((message) => !isUidMuted(message.uid));
+      if (!visibleMessages.length) {
+        const empty = document.createElement("div");
+        empty.className = "lobby-chat-empty";
+        empty.textContent = "まだメッセージはありません。待ち合わせに使えます。";
+        lobbyChatListEl.appendChild(empty);
+        return;
+      }
+      const currentUid = firebaseAuth?.currentUser?.uid || "";
+      visibleMessages.forEach((message) => {
+        const item = document.createElement("div");
+        item.className = "lobby-chat-message";
+        if (message.uid && message.uid === currentUid) item.classList.add("is-own");
+
+        const meta = document.createElement("div");
+        meta.className = "lobby-chat-meta";
+        const name = document.createElement("span");
+        name.className = "lobby-chat-name";
+        name.textContent = sanitizePlayerName(message.name) || "PLAYER";
+        const time = document.createElement("span");
+        time.textContent = formatLobbyChatTime(message.createdAt);
+        meta.appendChild(name);
+        meta.appendChild(time);
+
+        const text = document.createElement("div");
+        text.className = "lobby-chat-text";
+        text.textContent = sanitizeLobbyChatText(message.text);
+
+        item.appendChild(meta);
+        item.appendChild(text);
+        lobbyChatListEl.appendChild(item);
+      });
+      lobbyChatListEl.scrollTop = lobbyChatListEl.scrollHeight;
+    }
+
+    async function subscribeLobbyMuteList() {
+      if (!firebaseReady || !firebaseDb || lobbyMutedRef) return false;
+      lobbyMutedRef = firebaseDb.ref("moderation/mutedUsers");
+      lobbyMutedListener = lobbyMutedRef.on("value", (snapshot) => {
+        mutedUsers = snapshot.val() || {};
+        renderLobbyChatMessages();
+        syncLobbyChatInputState();
+        renderAdminUserList();
+      });
+      return true;
+    }
+
+    async function subscribeLobbyChat() {
+      if (!firebaseReady || !firebaseDb || lobbyChatRef) return false;
+      lobbyChatRef = firebaseDb.ref("lobbyChat/messages").orderByChild("createdAt").limitToLast(LOBBY_CHAT_LIMIT);
+      lobbyChatListener = lobbyChatRef.on("value", (snapshot) => {
+        const messages = [];
+        snapshot.forEach((child) => {
+          const value = child.val() || {};
+          messages.push({
+            id: child.key,
+            uid: value.uid || "",
+            name: sanitizePlayerName(value.name) || "PLAYER",
+            text: sanitizeLobbyChatText(value.text),
+            createdAt: Number(value.createdAt || 0)
+          });
+        });
+        lobbyChatMessages = messages.sort((a, b) => a.createdAt - b.createdAt);
+        renderLobbyChatMessages();
+        syncLobbyChatInputState();
+      }, () => {
+        setLobbyChatStatus("チャットの読み込みに失敗しました。Firebaseルールを確認してください。", "is-warning");
+      });
+      return true;
+    }
+
+    async function sendLobbyChatMessage(event) {
+      if (event) event.preventDefault();
+      const text = sanitizeLobbyChatText(lobbyChatInputEl?.value || "");
+      if (!text) {
+        setLobbyChatStatus("メッセージを入力してください。", "is-warning");
+        return;
+      }
+      const ok = await initFirebaseAdapter();
+      if (!ok || !firebaseDb || !firebaseAuth?.currentUser?.uid) {
+        setLobbyChatStatus("Firebase接続ができないため送信できません。", "is-warning");
+        return;
+      }
+      const uid = firebaseAuth.currentUser.uid;
+      if (isUidMuted(uid)) {
+        syncLobbyChatInputState();
+        return;
+      }
+      const name = getStoredPlayerName();
+      if (!name || name === "PLAYER") {
+        setLobbyChatStatus("先にユーザー名を確定してください。", "is-warning");
+        syncLobbyChatInputState();
+        return;
+      }
+      const now = Date.now();
+      const waitMs = LOBBY_CHAT_COOLDOWN_MS - (now - lastLobbyChatSentAt);
+      if (waitMs > 0) {
+        setLobbyChatStatus(`連投防止のため、あと ${Math.ceil(waitMs / 1000)} 秒待ってください。`, "is-warning");
+        return;
+      }
+      await firebaseDb.ref("lobbyChat/messages").push({
+        uid,
+        name,
+        text,
+        createdAt: now
+      });
+      lastLobbyChatSentAt = now;
+      lobbyChatInputEl.value = "";
+      setLobbyChatStatus("送信しました。");
+      syncLobbyChatInputState();
+    }
+
+    async function muteLobbyUser(uid, name) {
+      if (!uid) return false;
+      const ok = await initFirebaseAdapter();
+      if (!ok || !firebaseDb) return false;
+      await firebaseDb.ref(`moderation/mutedUsers/${uid}`).set({
+        name: sanitizePlayerName(name) || "PLAYER",
+        mutedAt: Date.now()
+      });
+      titleModeNoteEl.textContent = `${sanitizePlayerName(name) || "対象ユーザー"} をロビーチャットでミュートしました。`;
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+      return true;
+    }
+
+    async function unmuteLobbyUser(uid, name) {
+      if (!uid) return false;
+      const ok = await initFirebaseAdapter();
+      if (!ok || !firebaseDb) return false;
+      await firebaseDb.ref(`moderation/mutedUsers/${uid}`).remove();
+      titleModeNoteEl.textContent = `${sanitizePlayerName(name) || "対象ユーザー"} のロビーチャットミュートを解除しました。`;
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+      return true;
     }
 
     async function checkPlayerNameAvailability(value) {
@@ -3863,7 +4251,11 @@
     }
 
     async function initFirebaseAdapter() {
-      if (firebaseReady) return true;
+      if (firebaseReady) {
+        subscribeLobbyMuteList().catch(() => {});
+        subscribeLobbyChat().catch(() => {});
+        return true;
+      }
       if (!hasFirebaseConfig()) return false;
       if (!window.firebase || !window.firebase.initializeApp || !window.firebase.database || !window.firebase.auth) {
         return false;
@@ -3882,6 +4274,8 @@
       subscribeGlobalPlayStats().catch(() => {});
       subscribeSharedSoloRanking().catch(() => {});
       subscribeTitleRoomSlots();
+      subscribeLobbyMuteList().catch(() => {});
+      subscribeLobbyChat().catch(() => {});
       return true;
     }
 
@@ -5636,6 +6030,13 @@
     adminUserSearchEl.addEventListener("input", () => {
       renderAdminUserList();
     });
+    if (lobbyChatFormEl) {
+      lobbyChatFormEl.addEventListener("submit", (e) => {
+        sendLobbyChatMessage(e).catch(() => {
+          setLobbyChatStatus("送信に失敗しました。Firebaseルールを確認してください。", "is-warning");
+        });
+      });
+    }
     adminResetNameBtn.addEventListener("click", () => {
       resetCurrentPlayerName().catch(() => {});
     });
