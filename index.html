@@ -2258,9 +2258,6 @@
     const versusLogEl = document.getElementById("versus-log");
     const recordCelebrationEl = document.getElementById("record-celebration");
     const recordScoreEl = document.getElementById("record-score");
-    const seVolumeValueEl = document.getElementById("se-volume-value");
-    const seDownBtn = document.getElementById("se-down");
-    const seUpBtn = document.getElementById("se-up");
     const boardBestScoreEl = document.getElementById("board-best-score");
     const boardCurrentScoreEl = document.getElementById("board-current-score");
     const comboTimeEl = document.getElementById("combo-time");
@@ -2285,13 +2282,12 @@
     let rightHoldStartTimer = null;
     let leftHoldRepeatTimer = null;
     let rightHoldRepeatTimer = null;
-    let volumeStartTimer = null;
-    let volumeRepeatTimer = null;
     let audioCtx = null;
-    let masterSeVolume = 1.6;
+    let masterSeVolume = 1.45;
     let bgmEnabled = true;
     let bgmTimer = null;
     let bgmStep = 0;
+    let bgmDuckedUntil = 0;
     let gameOverHandled = false;
     let bestNeonTimer = null;
     let pausedByRankingModal = false;
@@ -2402,15 +2398,40 @@
     const BOARD_OFFSET_KEY = "tetrisBoardOffsetV1";
     const CONTROLS_OFFSET_KEY = "tetrisControlsOffsetV1";
     const BGM_ENABLED_KEY = "tetrisBgmEnabledV1";
-    const BGM_VOLUME = 0.45;
-    const BGM_STEP_MS = 170;
-    const BGM_LEAD = [
-      659, 0, 784, 880, 784, 659, 587, 0,
-      523, 587, 659, 784, 659, 587, 523, 0,
-      440, 0, 523, 587, 659, 587, 523, 0,
-      392, 440, 523, 659, 587, 523, 440, 0
-    ];
-    const BGM_BASS = [130, 196, 174, 196, 110, 165, 147, 165];
+    const BGM_VOLUME = 1.4;
+    const BGM_DUCK_RATIO = 0.72;
+    const BGM_DUCK_SECONDS = 0.22;
+    const BGM_STEP_MS = 158;
+    const BGM_STEPS_PER_BAR = 8;
+    const BGM_NOTE_FREQ = {
+      R: 0,
+      D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A2: 110.00, A3: 220.00, B3: 246.94,
+      C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, Gs4: 415.30, A4: 440.00, B4: 493.88,
+      C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00
+    };
+    const BGM_CHORDS = {
+      Am: ["A2", "E3", "C4"],
+      G: ["G3", "D4", "B4"],
+      F: ["F3", "C4", "A4"],
+      E: ["E3", "B3", "Gs4"],
+      Dm: ["D3", "A3", "F4"],
+      Em: ["E3", "B3", "G4"]
+    };
+    const BGM_TRACK = {
+      chords: {
+        A: ["Am", "G", "F", "E", "Am", "G", "F", "E"],
+        B: ["F", "G", "Am", "E", "F", "G", "Am", "E"],
+        A2: ["Am", "G", "F", "E", "Dm", "Em", "F", "E"],
+        Bridge: ["F", "E", "G", "E"]
+      },
+      patterns: {
+        A: [["A4","R","R","C5","E5","R","D5","R"], ["G4","R","A4","C5","R","E5","D5","R"]],
+        B: [["F5","R","E5","R","D5","C5","R","E5"], ["A4","R","C5","D5","R","G5","E5","R"]],
+        A2: [["A4","R","C5","E5","A5","R","G5","R"], ["C5","R","D5","E5","R","G5","B4","R"]],
+        Bridge: [["F5","R","R","E5","R","G5","R","E5"], ["D5","C5","R","B4","C5","R","E5","R"]]
+      }
+    };
+    const BGM_SEQUENCE = makeBgmSequence();
 
     const COLORS = [
       null,
@@ -2453,22 +2474,6 @@
       }
     }
 
-    function setSeVolume(percent) {
-      const safe = Math.max(0, Math.min(260, percent));
-      masterSeVolume = safe / 100;
-      if (seVolumeValueEl) seVolumeValueEl.textContent = `${safe}%`;
-      localStorage.setItem("tetrisSeVolume", String(safe));
-    }
-
-    function loadSeVolume() {
-      const saved = Number(localStorage.getItem("tetrisSeVolume"));
-      if (Number.isFinite(saved) && saved >= 0 && saved <= 260) {
-        setSeVolume(saved);
-      } else {
-        setSeVolume(160);
-      }
-    }
-
     function setBgmEnabled(enabled) {
       bgmEnabled = !!enabled;
       localStorage.setItem(BGM_ENABLED_KEY, bgmEnabled ? "1" : "0");
@@ -2488,6 +2493,56 @@
       syncBgmUi();
     }
 
+    function getBgmBass(chordNotes, localStep, bar) {
+      if (localStep === 0 || localStep === 6) return chordNotes[0];
+      if (bar % 4 === 3 && localStep === 4) return chordNotes[1];
+      return "R";
+    }
+
+    function getBgmHarmony(chordNotes, localStep) {
+      return localStep === 5 ? chordNotes[2] : "R";
+    }
+
+    function getBgmDrum(localStep, bar) {
+      if (localStep === 0) return "kick";
+      if (localStep === 6 && bar % 2 === 1) return "snare";
+      return "";
+    }
+
+    function makeBgmSequence() {
+      const sections = [
+        ["A", 8],
+        ["B", 8],
+        ["A2", 8],
+        ["Bridge", 4]
+      ];
+      const sequence = [];
+      sections.forEach(([sectionName, bars]) => {
+        const chords = BGM_TRACK.chords[sectionName];
+        const patterns = BGM_TRACK.patterns[sectionName];
+        for (let bar = 0; bar < bars; bar += 1) {
+          const chord = chords[bar % chords.length];
+          const chordNotes = BGM_CHORDS[chord] || BGM_CHORDS.Am;
+          const pattern = patterns[bar % patterns.length];
+          for (let localStep = 0; localStep < BGM_STEPS_PER_BAR; localStep += 1) {
+            sequence.push({
+              lead: BGM_NOTE_FREQ[pattern[localStep % pattern.length]] || 0,
+              harmony: BGM_NOTE_FREQ[getBgmHarmony(chordNotes, localStep)] || 0,
+              bass: BGM_NOTE_FREQ[getBgmBass(chordNotes, localStep, bar)] || 0,
+              drum: getBgmDrum(localStep, bar)
+            });
+          }
+        }
+      });
+      return sequence;
+    }
+
+    function getBgmVolumeScale() {
+      const ctx = ensureAudioContext();
+      if (!ctx) return BGM_VOLUME;
+      return BGM_VOLUME * (ctx.currentTime < bgmDuckedUntil ? BGM_DUCK_RATIO : 1);
+    }
+
     function playBgmTone(freq, duration, type = "square", volume = 0.025, delay = 0) {
       const ctx = ensureAudioContext();
       if (!ctx || ctx.state !== "running" || !bgmEnabled || BGM_VOLUME <= 0 || !freq) return;
@@ -2498,7 +2553,7 @@
       osc.type = type;
       osc.frequency.setValueAtTime(freq, now);
 
-      const level = Math.max(0.0001, volume * BGM_VOLUME);
+      const level = Math.max(0.0001, volume * getBgmVolumeScale());
       gain.gain.setValueAtTime(0.0001, now);
       gain.gain.exponentialRampToValueAtTime(level, now + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
@@ -2507,6 +2562,32 @@
       gain.connect(ctx.destination);
       osc.start(now);
       osc.stop(now + duration + 0.02);
+    }
+
+    function playBgmNoise(duration, volume, kind = "snare") {
+      const ctx = ensureAudioContext();
+      if (!ctx || ctx.state !== "running" || !bgmEnabled || BGM_VOLUME <= 0) return;
+
+      const bufferSize = Math.floor(ctx.sampleRate * duration);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i += 1) {
+        data[i] = (Math.random() * 2 - 1) * (kind === "kick" ? 0.45 : 1);
+      }
+
+      const source = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+      filter.type = kind === "kick" ? "lowpass" : "highpass";
+      filter.frequency.value = kind === "kick" ? 360 : 1300;
+      gain.gain.setValueAtTime(Math.max(0.0001, volume * getBgmVolumeScale()), ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+      source.buffer = buffer;
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      source.start();
+      source.stop(ctx.currentTime + duration);
     }
 
     function shouldPlayBgm() {
@@ -2523,14 +2604,19 @@
         stopBgm();
         return;
       }
-      const lead = BGM_LEAD[bgmStep % BGM_LEAD.length];
-      const bass = BGM_BASS[Math.floor(bgmStep / 4) % BGM_BASS.length];
+      const item = BGM_SEQUENCE[bgmStep % BGM_SEQUENCE.length];
 
-      if (lead) playBgmTone(lead, 0.105, "square", 0.018);
-      if (bgmStep % 4 === 0) playBgmTone(bass, 0.22, "triangle", 0.032);
-      if (bgmStep % 8 === 6 && lead) playBgmTone(lead * 1.5, 0.07, "triangle", 0.011, 0.055);
+      if (item.lead) playBgmTone(item.lead, 0.12, "triangle", 0.012);
+      if (item.harmony) playBgmTone(item.harmony, 0.075, "sawtooth", 0.0035, 0.032);
+      if (item.bass) playBgmTone(item.bass, 0.16, "triangle", 0.026);
+      if (item.drum === "kick") {
+        playBgmTone(70, 0.06, "triangle", 0.011);
+        playBgmNoise(0.045, 0.005, "kick");
+      } else if (item.drum === "snare") {
+        playBgmNoise(0.055, 0.009, "snare");
+      }
 
-      bgmStep = (bgmStep + 1) % BGM_LEAD.length;
+      bgmStep = (bgmStep + 1) % BGM_SEQUENCE.length;
     }
 
     function startBgm() {
@@ -3230,6 +3316,7 @@
       if (!ctx || ctx.state !== "running" || masterSeVolume <= 0 || volume <= 0) return;
 
       const now = ctx.currentTime;
+      bgmDuckedUntil = Math.max(bgmDuckedUntil, now + BGM_DUCK_SECONDS);
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = type;
@@ -3275,6 +3362,7 @@
       const filter = ctx.createBiquadFilter();
       const gain = ctx.createGain();
       const now = ctx.currentTime;
+      bgmDuckedUntil = Math.max(bgmDuckedUntil, now + BGM_DUCK_SECONDS);
 
       source.buffer = buffer;
       filter.type = "lowpass";
@@ -5831,42 +5919,9 @@
     appEl.addEventListener("click", handleSingleGameOverTapReturn);
     appEl.addEventListener("touchstart", handleSingleGameOverTapReturn, { passive: false });
 
-    loadSeVolume();
     loadBgmSettings();
     loadBoardOffset();
     loadControlsOffset();
-
-    function changeSeVolume(step) {
-      const current = Number(seVolumeValueEl.textContent.replace("%", ""));
-      const base = Number.isFinite(current) ? current : Math.round(masterSeVolume * 100);
-      setSeVolume(base + step);
-    }
-
-    function clearVolumeTimers() {
-      if (volumeStartTimer) clearTimeout(volumeStartTimer);
-      if (volumeRepeatTimer) clearInterval(volumeRepeatTimer);
-      volumeStartTimer = null;
-      volumeRepeatTimer = null;
-    }
-
-    function startVolumeHold(step, e) {
-      e.preventDefault();
-      unlockAudio();
-      changeSeVolume(step);
-      clearVolumeTimers();
-
-      const beginRepeat = () => {
-        volumeRepeatTimer = setInterval(() => {
-          changeSeVolume(step);
-        }, 60);
-      };
-      volumeStartTimer = setTimeout(beginRepeat, 180);
-    }
-
-    function stopVolumeHold(e) {
-      if (e) e.preventDefault();
-      clearVolumeTimers();
-    }
 
     function startResetHold(e) {
       e.preventDefault();
@@ -6174,21 +6229,6 @@
       e.preventDefault();
       closeRecordCelebration();
     }, { passive: false });
-
-    seDownBtn.addEventListener("click", (e) => e.preventDefault());
-    seUpBtn.addEventListener("click", (e) => e.preventDefault());
-    seDownBtn.addEventListener("mousedown", (e) => startVolumeHold(-4, e));
-    seDownBtn.addEventListener("mouseup", stopVolumeHold);
-    seDownBtn.addEventListener("mouseleave", stopVolumeHold);
-    seDownBtn.addEventListener("touchstart", (e) => startVolumeHold(-4, e), { passive: false });
-    seDownBtn.addEventListener("touchend", stopVolumeHold, { passive: false });
-    seDownBtn.addEventListener("touchcancel", stopVolumeHold, { passive: false });
-    seUpBtn.addEventListener("mousedown", (e) => startVolumeHold(4, e));
-    seUpBtn.addEventListener("mouseup", stopVolumeHold);
-    seUpBtn.addEventListener("mouseleave", stopVolumeHold);
-    seUpBtn.addEventListener("touchstart", (e) => startVolumeHold(4, e), { passive: false });
-    seUpBtn.addEventListener("touchend", stopVolumeHold, { passive: false });
-    seUpBtn.addEventListener("touchcancel", stopVolumeHold, { passive: false });
 
     if (bgmToggleBtn) {
       bgmToggleBtn.addEventListener("click", (e) => {
