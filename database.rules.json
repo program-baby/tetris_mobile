@@ -3,6 +3,14 @@
     ".read": false,
     ".write": false,
 
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false,
+        ".validate": "newData.isBoolean()"
+      }
+    },
+
     "rooms": {
       "$roomId": {
         ".read": "auth != null",
@@ -19,12 +27,16 @@
     },
 
     "leaderboards": {
+      ".read": true,
+      ".write": "auth != null",
       "soloTop10": {
-        ".read": true,
-        ".write": "auth != null",
-        ".validate": "newData.childrenCount() <= 10",
         "$idx": {
-          ".validate": "newData.hasChildren(['name', 'score', 'lines', 'level', 'date']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 12 && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 2000000 && newData.child('lines').isNumber() && newData.child('lines').val() >= 0 && newData.child('lines').val() <= 3000 && newData.child('level').isNumber() && newData.child('level').val() >= 1 && newData.child('level').val() <= 301 && newData.child('date').isNumber()"
+          ".validate": "newData.hasChildren(['uid', 'name', 'score', 'lines', 'level', 'date']) && newData.child('uid').isString() && newData.child('uid').val().length > 0 && newData.child('uid').val().length <= 80 && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 12 && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 2000000 && newData.child('lines').isNumber() && newData.child('lines').val() >= 0 && newData.child('lines').val() <= 3000 && newData.child('level').isNumber() && newData.child('level').val() >= 1 && newData.child('level').val() <= 301 && newData.child('date').isNumber()"
+        }
+      },
+      "hallOfFame": {
+        "$idx": {
+          ".validate": "newData.hasChildren(['uid', 'name', 'score', 'lines', 'level', 'date']) && newData.child('uid').isString() && newData.child('uid').val().length > 0 && newData.child('uid').val().length <= 80 && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 12 && newData.child('score').isNumber() && newData.child('score').val() > 2000000 && newData.child('score').val() <= 50000000 && newData.child('lines').isNumber() && newData.child('lines').val() >= 0 && newData.child('lines').val() <= 3000 && newData.child('level').isNumber() && newData.child('level').val() >= 1 && newData.child('level').val() <= 301 && newData.child('date').isNumber()"
         }
       }
     },
@@ -34,7 +46,7 @@
         "$submissionId": {
           ".read": "auth != null && (data.child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
           ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
-          ".validate": "newData.hasChildren(['uid', 'name', 'score', 'lines', 'level', 'activeMs', 'piecesLocked', 'accepted', 'flags', 'submittedAt']) && newData.child('uid').isString() && newData.child('uid').val() === auth.uid && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 12 && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 2000000 && newData.child('lines').isNumber() && newData.child('lines').val() >= 0 && newData.child('lines').val() <= 3000 && newData.child('level').isNumber() && newData.child('level').val() >= 1 && newData.child('level').val() <= 301 && newData.child('activeMs').isNumber() && newData.child('activeMs').val() >= 0 && newData.child('activeMs').val() <= 86400000 && newData.child('piecesLocked').isNumber() && newData.child('piecesLocked').val() >= 0 && newData.child('piecesLocked').val() <= 20000 && newData.child('accepted').isBoolean() && newData.child('submittedAt').isNumber()"
+          ".validate": "newData.hasChildren(['uid', 'name', 'score', 'lines', 'level', 'activeMs', 'piecesLocked', 'accepted', 'flags', 'submittedAt']) && newData.child('uid').isString() && newData.child('uid').val() === auth.uid && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 12 && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 50000000 && newData.child('lines').isNumber() && newData.child('lines').val() >= 0 && newData.child('lines').val() <= 3000 && newData.child('level').isNumber() && newData.child('level').val() >= 1 && newData.child('level').val() <= 301 && newData.child('activeMs').isNumber() && newData.child('activeMs').val() >= 0 && newData.child('activeMs').val() <= 86400000 && newData.child('piecesLocked').isNumber() && newData.child('piecesLocked').val() >= 0 && newData.child('piecesLocked').val() <= 20000 && newData.child('accepted').isBoolean() && newData.child('submittedAt').isNumber()"
         }
       }
     },
@@ -42,6 +54,7 @@
     "lobbyChat": {
       "messages": {
         ".read": "auth != null",
+        ".indexOn": ["createdAt"],
         "$messageId": {
           ".write": "auth != null && !data.exists() && !root.child('moderation/mutedUsers').child(auth.uid).exists()",
           ".validate": "newData.hasChildren(['uid', 'name', 'text', 'createdAt']) && newData.child('uid').val() === auth.uid && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 20 && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 80 && newData.child('createdAt').isNumber()"
@@ -56,13 +69,6 @@
           ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
           ".validate": "!newData.exists() || (newData.hasChildren(['name', 'mutedAt']) && newData.child('name').isString() && newData.child('mutedAt').isNumber())"
         }
-      }
-    },
-
-    "admins": {
-      "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": false
       }
     },
 

@@ -597,6 +597,64 @@
       font-size: 0.78rem;
     }
 
+    .ranking-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .ranking-tab {
+      min-height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(103, 232, 249, 0.22);
+      background: rgba(15, 23, 42, 0.82);
+      color: #94a3b8;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+
+    .ranking-tab.is-active {
+      border-color: rgba(103, 232, 249, 0.68);
+      color: #67e8f9;
+      background: rgba(8, 145, 178, 0.22);
+      box-shadow: 0 0 18px rgba(103, 232, 249, 0.12);
+    }
+
+    .ranking-modal-note {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.72rem;
+      line-height: 1.5;
+    }
+
+    .notice-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .notice-item {
+      border: 1px solid rgba(71, 85, 105, 0.72);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.58);
+      padding: 10px;
+    }
+
+    .notice-item strong {
+      display: block;
+      color: #67e8f9;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      margin-bottom: 5px;
+    }
+
+    .notice-item p {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 0.74rem;
+      line-height: 1.55;
+    }
+
     .admin-note {
       margin: 0;
       color: #cbd5e1;
@@ -1988,6 +2046,7 @@
         <p id="title-mode-note" class="title-note">ソロプレイはすぐ開始できます。対戦は ROOM を選ぶと待機または参加できます。</p>
         <div class="title-actions">
           <button id="title-rules" class="ghost title-start-btn" type="button">ルール</button>
+          <button id="title-notice" class="ghost title-start-btn" type="button">お知らせ</button>
           <button id="title-ranking" class="ghost title-start-btn" type="button">ランキング</button>
           <button id="title-admin" class="ghost title-start-btn" type="button">管理</button>
         </div>
@@ -2046,10 +2105,38 @@
     <section id="ranking-modal" class="ranking-modal" aria-hidden="true">
     <div class="ranking-modal-card">
       <div class="ranking-modal-head">
-        <h2 class="ranking-modal-title">ランキング TOP 10</h2>
+        <h2 id="ranking-modal-title" class="ranking-modal-title">ランキング TOP 10</h2>
         <button id="ranking-close" class="ghost ranking-close" type="button">閉じる</button>
       </div>
+      <div class="ranking-tabs" role="tablist" aria-label="ランキング表示切替">
+        <button id="ranking-tab-normal" class="ranking-tab is-active" type="button" data-ranking-tab="normal">ランキング</button>
+        <button id="ranking-tab-hall" class="ranking-tab" type="button" data-ranking-tab="hall">殿堂</button>
+      </div>
+      <p id="ranking-modal-note" class="ranking-modal-note">通常ランキングはプレイヤーごとの最高得点だけを表示します。</p>
       <ol id="ranking-modal-list" class="ranking-modal-list"></ol>
+    </div>
+  </section>
+
+  <section id="notice-modal" class="ranking-modal" aria-hidden="true">
+    <div class="ranking-modal-card">
+      <div class="ranking-modal-head">
+        <h2 class="ranking-modal-title">お知らせ</h2>
+        <button id="notice-close" class="ghost ranking-close" type="button">閉じる</button>
+      </div>
+      <div class="notice-list">
+        <article class="notice-item">
+          <strong>2026-04-15 / ランキング保護</strong>
+          <p>通常ランキングはプレイヤーごとの最高得点だけを表示します。200万点を超えたスコアは殿堂入りとして分離し、通常ランキングからは除外します。</p>
+        </article>
+        <article class="notice-item">
+          <strong>2026-04-15 / スコア監査ログ</strong>
+          <p>不自然なスコアを追えるように、スコア、ライン数、レベル、プレイ時間、固定ピース数を保存する監査ログを追加しました。</p>
+        </article>
+        <article class="notice-item">
+          <strong>2026-04-15 / ロビーチャット管理</strong>
+          <p>対戦の時間合わせ用チャットと、管理者によるミュート機能を追加しました。</p>
+        </article>
+      </div>
     </div>
   </section>
 
@@ -2159,6 +2246,7 @@
     const LOBBY_CHAT_COOLDOWN_MS = 5000;
     const SCORE_AUDIT_EVENT_LIMIT = 80;
     const SOLO_SCORE_HARD_CAP = 2000000;
+    const SOLO_SCORE_HALL_CAP = 50000000;
     const SOLO_SCORE_MIN_ACTIVE_MS = 20000;
     const SOLO_SCORE_MAX_PER_PIECE = 12000;
 
@@ -2191,8 +2279,14 @@
     const rankingBoxEl = document.getElementById("ranking-box");
     const rankingTickerEl = document.getElementById("ranking-ticker");
     const rankingModalEl = document.getElementById("ranking-modal");
+    const rankingModalTitleEl = document.getElementById("ranking-modal-title");
+    const rankingModalNoteEl = document.getElementById("ranking-modal-note");
     const rankingModalListEl = document.getElementById("ranking-modal-list");
     const rankingCloseBtn = document.getElementById("ranking-close");
+    const rankingTabNormalBtn = document.getElementById("ranking-tab-normal");
+    const rankingTabHallBtn = document.getElementById("ranking-tab-hall");
+    const noticeModalEl = document.getElementById("notice-modal");
+    const noticeCloseBtn = document.getElementById("notice-close");
     const adminModalEl = document.getElementById("admin-modal");
     const adminCloseBtn = document.getElementById("admin-close");
     const adminResetNameBtn = document.getElementById("admin-reset-name");
@@ -2221,6 +2315,7 @@
     const rulesModalEl = document.getElementById("rules-modal");
     const rulesCloseBtn = document.getElementById("rules-close");
     const titleRulesBtn = document.getElementById("title-rules");
+    const titleNoticeBtn = document.getElementById("title-notice");
     const titleRankingBtn = document.getElementById("title-ranking");
     const titleAdminBtn = document.getElementById("title-admin");
     const playCountTodayEl = document.getElementById("play-count-today");
@@ -2295,6 +2390,7 @@
     let gameOverHandled = false;
     let bestNeonTimer = null;
     let pausedByRankingModal = false;
+    let activeRankingTab = "normal";
     let celebrationOpen = false;
     let pausedByCelebration = false;
     let pausedByControlsAdjust = false;
@@ -2349,6 +2445,7 @@
     let firebaseCountdownSyncPending = false;
     let globalPlayStats = { today: 0, total: 0 };
     let sharedSoloRanking = null;
+    let sharedSoloHallOfFame = [];
     let processedGarbageIds = new Set();
     let playCountCommittedForMatch = false;
     let versusRoomReleased = false;
@@ -2375,6 +2472,7 @@
     }
 
     const SOLO_RANKING_LIMIT = 10;
+    const SOLO_HALL_OF_FAME_LIMIT = 10;
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
     const PLAY_COUNT_KEY = "tetrisPlayCountV1";
     const PLAY_COUNT_DAILY_KEY = "tetrisPlayCountDailyV1";
@@ -2905,27 +3003,64 @@
       });
     }
 
-    function normalizeRankingList(value) {
+    function normalizeRankingRecords(value) {
       const list = Array.isArray(value)
         ? value
         : value && typeof value === "object"
           ? Object.values(value)
           : [];
       return list
-        .filter((r) => Number.isFinite(r.score) && r.score <= SOLO_SCORE_HARD_CAP && typeof r.name === "string")
+        .filter((r) => Number.isFinite(r.score) && typeof r.name === "string")
         .map((r) => ({
+          uid: typeof r.uid === "string" && r.uid.trim() ? r.uid.slice(0, 80) : `legacy:${r.name.trim().toLowerCase() || "player"}`,
           name: r.name.slice(0, 12) || "PLAYER",
           score: Math.max(0, Math.floor(r.score)),
           lines: Math.max(0, Math.floor(r.lines || 0)),
           level: Math.max(1, Math.floor(r.level || 1)),
           date: Number.isFinite(r.date) ? r.date : Date.now()
-        }))
-        .sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date)
+        }));
+    }
+
+    function sortScoreEntries(list) {
+      return [...list].sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date);
+    }
+
+    function getRankingAccountKey(entry) {
+      return typeof entry.uid === "string" && entry.uid.trim()
+        ? entry.uid.trim()
+        : `legacy:${(entry.name || "player").trim().toLowerCase()}`;
+    }
+
+    function keepBestScorePerAccount(list) {
+      const byAccount = new Map();
+      sortScoreEntries(list).forEach((entry) => {
+        const key = getRankingAccountKey(entry);
+        if (!byAccount.has(key)) byAccount.set(key, entry);
+      });
+      return Array.from(byAccount.values());
+    }
+
+    function normalizeRankingList(value, hallValue = []) {
+      const hallAccountKeys = new Set(
+        normalizeHallOfFameList(hallValue).map((entry) => getRankingAccountKey(entry))
+      );
+      return keepBestScorePerAccount(normalizeRankingRecords(value)
+        .filter((r) => r.score <= SOLO_SCORE_HARD_CAP && !hallAccountKeys.has(getRankingAccountKey(r))))
         .slice(0, SOLO_RANKING_LIMIT);
+    }
+
+    function normalizeHallOfFameList(value) {
+      return keepBestScorePerAccount(normalizeRankingRecords(value)
+        .filter((r) => r.score > SOLO_SCORE_HARD_CAP && r.score <= SOLO_SCORE_HALL_CAP))
+        .slice(0, SOLO_HALL_OF_FAME_LIMIT);
     }
 
     function loadRanking() {
       return sharedSoloRanking?.length ? sharedSoloRanking : [];
+    }
+
+    function loadHallOfFame() {
+      return sharedSoloHallOfFame?.length ? sharedSoloHallOfFame : [];
     }
 
     function buildRankingItemHtml(entry, idx) {
@@ -2938,12 +3073,25 @@
       return list.reduce((best, entry) => (entry.score > best.score ? entry : best), list[0]);
     }
 
-    function renderRankingModal(list = loadRanking()) {
+    function setRankingTab(tab) {
+      activeRankingTab = tab === "hall" ? "hall" : "normal";
+      rankingTabNormalBtn.classList.toggle("is-active", activeRankingTab === "normal");
+      rankingTabHallBtn.classList.toggle("is-active", activeRankingTab === "hall");
+      renderRankingModal();
+    }
+
+    function renderRankingModal() {
+      const isHall = activeRankingTab === "hall";
+      const list = isHall ? loadHallOfFame() : loadRanking();
+      rankingModalTitleEl.textContent = isHall ? "殿堂入り" : "ランキング TOP 10";
+      rankingModalNoteEl.textContent = isHall
+        ? "200万点を超えたスコアは通常ランキングから外し、殿堂入りとして表示します。"
+        : "通常ランキングはプレイヤーごとの最高得点だけを表示します。";
       rankingModalListEl.textContent = "";
       if (list.length === 0) {
         const empty = document.createElement("li");
         empty.className = "ranking-empty";
-        empty.textContent = "まだスコアがありません";
+        empty.textContent = isHall ? "まだ殿堂入りスコアはありません" : "まだスコアがありません";
         rankingModalListEl.appendChild(empty);
         return;
       }
@@ -2984,12 +3132,12 @@
     }
 
     function renderRanking(list = loadRanking(), highlightBest = false) {
-      renderRankingModal(list);
+      renderRankingModal();
       renderBestScore(list, highlightBest);
     }
 
     function openRankingModal() {
-      renderRankingModal(loadRanking());
+      renderRankingModal();
       rankingModalEl.classList.add("is-open");
       rankingModalEl.setAttribute("aria-hidden", "false");
       if (!state.paused && !state.gameOver) {
@@ -3019,6 +3167,16 @@
     function closeRulesModal() {
       rulesModalEl.classList.remove("is-open");
       rulesModalEl.setAttribute("aria-hidden", "true");
+    }
+
+    function openNoticeModal() {
+      noticeModalEl.classList.add("is-open");
+      noticeModalEl.setAttribute("aria-hidden", "false");
+    }
+
+    function closeNoticeModal() {
+      noticeModalEl.classList.remove("is-open");
+      noticeModalEl.setAttribute("aria-hidden", "true");
     }
 
     function ensureAdminUnlocked() {
@@ -3351,7 +3509,8 @@
       const ranking = loadRanking();
       const previousBest = getBestEntry(ranking)?.score ?? 0;
       const cutoff = ranking.length < 10 ? -1 : ranking[9].score;
-      if (state.score <= cutoff) {
+      const hallCandidate = state.score > SOLO_SCORE_HARD_CAP;
+      if (!hallCandidate && state.score <= cutoff) {
         renderRanking(ranking);
         return;
       }
@@ -3383,23 +3542,30 @@
       if (firebaseReady) {
         await submitScoreAuditLog(auditPayload).catch(() => false);
       }
-      if (!auditResult.accepted) {
+      if (!auditResult.accepted && !hallCandidate) {
         renderRanking(ranking);
         setStatus(state, "SCORE CHECK", 1600);
         return;
       }
 
-      ranking.push(entry);
-      ranking.sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date);
-      let finalRanking = ranking.slice(0, 10);
+      let finalRanking = ranking;
+      if (!hallCandidate) {
+        finalRanking = normalizeRankingList([...ranking, entry], loadHallOfFame());
+      }
       if (firebaseReady) {
         const shared = await submitSharedSoloRanking(entry).catch(() => null);
-        if (shared?.length) {
-          sharedSoloRanking = shared;
-          finalRanking = shared;
+        if (shared?.ranking?.length || shared?.hall) {
+          sharedSoloRanking = shared.ranking || finalRanking;
+          sharedSoloHallOfFame = shared.hall || sharedSoloHallOfFame;
+          finalRanking = sharedSoloRanking;
         } else {
           setStatus(state, "SCORE LOGGED", 1400);
         }
+      }
+      if (hallCandidate) {
+        renderRanking(finalRanking);
+        setStatus(state, "HALL OF FAME", 1800);
+        return;
       }
       const isNewBest = state.score > previousBest;
       renderRanking(finalRanking, isNewBest);
@@ -4343,11 +4509,14 @@
 
     async function subscribeSharedSoloRanking() {
       if (!firebaseReady || firebaseSoloRankingRef) return;
-      firebaseSoloRankingRef = firebaseDb.ref("leaderboards/soloTop10");
+      firebaseSoloRankingRef = firebaseDb.ref("leaderboards");
       firebaseSoloRankingListener = (snapshot) => {
-        const list = normalizeRankingList(snapshot.val());
-        sharedSoloRanking = list;
-        renderRanking(list);
+        const data = snapshot.val() || {};
+        const rankingRaw = normalizeRankingRecords(data.soloTop10);
+        const hallRaw = normalizeRankingRecords(data.hallOfFame);
+        sharedSoloHallOfFame = normalizeHallOfFameList([...rankingRaw, ...hallRaw]);
+        sharedSoloRanking = normalizeRankingList(rankingRaw, sharedSoloHallOfFame);
+        renderRanking(sharedSoloRanking);
         renderAdminUsage();
       };
       firebaseSoloRankingRef.on("value", firebaseSoloRankingListener);
@@ -4355,13 +4524,29 @@
 
     async function submitSharedSoloRanking(entry) {
       if (!firebaseReady) return null;
-      const rankingRef = firebaseDb.ref("leaderboards/soloTop10");
-      const result = await rankingRef.transaction((current) => {
-        const list = normalizeRankingList(current);
-        list.push(entry);
-        return normalizeRankingList(list);
+      const leaderboardsRef = firebaseDb.ref("leaderboards");
+      const result = await leaderboardsRef.transaction((current) => {
+        const data = current || {};
+        const rankingRaw = normalizeRankingRecords(data.soloTop10);
+        const hallRaw = normalizeRankingRecords(data.hallOfFame);
+        if (entry.score > SOLO_SCORE_HARD_CAP) {
+          hallRaw.push(entry);
+        } else {
+          rankingRaw.push(entry);
+        }
+        const hallOfFame = normalizeHallOfFameList([...rankingRaw, ...hallRaw]);
+        return {
+          ...data,
+          soloTop10: normalizeRankingList(rankingRaw, hallOfFame),
+          hallOfFame
+        };
       });
-      return result.snapshot?.val() ? normalizeRankingList(result.snapshot.val()) : null;
+      const data = result.snapshot?.val() || {};
+      const hall = normalizeHallOfFameList(data.hallOfFame);
+      return {
+        ranking: normalizeRankingList(data.soloTop10, hall),
+        hall
+      };
     }
 
     async function submitScoreAuditLog(payload) {
@@ -6349,6 +6534,13 @@
     rulesModalEl.addEventListener("click", (e) => {
       if (e.target === rulesModalEl) closeRulesModal();
     });
+    titleNoticeBtn.addEventListener("click", () => {
+      openNoticeModal();
+    });
+    noticeCloseBtn.addEventListener("click", closeNoticeModal);
+    noticeModalEl.addEventListener("click", (e) => {
+      if (e.target === noticeModalEl) closeNoticeModal();
+    });
     titleRankingBtn.addEventListener("click", () => {
       openRankingModal();
     });
@@ -6383,6 +6575,8 @@
       }, { passive: false });
     }
     rankingCloseBtn.addEventListener("click", closeRankingModal);
+    rankingTabNormalBtn.addEventListener("click", () => setRankingTab("normal"));
+    rankingTabHallBtn.addEventListener("click", () => setRankingTab("hall"));
     rankingModalEl.addEventListener("click", (e) => {
       if (e.target === rankingModalEl) closeRankingModal();
     });
