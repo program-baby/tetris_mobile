@@ -21,7 +21,11 @@
     "leaderboards": {
       "soloTop10": {
         ".read": true,
-        ".write": false
+        ".write": "auth != null",
+        ".validate": "newData.childrenCount() <= 10",
+        "$idx": {
+          ".validate": "newData.hasChildren(['name', 'score', 'lines', 'level', 'date']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 12 && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 2000000 && newData.child('lines').isNumber() && newData.child('lines').val() >= 0 && newData.child('lines').val() <= 3000 && newData.child('level').isNumber() && newData.child('level').val() >= 1 && newData.child('level').val() <= 301 && newData.child('date').isNumber()"
+        }
       }
     },
 

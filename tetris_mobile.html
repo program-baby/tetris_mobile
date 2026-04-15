@@ -3361,8 +3361,10 @@
         renderRanking(ranking);
         return;
       }
+      const uid = firebaseAuth?.currentUser?.uid || "";
 
       const entry = {
+        uid,
         name,
         score: state.score,
         lines: state.lines,
@@ -3387,15 +3389,18 @@
         return;
       }
 
-      if (firebaseReady) {
-        renderRanking(ranking);
-        setStatus(state, "SCORE SENT", 1400);
-        return;
-      }
-
       ranking.push(entry);
       ranking.sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date);
       let finalRanking = ranking.slice(0, 10);
+      if (firebaseReady) {
+        const shared = await submitSharedSoloRanking(entry).catch(() => null);
+        if (shared?.length) {
+          sharedSoloRanking = shared;
+          finalRanking = shared;
+        } else {
+          setStatus(state, "SCORE LOGGED", 1400);
+        }
+      }
       const isNewBest = state.score > previousBest;
       renderRanking(finalRanking, isNewBest);
       if (isNewBest) openRecordCelebration(state.score);
