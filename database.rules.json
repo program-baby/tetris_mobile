@@ -38,11 +38,18 @@
         "$idx": {
           ".validate": "newData.hasChildren(['uid', 'name', 'score', 'lines', 'level', 'date']) && newData.child('uid').isString() && newData.child('uid').val().length > 0 && newData.child('uid').val().length <= 80 && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 12 && newData.child('score').isNumber() && newData.child('score').val() > 2000000 && newData.child('score').val() <= 50000000 && newData.child('lines').isNumber() && newData.child('lines').val() >= 0 && newData.child('lines').val() <= 3000 && newData.child('level').isNumber() && newData.child('level').val() >= 1 && newData.child('level').val() <= 301 && newData.child('date').isNumber()"
         }
+      },
+      "versusWins": {
+        "$uid": {
+          ".validate": "newData.hasChildren(['uid', 'name', 'wins', 'updatedAt']) && newData.child('uid').isString() && newData.child('uid').val() === $uid && newData.child('uid').val() === auth.uid && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 12 && newData.child('wins').isNumber() && newData.child('wins').val() >= 0 && newData.child('wins').val() <= 99999 && newData.child('updatedAt').isNumber()"
+        }
       }
     },
 
     "scoreSubmissions": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
       "$date": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true && !newData.exists()",
         "$submissionId": {
           ".read": "auth != null && (data.child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
           ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",

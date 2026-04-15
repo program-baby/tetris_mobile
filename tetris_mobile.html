@@ -599,7 +599,7 @@
 
     .ranking-tabs {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 6px;
     }
 
@@ -2111,6 +2111,7 @@
       <div class="ranking-tabs" role="tablist" aria-label="ランキング表示切替">
         <button id="ranking-tab-normal" class="ranking-tab is-active" type="button" data-ranking-tab="normal">ランキング</button>
         <button id="ranking-tab-hall" class="ranking-tab" type="button" data-ranking-tab="hall">殿堂</button>
+        <button id="ranking-tab-versus" class="ranking-tab" type="button" data-ranking-tab="versus">対戦勝利</button>
       </div>
       <p id="ranking-modal-note" class="ranking-modal-note">通常ランキングはプレイヤーごとの最高得点だけを表示します。</p>
       <ol id="ranking-modal-list" class="ranking-modal-list"></ol>
@@ -2130,7 +2131,11 @@
         </article>
         <article class="notice-item">
           <strong>2026-04-15 / スコア監査ログ</strong>
-          <p>不自然なスコアを追えるように、スコア、ライン数、レベル、プレイ時間、固定ピース数を保存する監査ログを追加しました。</p>
+          <p>不自然なスコアを追えるように、スコア、ライン数、レベル、プレイ時間、固定ピース数を保存する監査ログを追加しました。ログは直近30日分を確認対象にし、古いログは管理画面から削除できます。</p>
+        </article>
+        <article class="notice-item">
+          <strong>2026-04-15 / 対戦勝利数</strong>
+          <p>ランキング内に対戦勝利数タブを追加しました。勝利数はFirebase UID単位で集計します。</p>
         </article>
         <article class="notice-item">
           <strong>2026-04-15 / ロビーチャット管理</strong>
@@ -2165,6 +2170,16 @@
       <div class="admin-room-actions">
         <button id="admin-reset-name" class="ghost tool-btn" type="button">自分の名前をリセット</button>
         <button id="admin-reset-all" class="danger tool-btn" type="button">全ルーム解放</button>
+      </div>
+      <div class="admin-usage">
+        <div class="admin-usage-head">
+          <strong>監査ログ管理</strong>
+          <span id="admin-audit-log-status" class="admin-usage-badge">直近30日運用</span>
+        </div>
+        <p class="admin-note">スコア監査ログは直近30日分を確認対象にします。古いログは無料枠節約のため、管理者が削除できます。</p>
+        <div class="admin-room-actions">
+          <button id="admin-prune-audit-logs" class="danger tool-btn" type="button">30日より古いログを削除</button>
+        </div>
       </div>
       <div class="admin-usernames">
         <div class="admin-usernames-head">
@@ -2285,12 +2300,15 @@
     const rankingCloseBtn = document.getElementById("ranking-close");
     const rankingTabNormalBtn = document.getElementById("ranking-tab-normal");
     const rankingTabHallBtn = document.getElementById("ranking-tab-hall");
+    const rankingTabVersusBtn = document.getElementById("ranking-tab-versus");
     const noticeModalEl = document.getElementById("notice-modal");
     const noticeCloseBtn = document.getElementById("notice-close");
     const adminModalEl = document.getElementById("admin-modal");
     const adminCloseBtn = document.getElementById("admin-close");
     const adminResetNameBtn = document.getElementById("admin-reset-name");
     const adminResetAllBtn = document.getElementById("admin-reset-all");
+    const adminPruneAuditLogsBtn = document.getElementById("admin-prune-audit-logs");
+    const adminAuditLogStatusEl = document.getElementById("admin-audit-log-status");
     const adminRoomListEl = document.getElementById("admin-room-list");
     const adminUserSearchEl = document.getElementById("admin-user-search");
     const adminUserListEl = document.getElementById("admin-user-list");
@@ -2429,6 +2447,7 @@
     let versusStartFlashUntil = 0;
     let versusCountdownLastValue = 0;
     let versusStartAtMs = 0;
+    let versusWinRecorded = false;
     let selectedLobbyAction = "create";
     let firebaseReady = false;
     let firebaseApp = null;
@@ -2441,11 +2460,14 @@
     let firebaseStatsListener = null;
     let firebaseSoloRankingRef = null;
     let firebaseSoloRankingListener = null;
+    let firebaseVersusWinsRef = null;
+    let firebaseVersusWinsListener = null;
     let firebaseSession = null;
     let firebaseCountdownSyncPending = false;
     let globalPlayStats = { today: 0, total: 0 };
     let sharedSoloRanking = null;
     let sharedSoloHallOfFame = [];
+    let sharedVersusWinsRanking = [];
     let processedGarbageIds = new Set();
     let playCountCommittedForMatch = false;
     let versusRoomReleased = false;
@@ -2473,6 +2495,8 @@
 
     const SOLO_RANKING_LIMIT = 10;
     const SOLO_HALL_OF_FAME_LIMIT = 10;
+    const VERSUS_WINS_RANKING_LIMIT = 10;
+    const AUDIT_LOG_RETENTION_DAYS = 30;
     const PLAYER_NAME_KEY = "tetrisPlayerNameV1";
     const PLAY_COUNT_KEY = "tetrisPlayCountV1";
     const PLAY_COUNT_DAILY_KEY = "tetrisPlayCountDailyV1";
@@ -3055,6 +3079,24 @@
         .slice(0, SOLO_HALL_OF_FAME_LIMIT);
     }
 
+    function normalizeVersusWinsList(value) {
+      const list = Array.isArray(value)
+        ? value
+        : value && typeof value === "object"
+          ? Object.entries(value).map(([uid, entry]) => ({ ...(entry || {}), uid: entry?.uid || uid }))
+          : [];
+      return list
+        .filter((r) => typeof r.uid === "string" && r.uid.trim() && typeof r.name === "string" && Number.isFinite(r.wins))
+        .map((r) => ({
+          uid: r.uid.slice(0, 80),
+          name: r.name.slice(0, 12) || "PLAYER",
+          wins: Math.max(0, Math.floor(r.wins)),
+          updatedAt: Number.isFinite(r.updatedAt) ? r.updatedAt : Date.now()
+        }))
+        .sort((a, b) => b.wins - a.wins || a.updatedAt - b.updatedAt)
+        .slice(0, VERSUS_WINS_RANKING_LIMIT);
+    }
+
     function loadRanking() {
       return sharedSoloRanking?.length ? sharedSoloRanking : [];
     }
@@ -3063,9 +3105,14 @@
       return sharedSoloHallOfFame?.length ? sharedSoloHallOfFame : [];
     }
 
+    function loadVersusWinsRanking() {
+      return sharedVersusWinsRanking?.length ? sharedVersusWinsRanking : [];
+    }
+
     function buildRankingItemHtml(entry, idx) {
       const rankClass = idx === 0 ? "rank-1" : idx === 1 ? "rank-2" : idx === 2 ? "rank-3" : "";
-      return `<span class="ranking-rank ${rankClass}">${idx + 1}.</span><span class="ranking-name">${entry.name}</span><span class="ranking-score">${entry.score}</span>`;
+      const value = Number.isFinite(entry.wins) ? `${entry.wins}勝` : entry.score;
+      return `<span class="ranking-rank ${rankClass}">${idx + 1}.</span><span class="ranking-name">${entry.name}</span><span class="ranking-score">${value}</span>`;
     }
 
     function getBestEntry(list = loadRanking()) {
@@ -3074,24 +3121,28 @@
     }
 
     function setRankingTab(tab) {
-      activeRankingTab = tab === "hall" ? "hall" : "normal";
+      activeRankingTab = tab === "hall" ? "hall" : tab === "versus" ? "versus" : "normal";
       rankingTabNormalBtn.classList.toggle("is-active", activeRankingTab === "normal");
       rankingTabHallBtn.classList.toggle("is-active", activeRankingTab === "hall");
+      rankingTabVersusBtn.classList.toggle("is-active", activeRankingTab === "versus");
       renderRankingModal();
     }
 
     function renderRankingModal() {
       const isHall = activeRankingTab === "hall";
-      const list = isHall ? loadHallOfFame() : loadRanking();
-      rankingModalTitleEl.textContent = isHall ? "殿堂入り" : "ランキング TOP 10";
-      rankingModalNoteEl.textContent = isHall
+      const isVersus = activeRankingTab === "versus";
+      const list = isVersus ? loadVersusWinsRanking() : isHall ? loadHallOfFame() : loadRanking();
+      rankingModalTitleEl.textContent = isVersus ? "対戦勝利数 TOP 10" : isHall ? "殿堂入り" : "ランキング TOP 10";
+      rankingModalNoteEl.textContent = isVersus
+        ? "対戦で勝利した回数をアカウントごとに表示します。"
+        : isHall
         ? "200万点を超えたスコアは通常ランキングから外し、殿堂入りとして表示します。"
         : "通常ランキングはプレイヤーごとの最高得点だけを表示します。";
       rankingModalListEl.textContent = "";
       if (list.length === 0) {
         const empty = document.createElement("li");
         empty.className = "ranking-empty";
-        empty.textContent = isHall ? "まだ殿堂入りスコアはありません" : "まだスコアがありません";
+        empty.textContent = isVersus ? "まだ対戦勝利はありません" : isHall ? "まだ殿堂入りスコアはありません" : "まだスコアがありません";
         rankingModalListEl.appendChild(empty);
         return;
       }
@@ -3212,7 +3263,7 @@
         return sum + hostActive + guestActive;
       }, 0);
       const todayPlays = globalPlayStats.today || 0;
-      const rankingEntries = sharedSoloRanking?.length || 0;
+      const rankingEntries = (sharedSoloRanking?.length || 0) + (sharedSoloHallOfFame?.length || 0) + (sharedVersusWinsRanking?.length || 0);
       const usagePercent = Math.min(100, Math.round(Math.min(todayPlays / 200, 1) * 65 + Math.min(activeUsers / 20, 1) * 35));
       const usageLabel = usagePercent >= 80 ? "高負荷" : usagePercent >= 45 ? "注意" : "安定";
       const usageClass = usagePercent >= 80 ? "is-high" : usagePercent >= 45 ? "is-caution" : "is-safe";
@@ -3351,6 +3402,38 @@
       titleModeNoteEl.textContent = "公開ルームをすべて解放しました。";
       titleModeNoteEl.classList.remove("is-warning");
       titleModeNoteEl.classList.add("is-info");
+    }
+
+    async function pruneOldScoreAuditLogs() {
+      const ok = await initFirebaseAdapter();
+      if (!ok || !firebaseDb) return false;
+      const cutoffKey = getAuditLogCutoffKey();
+      if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "確認中";
+      const snapshot = await firebaseDb.ref("scoreSubmissions").once("value");
+      const raw = snapshot.val() || {};
+      const oldKeys = Object.keys(raw).filter((dateKey) => /^\d{4}-\d{2}-\d{2}$/.test(dateKey) && dateKey < cutoffKey);
+      if (!oldKeys.length) {
+        if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "削除対象なし";
+        titleModeNoteEl.textContent = `監査ログは直近${AUDIT_LOG_RETENTION_DAYS}日以内に収まっています。`;
+        titleModeNoteEl.classList.remove("is-warning");
+        titleModeNoteEl.classList.add("is-info");
+        return true;
+      }
+      const confirmed = window.confirm(`${cutoffKey} より古い監査ログ ${oldKeys.length}日分を削除します。よろしいですか？`);
+      if (!confirmed) {
+        if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "削除中止";
+        return false;
+      }
+      const updates = {};
+      oldKeys.forEach((dateKey) => {
+        updates[`scoreSubmissions/${dateKey}`] = null;
+      });
+      await firebaseDb.ref().update(updates);
+      if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = `${oldKeys.length}日分削除`;
+      titleModeNoteEl.textContent = `30日より古い監査ログを ${oldKeys.length}日分削除しました。`;
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+      return true;
     }
 
     async function loadAdminUsernames() {
@@ -4465,11 +4548,20 @@
     }
 
     function getTodayKey() {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      const d = String(now.getDate()).padStart(2, "0");
+      return formatDateKey(new Date());
+    }
+
+    function formatDateKey(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
       return `${y}-${m}-${d}`;
+    }
+
+    function getAuditLogCutoffKey() {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - AUDIT_LOG_RETENTION_DAYS);
+      return formatDateKey(cutoff);
     }
 
     function getLocalPlayStats() {
@@ -4547,6 +4639,36 @@
         ranking: normalizeRankingList(data.soloTop10, hall),
         hall
       };
+    }
+
+    async function subscribeVersusWinsRanking() {
+      if (!firebaseReady || firebaseVersusWinsRef) return;
+      firebaseVersusWinsRef = firebaseDb.ref("leaderboards/versusWins");
+      firebaseVersusWinsListener = (snapshot) => {
+        sharedVersusWinsRanking = normalizeVersusWinsList(snapshot.val());
+        if (activeRankingTab === "versus") renderRankingModal();
+      };
+      firebaseVersusWinsRef.on("value", firebaseVersusWinsListener);
+    }
+
+    async function submitVersusWinRecord(reason = "win") {
+      if (!firebaseReady || !firebaseAuth?.currentUser || versusWinRecorded) return false;
+      const uid = firebaseAuth.currentUser.uid;
+      if (!uid) return false;
+      versusWinRecorded = true;
+      const name = getStoredPlayerName();
+      const ref = firebaseDb.ref(`leaderboards/versusWins/${uid}`);
+      await ref.transaction((current) => {
+        const prev = current || {};
+        return {
+          uid,
+          name,
+          wins: Math.max(0, Math.floor(prev.wins || 0)) + 1,
+          updatedAt: Date.now(),
+          lastReason: reason
+        };
+      });
+      return true;
     }
 
     async function submitScoreAuditLog(payload) {
@@ -4765,6 +4887,7 @@
       if (firebaseReady) {
         subscribeLobbyMuteList().catch(() => {});
         subscribeLobbyChat().catch(() => {});
+        subscribeVersusWinsRanking().catch(() => {});
         return true;
       }
       if (!hasFirebaseConfig()) return false;
@@ -4784,6 +4907,7 @@
       firebaseReady = true;
       subscribeGlobalPlayStats().catch(() => {});
       subscribeSharedSoloRanking().catch(() => {});
+      subscribeVersusWinsRanking().catch(() => {});
       subscribeTitleRoomSlots();
       subscribeLobbyMuteList().catch(() => {});
       subscribeLobbyChat().catch(() => {});
@@ -4929,6 +5053,7 @@
       versusStatusEl.textContent = statusText;
       setStatus(state, hudStatus, statusDuration);
       updateHUD(state);
+      submitVersusWinRecord(releaseReason).catch(() => {});
       releaseFinishedVersusRoom(releaseReason).catch(() => {});
       scheduleVersusFinishReturn(returnMessage, statusDuration);
     }
@@ -5101,6 +5226,7 @@
       unlockGameplayLayout();
       state = createState();
       gameOverHandled = false;
+      versusWinRecorded = false;
       setGameMode("single");
       openTitleScreen();
       titleModeNoteEl.textContent = message;
@@ -5112,6 +5238,7 @@
     function resetVersusMatchLocalState() {
       state = createState();
       gameOverHandled = false;
+      versusWinRecorded = false;
       waitingForOpponent = false;
       versusMatchStarted = false;
       versusTerminal = false;
@@ -6020,6 +6147,7 @@
       }
       state = createState();
       gameOverHandled = false;
+      versusWinRecorded = false;
       const showLoading = selectedGameMode === "versus";
       if (showLoading) {
         setTitleStartLoading(true, selectedLobbyAction === "join"
@@ -6278,6 +6406,7 @@
       resetTimer = setTimeout(() => {
         state = createState();
         gameOverHandled = false;
+        versusWinRecorded = false;
         updateHUD(state);
         if (currentGameMode === "versus") {
           versusRoomState = createVersusRoomState();
@@ -6566,6 +6695,14 @@
     });
     adminResetAllBtn.addEventListener("click", () => {
       resetAllFirebaseRooms().catch(() => {});
+    });
+    adminPruneAuditLogsBtn.addEventListener("click", () => {
+      pruneOldScoreAuditLogs().catch(() => {
+        if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "削除失敗";
+        titleModeNoteEl.textContent = "監査ログの削除に失敗しました。Firebaseルールを確認してください。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+      });
     });
     if (rankingBoxEl) {
       rankingBoxEl.addEventListener("click", openRankingModal);
