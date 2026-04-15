@@ -2157,6 +2157,10 @@
     const LOBBY_CHAT_LIMIT = 20;
     const LOBBY_CHAT_MAX_LENGTH = 80;
     const LOBBY_CHAT_COOLDOWN_MS = 5000;
+    const SCORE_AUDIT_EVENT_LIMIT = 80;
+    const SOLO_SCORE_HARD_CAP = 2000000;
+    const SOLO_SCORE_MIN_ACTIVE_MS = 20000;
+    const SOLO_SCORE_MAX_PER_PIECE = 12000;
 
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -2908,7 +2912,7 @@
           ? Object.values(value)
           : [];
       return list
-        .filter((r) => Number.isFinite(r.score) && typeof r.name === "string")
+        .filter((r) => Number.isFinite(r.score) && r.score <= SOLO_SCORE_HARD_CAP && typeof r.name === "string")
         .map((r) => ({
           name: r.name.slice(0, 12) || "PLAYER",
           score: Math.max(0, Math.floor(r.score)),
@@ -3269,6 +3273,76 @@
       updateHUD(state);
     }
 
+    function getScoreAuditLineClearTotal(lineClearCounts = {}) {
+      return [1, 2, 3, 4].reduce((sum, size) => {
+        return sum + Math.max(0, Math.floor(lineClearCounts[size] || 0));
+      }, 0);
+    }
+
+    function getScoreAuditLineTotal(lineClearCounts = {}) {
+      return [1, 2, 3, 4].reduce((sum, size) => {
+        return sum + size * Math.max(0, Math.floor(lineClearCounts[size] || 0));
+      }, 0);
+    }
+
+    function buildScoreAudit(state, entry) {
+      const inputCounts = state.inputCounts || {};
+      const lineClearCounts = state.lineClearCounts || {};
+      const scoreEvents = Array.isArray(state.scoreEvents)
+        ? state.scoreEvents.slice(-SCORE_AUDIT_EVENT_LIMIT)
+        : [];
+      return {
+        version: "solo-audit-v1",
+        uid: firebaseAuth?.currentUser?.uid || "",
+        name: entry.name,
+        score: entry.score,
+        lines: entry.lines,
+        level: entry.level,
+        activeMs: Math.max(0, Math.floor(state.activeMs || 0)),
+        wallMs: Math.max(0, Date.now() - Math.floor(state.startedAt || Date.now())),
+        piecesLocked: Math.max(0, Math.floor(state.piecesLocked || 0)),
+        lineClearCounts: {
+          1: Math.max(0, Math.floor(lineClearCounts[1] || 0)),
+          2: Math.max(0, Math.floor(lineClearCounts[2] || 0)),
+          3: Math.max(0, Math.floor(lineClearCounts[3] || 0)),
+          4: Math.max(0, Math.floor(lineClearCounts[4] || 0))
+        },
+        tspinClears: Math.max(0, Math.floor(state.tspinClears || 0)),
+        maxCombo: Math.max(0, Math.floor(state.maxCombo || 0)),
+        inputCounts: {
+          move: Math.max(0, Math.floor(inputCounts.move || 0)),
+          rotate: Math.max(0, Math.floor(inputCounts.rotate || 0)),
+          softDrop: Math.max(0, Math.floor(inputCounts.softDrop || 0)),
+          hardDrop: Math.max(0, Math.floor(inputCounts.hardDrop || 0)),
+          hold: Math.max(0, Math.floor(inputCounts.hold || 0))
+        },
+        scoreEvents
+      };
+    }
+
+    function validateSoloScoreForRanking(entry, audit) {
+      const flags = [];
+      const clearEvents = getScoreAuditLineClearTotal(audit.lineClearCounts);
+      const linesFromEvents = getScoreAuditLineTotal(audit.lineClearCounts);
+      const piecesLocked = Math.max(0, Math.floor(audit.piecesLocked || 0));
+      const activeMs = Math.max(0, Math.floor(audit.activeMs || 0));
+      const finalLevel = Math.max(1, Math.floor(entry.level || 1));
+      const generousPerClear = (4800 + COMBO_BONUS_MAX) * finalLevel;
+      const generousScoreCeiling = Math.max(12000, Math.max(1, clearEvents) * generousPerClear + finalLevel * 2000);
+
+      if (entry.score > SOLO_SCORE_HARD_CAP) flags.push("score_hard_cap");
+      if (entry.lines !== linesFromEvents) flags.push("line_count_mismatch");
+      if (piecesLocked <= 0) flags.push("no_locked_pieces");
+      if (entry.score >= 10000 && activeMs < SOLO_SCORE_MIN_ACTIVE_MS) flags.push("too_short_playtime");
+      if (piecesLocked > 0 && entry.score / piecesLocked > SOLO_SCORE_MAX_PER_PIECE) flags.push("score_per_piece_high");
+      if (entry.score > generousScoreCeiling) flags.push("score_above_line_ceiling");
+
+      return {
+        accepted: flags.length === 0,
+        flags
+      };
+    }
+
     async function registerRankingScore(state) {
       if (currentGameMode !== "single" || !state.gameOver || state.score <= 0) return;
       if (hasFirebaseConfig() && !firebaseReady) {
@@ -3295,17 +3369,33 @@
         level: state.level,
         date: Date.now()
       };
+      const audit = buildScoreAudit(state, entry);
+      const auditResult = validateSoloScoreForRanking(entry, audit);
+      const auditPayload = {
+        ...audit,
+        entry,
+        accepted: auditResult.accepted,
+        flags: auditResult.flags,
+        submittedAt: entry.date
+      };
+      if (firebaseReady) {
+        await submitScoreAuditLog(auditPayload).catch(() => false);
+      }
+      if (!auditResult.accepted) {
+        renderRanking(ranking);
+        setStatus(state, "SCORE CHECK", 1600);
+        return;
+      }
+
+      if (firebaseReady) {
+        renderRanking(ranking);
+        setStatus(state, "SCORE SENT", 1400);
+        return;
+      }
 
       ranking.push(entry);
       ranking.sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date);
       let finalRanking = ranking.slice(0, 10);
-      if (firebaseReady) {
-        const shared = await submitSharedSoloRanking(entry).catch(() => null);
-        if (shared?.length) {
-          sharedSoloRanking = shared;
-          finalRanking = shared;
-        }
-      }
       const isNewBest = state.score > previousBest;
       renderRanking(finalRanking, isNewBest);
       if (isNewBest) openRecordCelebration(state.score);
@@ -3553,6 +3643,18 @@
       comboBonusEl.textContent = `+${state.lastComboBonus}`;
     }
 
+    function recordScoreAuditEvent(state, type, detail = {}) {
+      if (!state || !Array.isArray(state.scoreEvents)) return;
+      state.scoreEvents.push({
+        type,
+        atMs: Math.max(0, Math.floor(state.activeMs || 0)),
+        ...detail
+      });
+      if (state.scoreEvents.length > SCORE_AUDIT_EVENT_LIMIT) {
+        state.scoreEvents.splice(0, state.scoreEvents.length - SCORE_AUDIT_EVENT_LIMIT);
+      }
+    }
+
     function applyScoring(state, cleared, tspin) {
       const now = performance.now();
       if (cleared > 0 || tspin) {
@@ -3580,6 +3682,20 @@
         state.lines += cleared;
         state.score += points;
         state.level = Math.floor(state.lines / 10) + 1;
+        if (cleared > 0) {
+          state.lineClearCounts[cleared] = (state.lineClearCounts[cleared] || 0) + 1;
+        }
+        if (tspin) state.tspinClears++;
+        state.maxCombo = Math.max(state.maxCombo, state.combo);
+        recordScoreAuditEvent(state, "score", {
+          cleared,
+          tspin: !!tspin,
+          points,
+          scoreAfter: state.score,
+          linesAfter: state.lines,
+          levelAfter: state.level,
+          combo: state.combo
+        });
 
         let message = "";
         if (tspin) message = `T-SPIN ${cleared > 0 ? `${cleared} LINE` : ""}`.trim();
@@ -4241,6 +4357,16 @@
         return normalizeRankingList(list);
       });
       return result.snapshot?.val() ? normalizeRankingList(result.snapshot.val()) : null;
+    }
+
+    async function submitScoreAuditLog(payload) {
+      if (!firebaseReady || !firebaseDb) return false;
+      const todayKey = getTodayKey();
+      await firebaseDb.ref(`scoreSubmissions/${todayKey}`).push({
+        ...payload,
+        userAgent: navigator.userAgent ? navigator.userAgent.slice(0, 160) : ""
+      });
+      return true;
     }
 
     function incrementLocalPlayCount(amount) {
@@ -5440,9 +5566,16 @@
 
     function lockPiece(state) {
       merge(state.board, state.piece);
+      state.piecesLocked++;
       const tspin = isTSpin(state);
       const rows = findCompleteRows(state.board);
       emitGameEvent("lock", { tspin, rows: rows.length });
+      recordScoreAuditEvent(state, "lock", {
+        piece: state.piece.type,
+        tspin: !!tspin,
+        rows: rows.length,
+        piecesLocked: state.piecesLocked
+      });
       if (rows.length > 0) {
         startClearEffect(state, rows, tspin);
       } else {
@@ -5456,8 +5589,9 @@
       }
     }
 
-    function drop(state) {
+    function drop(state, isManual = false) {
       if (state.gameOver || state.paused || state.clearing) return;
+      if (isManual) state.inputCounts.softDrop++;
       state.lastRotate = false;
       state.piece.pos.y++;
       if (collide(state.board, state.piece)) {
@@ -5469,6 +5603,7 @@
 
     function hardDrop(state) {
       if (state.gameOver || state.paused || state.clearing) return;
+      state.inputCounts.hardDrop++;
       state.lastRotate = false;
       while (!collide(state.board, state.piece)) {
         state.piece.pos.y++;
@@ -5483,7 +5618,10 @@
       state.lastRotate = false;
       state.piece.pos.x += dir;
       if (collide(state.board, state.piece)) state.piece.pos.x -= dir;
-      else playMoveSound();
+      else {
+        state.inputCounts.move++;
+        playMoveSound();
+      }
     }
 
     function rotatePiece(state, direction = 1) {
@@ -5497,6 +5635,7 @@
         state.piece.pos.x = originalX + k;
         if (!collide(state.board, state.piece)) {
           state.lastRotate = true;
+          state.inputCounts.rotate++;
           playRotateSound();
           return;
         }
@@ -5520,6 +5659,7 @@
         if (collide(state.board, state.piece)) state.gameOver = true;
       }
       state.holdUsed = true;
+      state.inputCounts.hold++;
       state.lastRotate = false;
       setStatus(state, "HOLD", 600);
       updateHUD(state);
@@ -5547,6 +5687,20 @@
         comboFlashUntil: 0,
         lastComboBonus: 0,
         incomingGarbage: [],
+        startedAt: Date.now(),
+        activeMs: 0,
+        piecesLocked: 0,
+        lineClearCounts: { 1: 0, 2: 0, 3: 0, 4: 0 },
+        tspinClears: 0,
+        maxCombo: 0,
+        inputCounts: {
+          move: 0,
+          rotate: 0,
+          softDrop: 0,
+          hardDrop: 0,
+          hold: 0
+        },
+        scoreEvents: [],
         dropCounter: 0,
         lastTime: 0,
         clearing: null,
@@ -5793,6 +5947,9 @@
       state.lastTime = time;
       const speed = Math.max(1000 - (state.level - 1) * 90, 120);
       handleVersusStartTiming();
+      if (!state.paused && !state.gameOver) {
+        state.activeMs += Math.max(0, Math.min(delta, 1000));
+      }
 
       if (state.clearing) {
         const elapsed = performance.now() - state.clearing.startedAt;
@@ -5885,7 +6042,7 @@
 
       if (e.key === "ArrowLeft") move(state, -1);
       else if (e.key === "ArrowRight") move(state, 1);
-      else if (e.key === "ArrowDown") drop(state);
+      else if (e.key === "ArrowDown") drop(state, true);
       else if (e.key === "ArrowUp") rotatePiece(state);
       else if (e.key === " ") {
         e.preventDefault();
@@ -6037,7 +6194,7 @@
 
     bindTap(rotateCcwBtn, () => rotatePiece(state, -1));
     bindTap(rotateBtn, () => rotatePiece(state, 1));
-    bindTap(softBtn, () => drop(state));
+    bindTap(softBtn, () => drop(state, true));
 
     bindTap(pauseBtn, () => {
       state.paused = !state.paused;
