@@ -1,3 +1,9 @@
 node_modules/
 playwright-report/
 test-results/
+
+# Local NES/Mesen experiments and helper tools.
+# Keep them available on this machine, but do not include them in Tetris deploys.
+mesen_hello/
+mesen_shooter/
+tools/
