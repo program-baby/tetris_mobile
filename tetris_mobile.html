@@ -2253,7 +2253,6 @@
     const ROOM_STALE_MS = 5 * 60 * 1000;
     const DEBUG_LAYOUT = false;
     const VERSUS_DEV_PASSWORD = "dualgate2026";
-    const VERSUS_UNLOCK_KEY = "tetrisVersusUnlockedV1";
     const FIREBASE_CONFIG = window.TETRIS_FIREBASE_CONFIG || null;
     const TITLE_PUBLIC_ROOMS = ["GATE1", "GATE2", "GATE3"];
     const LOBBY_CHAT_LIMIT = 20;
@@ -4169,10 +4168,6 @@
       return Math.random().toString(36).slice(2, 6).toUpperCase();
     }
 
-    function isVersusUnlocked() {
-      return sessionStorage.getItem(VERSUS_UNLOCK_KEY) === "1";
-    }
-
     function createVersusRoomState() {
       const playerName = getStoredPlayerName();
       return {
@@ -5476,23 +5471,6 @@
       }
     }
 
-    function ensureVersusUnlocked() {
-      if (isVersusUnlocked()) return true;
-      const input = window.prompt("工事用パスワードを入力してください", "");
-      if (input === null) return false;
-      if (input.trim() !== VERSUS_DEV_PASSWORD) {
-        titleModeNoteEl.textContent = "パスワードが違います。";
-        titleModeNoteEl.classList.remove("is-info");
-        titleModeNoteEl.classList.add("is-warning");
-        return false;
-      }
-      sessionStorage.setItem(VERSUS_UNLOCK_KEY, "1");
-        titleModeNoteEl.textContent = "工事用パスワードを確認しました。このタブでは対戦を開始できます。";
-      titleModeNoteEl.classList.remove("is-warning");
-      titleModeNoteEl.classList.add("is-info");
-      return true;
-    }
-
     function emitGameEvent(type, payload = {}) {
       if (currentGameMode !== "versus") return;
       const labelMap = {
@@ -6102,9 +6080,7 @@
         }
         renderTitleRoomSlots();
         updateLobbyAction(selectedLobbyAction);
-        if (!isVersusUnlocked()) {
-          titleModeNoteEl.textContent = "対戦は ROOM を選ぶと待機または参加できます。";
-        }
+        titleModeNoteEl.textContent = "対戦は ROOM を選ぶと待機または参加できます。";
         titleModeNoteEl.classList.add("is-info");
       }
     }
@@ -6140,9 +6116,6 @@
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
         playerNameInputEl.focus();
-        return;
-      }
-      if (selectedGameMode === "versus" && !ensureVersusUnlocked()) {
         return;
       }
       state = createState();
