@@ -3048,27 +3048,33 @@
       return [...list].sort((a, b) => b.score - a.score || b.lines - a.lines || b.level - a.level || a.date - b.date);
     }
 
-    function getRankingAccountKey(entry) {
-      return typeof entry.uid === "string" && entry.uid.trim()
-        ? entry.uid.trim()
-        : `legacy:${(entry.name || "player").trim().toLowerCase()}`;
+    function getRankingPlayerKeys(entry) {
+      const keys = [];
+      const uid = typeof entry.uid === "string" ? entry.uid.trim() : "";
+      const name = typeof entry.name === "string" ? entry.name.trim().toLowerCase() : "";
+      if (uid) keys.push(`uid:${uid}`);
+      if (name) keys.push(`name:${name}`);
+      return keys.length ? keys : ["name:player"];
     }
 
     function keepBestScorePerAccount(list) {
       const byAccount = new Map();
+      const seenKeys = new Set();
       sortScoreEntries(list).forEach((entry) => {
-        const key = getRankingAccountKey(entry);
-        if (!byAccount.has(key)) byAccount.set(key, entry);
+        const keys = getRankingPlayerKeys(entry);
+        if (keys.some((key) => seenKeys.has(key))) return;
+        keys.forEach((key) => seenKeys.add(key));
+        byAccount.set(keys[0], entry);
       });
       return Array.from(byAccount.values());
     }
 
     function normalizeRankingList(value, hallValue = []) {
       const hallAccountKeys = new Set(
-        normalizeHallOfFameList(hallValue).map((entry) => getRankingAccountKey(entry))
+        normalizeHallOfFameList(hallValue).flatMap((entry) => getRankingPlayerKeys(entry))
       );
       return keepBestScorePerAccount(normalizeRankingRecords(value)
-        .filter((r) => r.score <= SOLO_SCORE_HARD_CAP && !hallAccountKeys.has(getRankingAccountKey(r))))
+        .filter((r) => r.score <= SOLO_SCORE_HARD_CAP && !getRankingPlayerKeys(r).some((key) => hallAccountKeys.has(key))))
         .slice(0, SOLO_RANKING_LIMIT);
     }
 
