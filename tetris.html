@@ -4321,7 +4321,9 @@
     function renderLobbyChatMessages() {
       if (!lobbyChatListEl) return;
       lobbyChatListEl.innerHTML = "";
-      const visibleMessages = lobbyChatMessages.filter((message) => !isUidMuted(message.uid));
+      const visibleMessages = lobbyChatMessages
+        .filter((message) => !isUidMuted(message.uid))
+        .sort((a, b) => b.createdAt - a.createdAt);
       if (!visibleMessages.length) {
         const empty = document.createElement("div");
         empty.className = "lobby-chat-empty";
@@ -4353,7 +4355,7 @@
         item.appendChild(text);
         lobbyChatListEl.appendChild(item);
       });
-      lobbyChatListEl.scrollTop = lobbyChatListEl.scrollHeight;
+      lobbyChatListEl.scrollTop = 0;
     }
 
     async function subscribeLobbyMuteList() {
