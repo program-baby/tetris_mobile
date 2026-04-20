@@ -2179,6 +2179,7 @@
         <p class="admin-note">スコア監査ログは直近30日分を確認対象にします。古いログは無料枠節約のため、管理者が削除できます。</p>
         <p id="admin-audit-log-detail" class="admin-note">復旧に使うFirebase UIDはここに表示されます。</p>
         <div class="admin-room-actions">
+          <button id="admin-copy-uid" class="ghost tool-btn" type="button">UIDをコピー</button>
           <button id="admin-restore-audit-scores" class="ghost tool-btn" type="button">未掲載スコアを復旧</button>
           <button id="admin-prune-audit-logs" class="danger tool-btn" type="button">30日より古いログを削除</button>
         </div>
@@ -2308,6 +2309,7 @@
     const adminCloseBtn = document.getElementById("admin-close");
     const adminResetNameBtn = document.getElementById("admin-reset-name");
     const adminResetAllBtn = document.getElementById("admin-reset-all");
+    const adminCopyUidBtn = document.getElementById("admin-copy-uid");
     const adminRestoreAuditScoresBtn = document.getElementById("admin-restore-audit-scores");
     const adminPruneAuditLogsBtn = document.getElementById("admin-prune-audit-logs");
     const adminAuditLogStatusEl = document.getElementById("admin-audit-log-status");
@@ -3251,6 +3253,41 @@
       return true;
     }
 
+    async function getCurrentFirebaseUidForAdmin() {
+      await initFirebaseAdapter();
+      return firebaseAuth?.currentUser?.uid || "";
+    }
+
+    async function updateAdminFirebaseUidDetail(messagePrefix = "現在のFirebase UID") {
+      if (!adminAuditLogDetailEl) return "";
+      const uid = await getCurrentFirebaseUidForAdmin().catch(() => "");
+      adminAuditLogDetailEl.textContent = `${messagePrefix}: ${uid || "未取得"}`;
+      return uid;
+    }
+
+    function copyTextToClipboard(text) {
+      if (!text) return Promise.reject(new Error("copy target is empty"));
+      if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return ok ? Promise.resolve() : Promise.reject(new Error("copy command failed"));
+    }
+
+    async function copyCurrentFirebaseUid() {
+      const uid = await updateAdminFirebaseUidDetail();
+      await copyTextToClipboard(uid);
+      if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "UIDコピー済み";
+      if (adminAuditLogDetailEl) adminAuditLogDetailEl.textContent = `コピーしました: ${uid}`;
+      return uid;
+    }
+
     function getAdminRoomText(roomKey) {
       const room = titleRoomSnapshots[roomKey];
       const host = room?.host?.name || "-";
@@ -3382,7 +3419,7 @@
       if (!ensureAdminUnlocked()) return;
       renderAdminRoomList();
       loadAdminUsernames().catch(() => {});
-      if (adminAuditLogDetailEl) adminAuditLogDetailEl.textContent = `現在のFirebase UID: ${firebaseAuth?.currentUser?.uid || "接続後に表示されます"}`;
+      updateAdminFirebaseUidDetail().catch(() => {});
       adminModalEl.classList.add("is-open");
       adminModalEl.setAttribute("aria-hidden", "false");
     }
@@ -5015,6 +5052,9 @@
       }
       firebaseDb = firebaseApp.database ? firebaseApp.database() : window.firebase.database();
       firebaseAuth = firebaseApp.auth ? firebaseApp.auth() : window.firebase.auth();
+      if (firebaseAuth.setPersistence && window.firebase.auth?.Auth?.Persistence?.LOCAL) {
+        await firebaseAuth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+      }
       if (!firebaseAuth.currentUser) {
         await firebaseAuth.signInAnonymously();
       }
@@ -6787,6 +6827,12 @@
     });
     adminResetAllBtn.addEventListener("click", () => {
       resetAllFirebaseRooms().catch(() => {});
+    });
+    adminCopyUidBtn.addEventListener("click", () => {
+      copyCurrentFirebaseUid().catch(() => {
+        if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "コピー失敗";
+        if (adminAuditLogDetailEl) adminAuditLogDetailEl.textContent = "UIDをコピーできませんでした。長押しで選択してコピーしてください。";
+      });
     });
     adminPruneAuditLogsBtn.addEventListener("click", () => {
       pruneOldScoreAuditLogs().catch(() => {
