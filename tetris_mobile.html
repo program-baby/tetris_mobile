@@ -2177,6 +2177,7 @@
           <span id="admin-audit-log-status" class="admin-usage-badge">直近30日運用</span>
         </div>
         <p class="admin-note">スコア監査ログは直近30日分を確認対象にします。古いログは無料枠節約のため、管理者が削除できます。</p>
+        <p id="admin-audit-log-detail" class="admin-note">復旧に使うFirebase UIDはここに表示されます。</p>
         <div class="admin-room-actions">
           <button id="admin-restore-audit-scores" class="ghost tool-btn" type="button">未掲載スコアを復旧</button>
           <button id="admin-prune-audit-logs" class="danger tool-btn" type="button">30日より古いログを削除</button>
@@ -2310,6 +2311,7 @@
     const adminRestoreAuditScoresBtn = document.getElementById("admin-restore-audit-scores");
     const adminPruneAuditLogsBtn = document.getElementById("admin-prune-audit-logs");
     const adminAuditLogStatusEl = document.getElementById("admin-audit-log-status");
+    const adminAuditLogDetailEl = document.getElementById("admin-audit-log-detail");
     const adminRoomListEl = document.getElementById("admin-room-list");
     const adminUserSearchEl = document.getElementById("admin-user-search");
     const adminUserListEl = document.getElementById("admin-user-list");
@@ -3380,6 +3382,7 @@
       if (!ensureAdminUnlocked()) return;
       renderAdminRoomList();
       loadAdminUsernames().catch(() => {});
+      if (adminAuditLogDetailEl) adminAuditLogDetailEl.textContent = `現在のFirebase UID: ${firebaseAuth?.currentUser?.uid || "接続後に表示されます"}`;
       adminModalEl.classList.add("is-open");
       adminModalEl.setAttribute("aria-hidden", "false");
     }
@@ -3486,9 +3489,11 @@
       if (!ok || !firebaseDb) return false;
       if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "復旧確認中";
       const adminUid = firebaseAuth?.currentUser?.uid || "";
+      if (adminAuditLogDetailEl) adminAuditLogDetailEl.textContent = `現在のFirebase UID: ${adminUid || "未取得"}`;
       const adminSnapshot = adminUid ? await firebaseDb.ref(`admins/${adminUid}`).once("value") : null;
       if (!adminUid || adminSnapshot?.val() !== true) {
         if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "権限なし";
+        if (adminAuditLogDetailEl) adminAuditLogDetailEl.textContent = `Firebase Console の admins にこのUIDを true で追加してください: ${adminUid || "未取得"}`;
         titleModeNoteEl.textContent = `Firebase管理者UIDではないため監査ログを読めません。現在のUID: ${adminUid || "未取得"}`;
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
@@ -3512,6 +3517,7 @@
       const candidates = collectBestRecoverableAuditScores(auditSnapshot.val(), registeredNameByUid, rankedUidSet);
       if (!candidates.length) {
         if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "復旧対象なし";
+        if (adminAuditLogDetailEl) adminAuditLogDetailEl.textContent = `現在のFirebase UID: ${adminUid}`;
         titleModeNoteEl.textContent = "名前登録済みで、現在ランキング未掲載の復旧対象スコアはありません。";
         titleModeNoteEl.classList.remove("is-warning");
         titleModeNoteEl.classList.add("is-info");
@@ -3541,6 +3547,7 @@
       renderRanking(sharedSoloRanking, false);
       renderAdminUsage();
       if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = `${candidates.length}件復旧`;
+      if (adminAuditLogDetailEl) adminAuditLogDetailEl.textContent = `現在のFirebase UID: ${adminUid}`;
       titleModeNoteEl.textContent = `ランキング未掲載の登録済みUID ${candidates.length}件を復旧しました。`;
       titleModeNoteEl.classList.remove("is-warning");
       titleModeNoteEl.classList.add("is-info");
