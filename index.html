@@ -2178,6 +2178,7 @@
         </div>
         <p class="admin-note">スコア監査ログは直近30日分を確認対象にします。古いログは無料枠節約のため、管理者が削除できます。</p>
         <div class="admin-room-actions">
+          <button id="admin-restore-audit-scores" class="ghost tool-btn" type="button">未掲載スコアを復旧</button>
           <button id="admin-prune-audit-logs" class="danger tool-btn" type="button">30日より古いログを削除</button>
         </div>
       </div>
@@ -2306,6 +2307,7 @@
     const adminCloseBtn = document.getElementById("admin-close");
     const adminResetNameBtn = document.getElementById("admin-reset-name");
     const adminResetAllBtn = document.getElementById("admin-reset-all");
+    const adminRestoreAuditScoresBtn = document.getElementById("admin-restore-audit-scores");
     const adminPruneAuditLogsBtn = document.getElementById("admin-prune-audit-logs");
     const adminAuditLogStatusEl = document.getElementById("admin-audit-log-status");
     const adminRoomListEl = document.getElementById("admin-room-list");
@@ -3436,6 +3438,101 @@
       await firebaseDb.ref().update(updates);
       if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = `${oldKeys.length}日分削除`;
       titleModeNoteEl.textContent = `30日より古い監査ログを ${oldKeys.length}日分削除しました。`;
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+      return true;
+    }
+
+    function collectRegisteredNameByUid(rawUsernames) {
+      const byUid = new Map();
+      Object.values(rawUsernames || {}).forEach((entry) => {
+        if (!entry || typeof entry.ownerUid !== "string") return;
+        const uid = entry.ownerUid.trim();
+        const name = sanitizePlayerName(entry.name || "");
+        if (uid && name && name !== "PLAYER") byUid.set(uid, name);
+      });
+      return byUid;
+    }
+
+    function collectBestRecoverableAuditScores(rawAuditLogs, registeredNameByUid, rankedUidSet) {
+      const bestByUid = new Map();
+      Object.values(rawAuditLogs || {}).forEach((dailyLog) => {
+        Object.values(dailyLog || {}).forEach((record) => {
+          const source = record?.entry || record || {};
+          const uid = typeof source.uid === "string" && source.uid.trim()
+            ? source.uid.trim()
+            : typeof record?.uid === "string" ? record.uid.trim() : "";
+          const registeredName = registeredNameByUid.get(uid);
+          const score = Math.max(0, Math.floor(Number(source.score ?? record?.score)));
+          if (!uid || !registeredName || rankedUidSet.has(uid)) return;
+          if (record?.accepted !== true || !Number.isFinite(score) || score <= 0 || score > SOLO_SCORE_HALL_CAP) return;
+          const entry = {
+            uid,
+            name: registeredName,
+            score,
+            lines: Math.max(0, Math.floor(Number(source.lines ?? record?.lines) || 0)),
+            level: Math.max(1, Math.floor(Number(source.level ?? record?.level) || 1)),
+            date: Number.isFinite(source.date) ? source.date : Number(record?.submittedAt) || Date.now()
+          };
+          const current = bestByUid.get(uid);
+          if (!current || sortScoreEntries([entry, current])[0] === entry) bestByUid.set(uid, entry);
+        });
+      });
+      return Array.from(bestByUid.values());
+    }
+
+    async function restoreMissingRankedScoresFromAuditLogs() {
+      const ok = await initFirebaseAdapter();
+      if (!ok || !firebaseDb) return false;
+      if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "復旧確認中";
+
+      const [auditSnapshot, usernamesSnapshot, soloSnapshot, hallSnapshot] = await Promise.all([
+        firebaseDb.ref("scoreSubmissions").once("value"),
+        firebaseDb.ref("usernames").once("value"),
+        firebaseDb.ref("leaderboards/soloTop10").once("value"),
+        firebaseDb.ref("leaderboards/hallOfFame").once("value")
+      ]);
+      const currentHall = normalizeHallOfFameList(hallSnapshot.val());
+      const currentRanking = normalizeRankingList(soloSnapshot.val(), currentHall);
+      const rankedUidSet = new Set(
+        [...currentRanking, ...currentHall]
+          .map((entry) => (typeof entry.uid === "string" ? entry.uid.trim() : ""))
+          .filter(Boolean)
+      );
+      const registeredNameByUid = collectRegisteredNameByUid(usernamesSnapshot.val());
+      const candidates = collectBestRecoverableAuditScores(auditSnapshot.val(), registeredNameByUid, rankedUidSet);
+      if (!candidates.length) {
+        if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "復旧対象なし";
+        titleModeNoteEl.textContent = "名前登録済みで、現在ランキング未掲載の復旧対象スコアはありません。";
+        titleModeNoteEl.classList.remove("is-warning");
+        titleModeNoteEl.classList.add("is-info");
+        return true;
+      }
+
+      const confirmed = window.confirm(`名前登録済みでランキング未掲載のUID ${candidates.length}件を復旧します。よろしいですか？`);
+      if (!confirmed) {
+        if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "復旧中止";
+        return false;
+      }
+
+      const mergedHall = normalizeHallOfFameList([
+        ...currentHall,
+        ...candidates.filter((entry) => entry.score > SOLO_SCORE_HARD_CAP)
+      ]);
+      const mergedRanking = normalizeRankingList([
+        ...currentRanking,
+        ...candidates.filter((entry) => entry.score <= SOLO_SCORE_HARD_CAP)
+      ], mergedHall);
+      await firebaseDb.ref().update({
+        "leaderboards/soloTop10": mergedRanking,
+        "leaderboards/hallOfFame": mergedHall
+      });
+      sharedSoloRanking = mergedRanking;
+      sharedSoloHallOfFame = mergedHall;
+      renderRanking(sharedSoloRanking, false);
+      renderAdminUsage();
+      if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = `${candidates.length}件復旧`;
+      titleModeNoteEl.textContent = `ランキング未掲載の登録済みUID ${candidates.length}件を復旧しました。`;
       titleModeNoteEl.classList.remove("is-warning");
       titleModeNoteEl.classList.add("is-info");
       return true;
@@ -6679,6 +6776,14 @@
       pruneOldScoreAuditLogs().catch(() => {
         if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "削除失敗";
         titleModeNoteEl.textContent = "監査ログの削除に失敗しました。Firebaseルールを確認してください。";
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+      });
+    });
+    adminRestoreAuditScoresBtn.addEventListener("click", () => {
+      restoreMissingRankedScoresFromAuditLogs().catch(() => {
+        if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "復旧失敗";
+        titleModeNoteEl.textContent = "監査ログからのスコア復旧に失敗しました。Firebaseルールを確認してください。";
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
       });
