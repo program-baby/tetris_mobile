@@ -3485,6 +3485,15 @@
       const ok = await initFirebaseAdapter();
       if (!ok || !firebaseDb) return false;
       if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "復旧確認中";
+      const adminUid = firebaseAuth?.currentUser?.uid || "";
+      const adminSnapshot = adminUid ? await firebaseDb.ref(`admins/${adminUid}`).once("value") : null;
+      if (!adminUid || adminSnapshot?.val() !== true) {
+        if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "権限なし";
+        titleModeNoteEl.textContent = `Firebase管理者UIDではないため監査ログを読めません。現在のUID: ${adminUid || "未取得"}`;
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        return false;
+      }
 
       const [auditSnapshot, usernamesSnapshot, soloSnapshot, hallSnapshot] = await Promise.all([
         firebaseDb.ref("scoreSubmissions").once("value"),
@@ -6781,9 +6790,10 @@
       });
     });
     adminRestoreAuditScoresBtn.addEventListener("click", () => {
-      restoreMissingRankedScoresFromAuditLogs().catch(() => {
+      restoreMissingRankedScoresFromAuditLogs().catch((error) => {
+        const code = error?.code || error?.message || "unknown";
         if (adminAuditLogStatusEl) adminAuditLogStatusEl.textContent = "復旧失敗";
-        titleModeNoteEl.textContent = "監査ログからのスコア復旧に失敗しました。Firebaseルールを確認してください。";
+        titleModeNoteEl.textContent = `監査ログからのスコア復旧に失敗しました。Firebaseルールを確認してください。理由: ${code}`;
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
       });
