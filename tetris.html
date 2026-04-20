@@ -4617,27 +4617,25 @@
 
     async function submitSharedSoloRanking(entry) {
       if (!firebaseReady) return null;
-      const leaderboardsRef = firebaseDb.ref("leaderboards");
-      const result = await leaderboardsRef.transaction((current) => {
-        const data = current || {};
-        const rankingRaw = normalizeRankingRecords(data.soloTop10);
-        const hallRaw = normalizeRankingRecords(data.hallOfFame);
-        if (entry.score > SOLO_SCORE_HARD_CAP) {
-          hallRaw.push(entry);
-        } else {
-          rankingRaw.push(entry);
-        }
-        const hallOfFame = normalizeHallOfFameList([...rankingRaw, ...hallRaw]);
-        return {
-          ...data,
-          soloTop10: normalizeRankingList(rankingRaw, hallOfFame),
-          hallOfFame
-        };
-      });
-      const data = result.snapshot?.val() || {};
-      const hall = normalizeHallOfFameList(data.hallOfFame);
+      const soloRef = firebaseDb.ref("leaderboards/soloTop10");
+      const hallRef = firebaseDb.ref("leaderboards/hallOfFame");
+      let hall = normalizeHallOfFameList((await hallRef.once("value")).val());
+
+      if (entry.score > SOLO_SCORE_HARD_CAP) {
+        const hallResult = await hallRef.transaction((current) => {
+          return normalizeHallOfFameList([...normalizeRankingRecords(current), entry]);
+        });
+        hall = normalizeHallOfFameList(hallResult.snapshot?.val());
+        await soloRef.transaction((current) => normalizeRankingList(current, hall));
+      } else {
+        await soloRef.transaction((current) => {
+          return normalizeRankingList([...normalizeRankingRecords(current), entry], hall);
+        });
+      }
+
+      const ranking = normalizeRankingList((await soloRef.once("value")).val(), hall);
       return {
-        ranking: normalizeRankingList(data.soloTop10, hall),
+        ranking,
         hall
       };
     }
