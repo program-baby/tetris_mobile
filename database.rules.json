@@ -76,6 +76,16 @@
           ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
           ".validate": "!newData.exists() || (newData.hasChildren(['name', 'mutedAt']) && newData.child('name').isString() && newData.child('mutedAt').isNumber())"
         }
+      },
+      "reports": {
+        "$reportedUid": {
+          ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+          "$reporterUid": {
+            ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || auth.uid === $reporterUid)",
+            ".write": "auth != null && auth.uid === $reporterUid && $reporterUid !== $reportedUid && !data.exists()",
+            ".validate": "newData.hasChildren(['reportedUid', 'reportedName', 'reporterUid', 'reporterName', 'messageId', 'messageText', 'messageCreatedAt', 'createdAt']) && newData.child('reportedUid').isString() && newData.child('reportedUid').val() === $reportedUid && newData.child('reportedName').isString() && newData.child('reportedName').val().length > 0 && newData.child('reportedName').val().length <= 12 && newData.child('reporterUid').isString() && newData.child('reporterUid').val() === auth.uid && newData.child('reporterUid').val() === $reporterUid && newData.child('reporterName').isString() && newData.child('reporterName').val().length > 0 && newData.child('reporterName').val().length <= 12 && newData.child('messageId').isString() && newData.child('messageId').val().length <= 120 && newData.child('messageText').isString() && newData.child('messageText').val().length > 0 && newData.child('messageText').val().length <= 80 && newData.child('messageCreatedAt').isNumber() && newData.child('createdAt').isNumber()"
+          }
+        }
       }
     },
 

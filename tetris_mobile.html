@@ -1362,7 +1362,7 @@
       line-height: 1.35;
     }
 
-    .lobby-chat {
+    .lobby-chat-preview {
       display: grid;
       gap: 9px;
       min-width: 0;
@@ -1370,6 +1370,12 @@
       border: 1px solid rgba(71, 85, 105, 0.78);
       border-radius: 14px;
       background: rgba(9, 16, 28, 0.74);
+      cursor: pointer;
+    }
+
+    .lobby-chat-preview:focus-visible {
+      outline: 2px solid rgba(34, 211, 238, 0.72);
+      outline-offset: 2px;
     }
 
     .lobby-chat-head {
@@ -1391,12 +1397,50 @@
       white-space: nowrap;
     }
 
+    .lobby-chat-preview-list {
+      display: grid;
+      gap: 6px;
+      min-height: 58px;
+      padding: 8px;
+      border: 1px solid rgba(51, 65, 85, 0.72);
+      border-radius: 11px;
+      background: rgba(2, 6, 23, 0.42);
+    }
+
+    .lobby-chat-preview-item {
+      display: grid;
+      gap: 2px;
+    }
+
+    .lobby-chat-preview-line {
+      color: #e2e8f0;
+      font-size: 0.76rem;
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lobby-chat-preview-line strong {
+      color: #f8fafc;
+      font-weight: 800;
+    }
+
+    .lobby-chat-preview-meta {
+      color: #94a3b8;
+      font-size: 0.64rem;
+    }
+
+    .lobby-chat-modal-card {
+      width: min(96vw, 720px);
+    }
+
     .lobby-chat-list {
       display: grid;
       align-content: start;
       gap: 7px;
-      min-height: 168px;
-      max-height: 206px;
+      min-height: 260px;
+      max-height: min(60vh, 520px);
       overflow-y: auto;
       padding: 8px;
       border: 1px solid rgba(51, 65, 85, 0.72);
@@ -1407,7 +1451,7 @@
 
     .lobby-chat-message {
       display: grid;
-      gap: 3px;
+      gap: 6px;
       padding: 7px 8px;
       border: 1px solid rgba(51, 65, 85, 0.55);
       border-radius: 10px;
@@ -1444,10 +1488,28 @@
       white-space: pre-wrap;
     }
 
+    .lobby-chat-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .lobby-chat-report {
+      border: 1px solid rgba(248, 113, 113, 0.44);
+      border-radius: 8px;
+      background: rgba(127, 29, 29, 0.22);
+      color: #fecaca;
+      font: inherit;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 5px 9px;
+    }
+
     .lobby-chat-form {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 7px;
+      margin-top: 10px;
     }
 
     .lobby-chat-input {
@@ -2019,20 +2081,6 @@
             </div>
           </div>
         </div>
-        <aside id="lobby-chat" class="lobby-chat" aria-label="ロビーチャット">
-          <div class="lobby-chat-head">
-            <span>ロビーチャット</span>
-            <small>時間合わせ用</small>
-          </div>
-          <div id="lobby-chat-list" class="lobby-chat-list" aria-live="polite">
-            <div class="lobby-chat-empty">チャットを読み込み中...</div>
-          </div>
-          <form id="lobby-chat-form" class="lobby-chat-form">
-            <input id="lobby-chat-input" class="lobby-chat-input" type="text" inputmode="text" maxlength="80" placeholder="例: GATE1で待ってます">
-            <button id="lobby-chat-send" class="lobby-chat-send" type="submit">送信</button>
-          </form>
-          <div id="lobby-chat-status" class="lobby-chat-status" aria-live="polite">ユーザー名を確定すると送信できます。</div>
-        </aside>
       </div>
       <div class="player-name-box">
         <label for="player-name-input" class="player-name-label">ユーザー名</label>
@@ -2044,6 +2092,15 @@
       </div>
         <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
         <p id="title-mode-note" class="title-note">ソロプレイはすぐ開始できます。対戦は ROOM を選ぶと待機または参加できます。</p>
+        <div id="lobby-chat-preview" class="lobby-chat-preview" role="button" tabindex="0" aria-label="ロビーチャットを開く">
+          <div class="lobby-chat-head">
+            <span>ロビーチャット</span>
+            <small>2件表示 / タップで開く</small>
+          </div>
+          <div id="lobby-chat-preview-list" class="lobby-chat-preview-list" aria-live="polite">
+            <div class="lobby-chat-empty">チャットを読み込み中...</div>
+          </div>
+        </div>
         <div class="title-actions">
           <button id="title-rules" class="ghost title-start-btn" type="button">ルール</button>
           <button id="title-notice" class="ghost title-start-btn" type="button">お知らせ</button>
@@ -2142,6 +2199,24 @@
           <p>対戦の時間合わせ用チャットと、管理者によるミュート機能を追加しました。</p>
         </article>
       </div>
+    </div>
+  </section>
+
+  <section id="lobby-chat-modal" class="ranking-modal" aria-hidden="true">
+    <div class="ranking-modal-card lobby-chat-modal-card">
+      <div class="ranking-modal-head">
+        <h2 class="ranking-modal-title">ロビーチャット</h2>
+        <button id="lobby-chat-close" class="ghost ranking-close" type="button">×</button>
+      </div>
+      <p class="admin-note">時間合わせや待ち合わせに使えます。荒らしは通報でき、管理画面で通報件数を確認できます。</p>
+      <div id="lobby-chat-list" class="lobby-chat-list" aria-live="polite">
+        <div class="lobby-chat-empty">チャットを読み込み中...</div>
+      </div>
+      <form id="lobby-chat-form" class="lobby-chat-form">
+        <input id="lobby-chat-input" class="lobby-chat-input" type="text" inputmode="text" maxlength="80" placeholder="例: GATE1で待ってます">
+        <button id="lobby-chat-send" class="lobby-chat-send" type="submit">送信</button>
+      </form>
+      <div id="lobby-chat-status" class="lobby-chat-status" aria-live="polite">ユーザー名を確定すると送信できます。</div>
     </div>
   </section>
 
@@ -2305,6 +2380,10 @@
     const rankingTabVersusBtn = document.getElementById("ranking-tab-versus");
     const noticeModalEl = document.getElementById("notice-modal");
     const noticeCloseBtn = document.getElementById("notice-close");
+    const lobbyChatPreviewEl = document.getElementById("lobby-chat-preview");
+    const lobbyChatPreviewListEl = document.getElementById("lobby-chat-preview-list");
+    const lobbyChatModalEl = document.getElementById("lobby-chat-modal");
+    const lobbyChatCloseBtn = document.getElementById("lobby-chat-close");
     const adminModalEl = document.getElementById("admin-modal");
     const adminCloseBtn = document.getElementById("admin-close");
     const adminResetNameBtn = document.getElementById("admin-reset-name");
@@ -2486,6 +2565,7 @@
     let titleRoomSnapshots = {};
     let titleRoomRefs = [];
     let adminUsernames = [];
+    let adminReportCounts = {};
     let lobbyChatRef = null;
     let lobbyChatListener = null;
     let lobbyMutedRef = null;
@@ -3329,9 +3409,13 @@
       const query = sanitizePlayerName(adminUserSearchEl?.value || "").toLowerCase();
       const list = adminUsernames
         .filter((entry) => !query || entry.name.toLowerCase().includes(query))
-        .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+        .sort((a, b) => {
+          const reportDiff = (adminReportCounts[b.ownerUid] || 0) - (adminReportCounts[a.ownerUid] || 0);
+          return reportDiff || a.name.localeCompare(b.name, "ja");
+        });
       const mutedCount = Object.values(mutedUsers || {}).filter(Boolean).length;
-      adminUserCountEl.textContent = mutedCount ? `${adminUsernames.length}件 / ミュート${mutedCount}` : `${adminUsernames.length}件`;
+      const totalReports = Object.values(adminReportCounts || {}).reduce((sum, count) => sum + count, 0);
+      adminUserCountEl.textContent = `${adminUsernames.length}件 / ミュート${mutedCount}${totalReports ? ` / 通報${totalReports}` : ""}`;
       adminUserListEl.innerHTML = "";
       if (!list.length) {
         const empty = document.createElement("div");
@@ -3345,14 +3429,15 @@
         item.className = "admin-user-item";
         const updated = entry.updatedAt ? new Date(entry.updatedAt).toLocaleString("ja-JP") : "-";
         const isMuted = isUidMuted(entry.ownerUid);
+        const reportCount = adminReportCounts[entry.ownerUid] || 0;
 
         const nameEl = document.createElement("div");
         nameEl.className = "admin-user-name";
-        nameEl.textContent = isMuted ? `${entry.name}（ミュート中）` : entry.name;
+        nameEl.textContent = `${entry.name}${isMuted ? "（ミュート中）" : ""}${reportCount ? `（通報 ${reportCount}件）` : ""}`;
 
         const metaEl = document.createElement("div");
         metaEl.className = "admin-user-meta";
-        metaEl.textContent = `owner: ${entry.ownerUid || "-"} / updated: ${updated}`;
+        metaEl.textContent = `owner: ${entry.ownerUid || "-"} / updated: ${updated} / reports: ${reportCount}`;
 
         const actionsEl = document.createElement("div");
         actionsEl.className = "admin-room-actions";
@@ -3419,6 +3504,7 @@
       if (!ensureAdminUnlocked()) return;
       renderAdminRoomList();
       loadAdminUsernames().catch(() => {});
+      loadAdminReportCounts().catch(() => {});
       updateAdminFirebaseUidDetail().catch(() => {});
       adminModalEl.classList.add("is-open");
       adminModalEl.setAttribute("aria-hidden", "false");
@@ -3604,6 +3690,27 @@
           updatedAt: entry.updatedAt || 0
         }))
         .filter((entry) => entry.name);
+      renderAdminUserList();
+      return true;
+    }
+
+    async function loadAdminReportCounts() {
+      const ok = await initFirebaseAdapter();
+      if (!ok || !firebaseDb || !firebaseAuth?.currentUser?.uid) return false;
+      const adminUid = firebaseAuth.currentUser.uid;
+      const adminSnapshot = await firebaseDb.ref(`admins/${adminUid}`).once("value");
+      if (adminSnapshot.val() !== true) {
+        adminReportCounts = {};
+        renderAdminUserList();
+        return false;
+      }
+      const snapshot = await firebaseDb.ref("moderation/reports").once("value");
+      const raw = snapshot.val() || {};
+      const counts = {};
+      Object.entries(raw).forEach(([reportedUid, reports]) => {
+        counts[reportedUid] = Object.keys(reports || {}).length;
+      });
+      adminReportCounts = counts;
       renderAdminUserList();
       return true;
     }
@@ -4447,6 +4554,96 @@
       if (className) lobbyChatStatusEl.classList.add(className);
     }
 
+    function getVisibleLobbyMessages() {
+      return lobbyChatMessages
+        .filter((message) => !isUidMuted(message.uid))
+        .sort((a, b) => b.createdAt - a.createdAt);
+    }
+
+    function openLobbyChatModal() {
+      if (!lobbyChatModalEl) return;
+      lobbyChatModalEl.classList.add("is-open");
+      lobbyChatModalEl.setAttribute("aria-hidden", "false");
+      renderLobbyChatMessages();
+      syncLobbyChatInputState();
+      lobbyChatInputEl?.focus({ preventScroll: true });
+    }
+
+    function closeLobbyChatModal() {
+      if (!lobbyChatModalEl) return;
+      lobbyChatModalEl.classList.remove("is-open");
+      lobbyChatModalEl.setAttribute("aria-hidden", "true");
+    }
+
+    function renderLobbyChatPreview() {
+      if (!lobbyChatPreviewListEl) return;
+      lobbyChatPreviewListEl.innerHTML = "";
+      const messages = getVisibleLobbyMessages().slice(0, 2);
+      if (!messages.length) {
+        const empty = document.createElement("div");
+        empty.className = "lobby-chat-empty";
+        empty.textContent = "まだメッセージはありません。タップでチャットを開けます。";
+        lobbyChatPreviewListEl.appendChild(empty);
+        return;
+      }
+      messages.forEach((message) => {
+        const item = document.createElement("div");
+        item.className = "lobby-chat-preview-item";
+        const line = document.createElement("div");
+        line.className = "lobby-chat-preview-line";
+        const strong = document.createElement("strong");
+        strong.textContent = sanitizePlayerName(message.name) || "PLAYER";
+        line.appendChild(strong);
+        line.appendChild(document.createTextNode(`: ${sanitizeLobbyChatText(message.text)}`));
+        const meta = document.createElement("div");
+        meta.className = "lobby-chat-preview-meta";
+        meta.textContent = formatLobbyChatTime(message.createdAt);
+        item.appendChild(line);
+        item.appendChild(meta);
+        lobbyChatPreviewListEl.appendChild(item);
+      });
+    }
+
+    function createLobbyChatMessageElement(message, currentUid) {
+      const item = document.createElement("div");
+      item.className = "lobby-chat-message";
+      if (message.uid && message.uid === currentUid) item.classList.add("is-own");
+
+      const meta = document.createElement("div");
+      meta.className = "lobby-chat-meta";
+      const name = document.createElement("span");
+      name.className = "lobby-chat-name";
+      name.textContent = sanitizePlayerName(message.name) || "PLAYER";
+      const time = document.createElement("span");
+      time.textContent = formatLobbyChatTime(message.createdAt);
+      meta.appendChild(name);
+      meta.appendChild(time);
+
+      const text = document.createElement("div");
+      text.className = "lobby-chat-text";
+      text.textContent = sanitizeLobbyChatText(message.text);
+
+      item.appendChild(meta);
+      item.appendChild(text);
+
+      if (message.uid && message.uid !== currentUid) {
+        const actions = document.createElement("div");
+        actions.className = "lobby-chat-actions";
+        const reportButton = document.createElement("button");
+        reportButton.className = "lobby-chat-report";
+        reportButton.type = "button";
+        reportButton.textContent = "通報";
+        reportButton.addEventListener("click", () => {
+          reportLobbyChatMessage(message).catch(() => {
+            setLobbyChatStatus("通報に失敗しました。時間をおいて再度お試しください。", "is-warning");
+          });
+        });
+        actions.appendChild(reportButton);
+        item.appendChild(actions);
+      }
+      return item;
+    }
+
     function syncLobbyChatInputState() {
       if (!lobbyChatInputEl || !lobbyChatSendBtn) return;
       const uid = firebaseAuth?.currentUser?.uid || "";
@@ -4471,9 +4668,7 @@
     function renderLobbyChatMessages() {
       if (!lobbyChatListEl) return;
       lobbyChatListEl.innerHTML = "";
-      const visibleMessages = lobbyChatMessages
-        .filter((message) => !isUidMuted(message.uid))
-        .sort((a, b) => b.createdAt - a.createdAt);
+      const visibleMessages = getVisibleLobbyMessages();
       if (!visibleMessages.length) {
         const empty = document.createElement("div");
         empty.className = "lobby-chat-empty";
@@ -4483,27 +4678,7 @@
       }
       const currentUid = firebaseAuth?.currentUser?.uid || "";
       visibleMessages.forEach((message) => {
-        const item = document.createElement("div");
-        item.className = "lobby-chat-message";
-        if (message.uid && message.uid === currentUid) item.classList.add("is-own");
-
-        const meta = document.createElement("div");
-        meta.className = "lobby-chat-meta";
-        const name = document.createElement("span");
-        name.className = "lobby-chat-name";
-        name.textContent = sanitizePlayerName(message.name) || "PLAYER";
-        const time = document.createElement("span");
-        time.textContent = formatLobbyChatTime(message.createdAt);
-        meta.appendChild(name);
-        meta.appendChild(time);
-
-        const text = document.createElement("div");
-        text.className = "lobby-chat-text";
-        text.textContent = sanitizeLobbyChatText(message.text);
-
-        item.appendChild(meta);
-        item.appendChild(text);
-        lobbyChatListEl.appendChild(item);
+        lobbyChatListEl.appendChild(createLobbyChatMessageElement(message, currentUid));
       });
       lobbyChatListEl.scrollTop = 0;
     }
@@ -4513,6 +4688,7 @@
       lobbyMutedRef = firebaseDb.ref("moderation/mutedUsers");
       lobbyMutedListener = lobbyMutedRef.on("value", (snapshot) => {
         mutedUsers = snapshot.val() || {};
+        renderLobbyChatPreview();
         renderLobbyChatMessages();
         syncLobbyChatInputState();
         renderAdminUserList();
@@ -4536,6 +4712,7 @@
           });
         });
         lobbyChatMessages = messages.sort((a, b) => a.createdAt - b.createdAt);
+        renderLobbyChatPreview();
         renderLobbyChatMessages();
         syncLobbyChatInputState();
       }, () => {
@@ -4607,6 +4784,48 @@
       titleModeNoteEl.textContent = `${sanitizePlayerName(name) || "対象ユーザー"} のロビーチャットミュートを解除しました。`;
       titleModeNoteEl.classList.remove("is-warning");
       titleModeNoteEl.classList.add("is-info");
+      return true;
+    }
+
+    async function reportLobbyChatMessage(message) {
+      if (!message?.uid) {
+        setLobbyChatStatus("通報対象を特定できませんでした。", "is-warning");
+        return false;
+      }
+      const ok = await initFirebaseAdapter();
+      if (!ok || !firebaseDb || !firebaseAuth?.currentUser?.uid) {
+        setLobbyChatStatus("Firebase接続ができないため通報できません。", "is-warning");
+        return false;
+      }
+      const reporterUid = firebaseAuth.currentUser.uid;
+      if (!reporterUid || reporterUid === message.uid) {
+        setLobbyChatStatus("自分自身は通報できません。", "is-warning");
+        return false;
+      }
+      const reporterName = getStoredPlayerName();
+      if (!reporterName || reporterName === "PLAYER") {
+        setLobbyChatStatus("先にユーザー名を確定してください。", "is-warning");
+        return false;
+      }
+      const confirmed = window.confirm(`${sanitizePlayerName(message.name) || "対象ユーザー"} を通報します。よろしいですか？`);
+      if (!confirmed) return false;
+      const reportRef = firebaseDb.ref(`moderation/reports/${message.uid}/${reporterUid}`);
+      const existing = await reportRef.once("value");
+      if (existing.exists()) {
+        setLobbyChatStatus("このユーザーはすでに通報済みです。", "is-warning");
+        return false;
+      }
+      await reportRef.set({
+        reportedUid: message.uid,
+        reportedName: sanitizePlayerName(message.name) || "PLAYER",
+        reporterUid,
+        reporterName,
+        messageId: message.id || "",
+        messageText: sanitizeLobbyChatText(message.text).slice(0, 80),
+        messageCreatedAt: Number(message.createdAt || 0),
+        createdAt: Date.now()
+      });
+      setLobbyChatStatus("通報しました。管理者が確認します。");
       return true;
     }
 
@@ -6816,6 +7035,23 @@
         sendLobbyChatMessage(e).catch(() => {
           setLobbyChatStatus("送信に失敗しました。Firebaseルールを確認してください。", "is-warning");
         });
+      });
+    }
+    if (lobbyChatPreviewEl) {
+      lobbyChatPreviewEl.addEventListener("click", openLobbyChatModal);
+      lobbyChatPreviewEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openLobbyChatModal();
+        }
+      });
+    }
+    if (lobbyChatCloseBtn) {
+      lobbyChatCloseBtn.addEventListener("click", closeLobbyChatModal);
+    }
+    if (lobbyChatModalEl) {
+      lobbyChatModalEl.addEventListener("click", (e) => {
+        if (e.target === lobbyChatModalEl) closeLobbyChatModal();
       });
     }
     adminResetNameBtn.addEventListener("click", () => {
