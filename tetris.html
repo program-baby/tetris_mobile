@@ -1433,6 +1433,8 @@
 
     .lobby-chat-modal-card {
       width: min(96vw, 720px);
+      max-height: calc(var(--viewport-h) - 20px);
+      align-self: end;
     }
 
     .lobby-chat-list {
@@ -4572,15 +4574,21 @@
       if (!lobbyChatModalEl) return;
       lobbyChatModalEl.classList.add("is-open");
       lobbyChatModalEl.setAttribute("aria-hidden", "false");
+      scheduleFitLayout(true);
       renderLobbyChatMessages();
       syncLobbyChatInputState();
       lobbyChatInputEl?.focus({ preventScroll: true });
+      setTimeout(() => {
+        scheduleFitLayout(true);
+        lobbyChatInputEl?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }, 260);
     }
 
     function closeLobbyChatModal() {
       if (!lobbyChatModalEl) return;
       lobbyChatModalEl.classList.remove("is-open");
       lobbyChatModalEl.setAttribute("aria-hidden", "true");
+      scheduleFitLayout(true);
     }
 
     function renderLobbyChatPreview() {
@@ -7043,6 +7051,14 @@
         sendLobbyChatMessage(e).catch(() => {
           setLobbyChatStatus("送信に失敗しました。Firebaseルールを確認してください。", "is-warning");
         });
+      });
+    }
+    if (lobbyChatInputEl) {
+      lobbyChatInputEl.addEventListener("focus", () => {
+        setTimeout(() => {
+          scheduleFitLayout(true);
+          lobbyChatInputEl.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }, 260);
       });
     }
     if (lobbyChatPreviewEl) {
