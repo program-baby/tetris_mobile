@@ -1451,6 +1451,24 @@
       opacity: 0.7;
     }
 
+    .title-room-slot.is-watchable {
+      opacity: 1;
+      border-color: rgba(103, 232, 249, 0.9);
+      box-shadow: 0 0 0 1px rgba(103, 232, 249, 0.22);
+    }
+
+    .title-room-action {
+      justify-self: start;
+      margin-top: 4px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #22d3ee;
+      color: #06111f;
+      font-size: 0.72rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+
     .title-room-slot strong {
       font-size: 0.92rem;
     }
@@ -5580,7 +5598,7 @@
         const mode = getTitleRoomMode(roomKey);
         const hostName = room?.host?.name || "";
         const guestName = room?.guest?.name || "";
-        button.classList.remove("is-empty", "is-joinable", "is-busy");
+        button.classList.remove("is-empty", "is-joinable", "is-busy", "is-watchable");
         if (hasFirebaseConfig() && !firebaseReady && !room) {
           button.classList.add("is-busy");
           button.disabled = true;
@@ -5596,9 +5614,9 @@
           button.disabled = false;
           button.innerHTML = `<strong>ROOM ${roomKey}</strong><small>${hostName} さんが待機中です。タップするとこの部屋へ参加します。</small>`;
         } else if (mode === "watch") {
-          button.classList.add("is-busy");
+          button.classList.add("is-busy", "is-watchable");
           button.disabled = false;
-          button.innerHTML = `<strong>ROOM ${roomKey}</strong><small>${hostName || "HOST"} / ${guestName} が対戦中です。タップすると観戦します。</small>`;
+          button.innerHTML = `<strong>ROOM ${roomKey}</strong><small>${hostName || "HOST"} / ${guestName} が対戦中です。</small><span class="title-room-action">観戦</span>`;
         } else {
           button.classList.add("is-busy");
           button.disabled = !!guestName;
