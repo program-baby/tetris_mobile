@@ -21,8 +21,27 @@
     "usernames": {
       "$nameKey": {
         ".read": "auth != null",
-        ".write": "auth != null && (!data.exists() || data.child('ownerUid').val() === auth.uid || !newData.exists())",
-        ".validate": "!newData.exists() || (newData.hasChildren(['name', 'ownerUid', 'updatedAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 20 && newData.child('ownerUid').val() === auth.uid && newData.child('updatedAt').isNumber())"
+        ".write": "auth != null && (!data.exists() || data.child('ownerUid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true || root.child('recoveryClaims').child($nameKey).child(auth.uid).child('ok').val() === true)",
+        ".validate": "!newData.exists() || (newData.hasChildren(['name', 'ownerUid', 'updatedAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 20 && newData.child('ownerUid').isString() && newData.child('ownerUid').val() === auth.uid && newData.child('ownerUid').val().length <= 80 && newData.child('updatedAt').isNumber() && (!newData.child('recoveryIssuedAt').exists() || newData.child('recoveryIssuedAt').isNumber()) && (!newData.child('recoveredAt').exists() || newData.child('recoveredAt').isNumber()))"
+      }
+    },
+
+    "recoverySecrets": {
+      "$nameKey": {
+        ".read": "false",
+        ".write": "auth != null && ((!data.exists() && root.child('usernames').child($nameKey).child('ownerUid').val() === auth.uid) || (!newData.exists() && (data.child('ownerUid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)))",
+        ".validate": "newData.hasChildren(['ownerUid', 'hash', 'issuedAt']) && newData.child('ownerUid').val() === auth.uid && newData.child('hash').isString() && newData.child('hash').val().length === 64 && newData.child('issuedAt').isNumber()"
+      }
+    },
+
+    "recoveryClaims": {
+      "$nameKey": {
+        ".write": "auth != null && !newData.exists() && (root.child('recoverySecrets').child($nameKey).child('ownerUid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
+        "$uid": {
+          ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)",
+          ".write": "auth != null && auth.uid === $uid && root.child('recoverySecrets').child($nameKey).child('hash').val() === newData.child('proofHash').val()",
+          ".validate": "newData.hasChildren(['ok', 'proofHash', 'createdAt']) && newData.child('ok').val() === true && newData.child('proofHash').isString() && newData.child('proofHash').val().length === 64 && newData.child('createdAt').isNumber()"
+        }
       }
     },
 

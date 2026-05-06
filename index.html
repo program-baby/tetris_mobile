@@ -100,6 +100,19 @@
       display: grid;
     }
 
+    .app.mode-spectator .board-score-hud,
+    .app.mode-spectator .combo-hud,
+    .app.mode-spectator #game,
+    .app.mode-spectator #pause,
+    .app.mode-spectator #restart,
+    .app.mode-spectator .controls {
+      display: none;
+    }
+
+    .app.mode-spectator {
+      padding-bottom: calc(var(--viewport-bottom-gap) + 8px);
+    }
+
     .versus-room {
       display: flex;
       justify-content: space-between;
@@ -223,38 +236,53 @@
       align-items: start;
     }
 
+    .app.mode-versus .versus-layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
+    }
+
     .versus-main {
       display: grid;
       gap: 6px;
       min-width: 0;
     }
 
+    .app.mode-versus .versus-main {
+      display: none;
+    }
+
     .versus-side {
       display: grid;
       gap: 6px;
       align-content: start;
+      min-width: 0;
     }
 
     .versus-opponent {
       display: grid;
-      gap: 4px;
-      justify-items: center;
+      gap: 6px;
+      justify-items: stretch;
+      min-width: 0;
+      padding: 6px;
+      border: 1px solid rgba(103, 232, 249, 0.24);
+      border-radius: 8px;
+      background: rgba(2, 6, 23, 0.28);
     }
 
     .versus-head {
       width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 6px;
+      display: grid;
+      gap: 2px;
       font-size: 0.6rem;
       color: var(--muted);
     }
 
     .versus-name {
       color: #f8fafc;
-      font-weight: 700;
-      font-size: 0.66rem;
+      font-weight: 800;
+      font-size: 0.74rem;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
     }
 
     .versus-sync {
@@ -263,14 +291,85 @@
       font-size: 0.56rem;
     }
 
+    .app.mode-versus .versus-sync {
+      display: none;
+    }
+
     #opponent-board {
-      width: 88px;
-      height: 176px;
+      width: min(100%, 118px);
+      height: auto;
+      aspect-ratio: 1 / 2;
       border: 2px solid var(--line);
       background: rgba(2, 6, 23, 0.25);
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
       display: block;
       margin: 0 auto;
+    }
+
+    .spectator-board-grid {
+      display: none;
+      width: min(100%, 460px);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      align-items: start;
+    }
+
+    .app.mode-spectator .spectator-board-grid {
+      display: grid;
+    }
+
+    .spectator-board-card {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+      padding: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.34);
+      border-radius: 8px;
+      background: rgba(2, 6, 23, 0.46);
+    }
+
+    .spectator-board-head {
+      display: grid;
+      gap: 2px;
+      min-height: 44px;
+    }
+
+    .spectator-role {
+      color: #67e8f9;
+      font-size: 0.58rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+
+    .spectator-name {
+      color: #f8fafc;
+      font-size: 0.78rem;
+      font-weight: 800;
+      line-height: 1.1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .spectator-state {
+      color: #cbd5e1;
+      font-size: 0.58rem;
+      font-weight: 700;
+    }
+
+    .spectator-board-card canvas {
+      width: 100%;
+      aspect-ratio: 1 / 2;
+      border: 2px solid var(--line);
+      background: rgba(2, 6, 23, 0.25);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+    }
+
+    .spectator-stats {
+      display: grid;
+      gap: 2px;
+      color: #cbd5e1;
+      font-size: 0.62rem;
     }
 
     .versus-meta {
@@ -1919,6 +2018,32 @@
         </div>
         <div id="status" class="status-text"></div>
         <canvas id="game" width="300" height="600" aria-label="Tetris"></canvas>
+        <div id="spectator-board-grid" class="spectator-board-grid" aria-label="Spectator boards">
+          <div class="spectator-board-card">
+            <div class="spectator-board-head">
+              <span class="spectator-role">HOST</span>
+              <strong id="spectator-host-name" class="spectator-name">HOST</strong>
+              <span id="spectator-host-state" class="spectator-state">WAIT</span>
+            </div>
+            <canvas id="spectator-host-board" width="120" height="240" aria-label="Host board"></canvas>
+            <div class="spectator-stats">
+              <div class="versus-meta-row"><span>SCORE</span><strong id="spectator-host-score">0</strong></div>
+              <div class="versus-meta-row"><span>LINES</span><strong id="spectator-host-lines">0</strong></div>
+            </div>
+          </div>
+          <div class="spectator-board-card">
+            <div class="spectator-board-head">
+              <span class="spectator-role">GUEST</span>
+              <strong id="spectator-guest-name" class="spectator-name">GUEST</strong>
+              <span id="spectator-guest-state" class="spectator-state">WAIT</span>
+            </div>
+            <canvas id="spectator-guest-board" width="120" height="240" aria-label="Guest board"></canvas>
+            <div class="spectator-stats">
+              <div class="versus-meta-row"><span>SCORE</span><strong id="spectator-guest-score">0</strong></div>
+              <div class="versus-meta-row"><span>LINES</span><strong id="spectator-guest-lines">0</strong></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <aside id="sidePanel" class="panel right-info">
@@ -2090,6 +2215,13 @@
           <input id="player-name-input" class="lobby-input" type="text" inputmode="text" maxlength="12" placeholder="ランキングと対戦で使う名前">
           <button id="player-name-confirm" class="player-name-confirm" type="button">OK</button>
         </div>
+        <div class="player-name-row" id="player-recovery-row" style="display:none;">
+          <input id="player-recovery-input" class="lobby-input" type="text" inputmode="text" maxlength="32" placeholder="復旧コード">
+          <button id="player-recovery-confirm" class="player-name-confirm" type="button">復旧</button>
+        </div>
+        <button id="player-recovery-issue" class="ghost tool-btn" type="button" style="display:none;">復旧コードを発行</button>
+        <div id="player-recovery-result" class="player-name-status" style="display:none;" aria-live="polite"></div>
+        <button id="player-recovery-copy" class="ghost tool-btn" type="button" style="display:none;">復旧コードをコピー</button>
         <div id="player-name-status" class="player-name-status" aria-live="polite"></div>
       </div>
         <p class="service-note">対戦機能はサーバーの月間無料枠を使い切り次第、その月は終了します。月をまたぐと無料枠は復活します。</p>
@@ -2372,6 +2504,12 @@
     const opponentCanvas = document.getElementById("opponent-board");
     const opponentCtx = opponentCanvas.getContext("2d");
     opponentCtx.scale(OPPONENT_BLOCK, OPPONENT_BLOCK);
+    const spectatorHostCanvas = document.getElementById("spectator-host-board");
+    const spectatorHostCtx = spectatorHostCanvas.getContext("2d");
+    spectatorHostCtx.scale(12, 12);
+    const spectatorGuestCanvas = document.getElementById("spectator-guest-board");
+    const spectatorGuestCtx = spectatorGuestCanvas.getContext("2d");
+    spectatorGuestCtx.scale(12, 12);
 
     const scoreEl = document.getElementById("score");
     const linesEl = document.getElementById("lines");
@@ -2421,6 +2559,12 @@
     const versusRoomBackBtn = document.getElementById("versus-room-back");
     const titleRoomSlotEls = Array.from(document.querySelectorAll("[data-room-slot]"));
     const playerNameInputEl = document.getElementById("player-name-input");
+    const playerRecoveryRowEl = document.getElementById("player-recovery-row");
+    const playerRecoveryInputEl = document.getElementById("player-recovery-input");
+    const playerRecoveryConfirmBtn = document.getElementById("player-recovery-confirm");
+    const playerRecoveryIssueBtn = document.getElementById("player-recovery-issue");
+    const playerRecoveryResultEl = document.getElementById("player-recovery-result");
+    const playerRecoveryCopyBtn = document.getElementById("player-recovery-copy");
     const playerNameConfirmBtn = document.getElementById("player-name-confirm");
     const playerNameStatusEl = document.getElementById("player-name-status");
     const titleModeNoteEl = document.getElementById("title-mode-note");
@@ -2467,6 +2611,14 @@
     const opponentLinesEl = document.getElementById("opponent-lines");
     const opponentStateEl = document.getElementById("opponent-state");
     const versusLogEl = document.getElementById("versus-log");
+    const spectatorHostNameEl = document.getElementById("spectator-host-name");
+    const spectatorHostStateEl = document.getElementById("spectator-host-state");
+    const spectatorHostScoreEl = document.getElementById("spectator-host-score");
+    const spectatorHostLinesEl = document.getElementById("spectator-host-lines");
+    const spectatorGuestNameEl = document.getElementById("spectator-guest-name");
+    const spectatorGuestStateEl = document.getElementById("spectator-guest-state");
+    const spectatorGuestScoreEl = document.getElementById("spectator-guest-score");
+    const spectatorGuestLinesEl = document.getElementById("spectator-guest-lines");
     const recordCelebrationEl = document.getElementById("record-celebration");
     const recordScoreEl = document.getElementById("record-score");
     const boardBestScoreEl = document.getElementById("board-best-score");
@@ -2557,6 +2709,7 @@
     let firebaseVersusWinsRef = null;
     let firebaseVersusWinsListener = null;
     let firebaseSession = null;
+    let spectatorRoomSnapshot = null;
     let firebaseCountdownSyncPending = false;
     let globalPlayStats = { today: 0, total: 0 };
     let sharedSoloRanking = null;
@@ -2571,6 +2724,7 @@
     let versusFinishTimer = null;
     let playerNameCheckTimer = null;
     let playerNameCheckToken = 0;
+    let latestIssuedRecoveryCode = "";
     let selectedLobbyRoomId = "";
     let titleRoomSnapshots = {};
     let titleRoomRefs = [];
@@ -3447,7 +3601,7 @@
 
         const metaEl = document.createElement("div");
         metaEl.className = "admin-user-meta";
-        metaEl.textContent = `owner: ${entry.ownerUid || "-"} / updated: ${updated} / reports: ${reportCount}`;
+        metaEl.textContent = `owner: ${entry.ownerUid || "-"} / recovery: ${entry.recoveryIssuedAt ? "発行済み" : "未発行"} / updated: ${updated} / reports: ${reportCount}`;
 
         const actionsEl = document.createElement("div");
         actionsEl.className = "admin-room-actions";
@@ -3697,6 +3851,7 @@
         .map((entry) => ({
           name: sanitizePlayerName(entry.name),
           ownerUid: entry.ownerUid || "",
+          recoveryIssuedAt: entry.recoveryIssuedAt || 0,
           updatedAt: entry.updatedAt || 0
         }))
         .filter((entry) => entry.name);
@@ -3730,7 +3885,12 @@
       if (!safeName) return false;
       const ok = await initFirebaseAdapter();
       if (!ok) return false;
-      await firebaseDb.ref(`usernames/${getPlayerNameKey(safeName)}`).remove();
+      const key = getPlayerNameKey(safeName);
+      await firebaseDb.ref().update({
+        [`usernames/${key}`]: null,
+        [`recoverySecrets/${key}`]: null,
+        [`recoveryClaims/${key}`]: null
+      });
       if (getStoredPlayerName() === safeName) {
         localStorage.removeItem(PLAYER_NAME_KEY);
         if (versusRoomState) {
@@ -4417,6 +4577,46 @@
       }
     }
 
+    function drawSnapshotBoard(targetCtx, snapshot) {
+      targetCtx.fillStyle = "#020617";
+      targetCtx.fillRect(0, 0, COLS, ROWS);
+      drawGrid(targetCtx, COLS, ROWS);
+      if (!snapshot) return;
+      drawMatrix(targetCtx, snapshot.board || createBoard(), { x: 0, y: 0 });
+      if (
+        !snapshot.gameOver &&
+        snapshot.piece &&
+        Array.isArray(snapshot.piece.matrix) &&
+        snapshot.piece.pos
+      ) {
+        drawMatrix(targetCtx, snapshot.piece.matrix, snapshot.piece.pos);
+      }
+    }
+
+    function getSpectatorPlayerState(player) {
+      if (!player?.name) return "WAIT";
+      if (player.state === "LEFT") return "LEFT";
+      if (player.game?.gameOver || player.state === "LOSE") return "LOSE";
+      if (player.state === "WIN") return "WIN";
+      if (player.game && !player.game.paused) return "LIVE";
+      return player.state || (player.ready ? "READY" : "WAIT");
+    }
+
+    function renderSpectatorBoards(room = spectatorRoomSnapshot) {
+      const host = room?.host || {};
+      const guest = room?.guest || {};
+      spectatorHostNameEl.textContent = host.name || "HOST";
+      spectatorHostStateEl.textContent = getSpectatorPlayerState(host);
+      spectatorHostScoreEl.textContent = String(host.game?.score || 0);
+      spectatorHostLinesEl.textContent = String(host.game?.lines || 0);
+      spectatorGuestNameEl.textContent = guest.name || "GUEST";
+      spectatorGuestStateEl.textContent = getSpectatorPlayerState(guest);
+      spectatorGuestScoreEl.textContent = String(guest.game?.score || 0);
+      spectatorGuestLinesEl.textContent = String(guest.game?.lines || 0);
+      drawSnapshotBoard(spectatorHostCtx, host.game);
+      drawSnapshotBoard(spectatorGuestCtx, guest.game);
+    }
+
     function updateRemoteHud(remote) {
       if (!remote) {
         opponentScoreEl.textContent = "0";
@@ -4470,6 +4670,10 @@
       };
     }
 
+    function isSpectatorSession() {
+      return firebaseSession?.role === "spectator";
+    }
+
     function sanitizePlayerName(value) {
       return (value || "").trim().slice(0, 12);
     }
@@ -4500,9 +4704,24 @@
         playerNameInputEl.value = stored === "PLAYER" ? "" : stored;
         playerNameInputEl.disabled = isPlayerNameLocked();
       }
+      if (playerRecoveryRowEl) {
+        playerRecoveryRowEl.style.display = "none";
+      }
+      if (playerRecoveryInputEl) {
+        playerRecoveryInputEl.value = "";
+      }
+      if (playerRecoveryIssueBtn) {
+        playerRecoveryIssueBtn.style.display = stored && stored !== "PLAYER" ? "" : "none";
+      }
+      if (playerRecoveryResultEl) {
+        playerRecoveryResultEl.style.display = latestIssuedRecoveryCode ? "" : "none";
+      }
+      if (playerRecoveryCopyBtn) {
+        playerRecoveryCopyBtn.style.display = latestIssuedRecoveryCode ? "" : "none";
+      }
       syncPlayerNameConfirmButton();
       if (stored && stored !== "PLAYER") {
-        setPlayerNameStatus("このユーザー名で固定されています", "is-available");
+        setPlayerNameStatus("このユーザー名で固定されています。復旧コードを保存しておくとUID変更時に戻せます。", "is-available");
       } else {
         setPlayerNameStatus("ユーザー名を入力してください");
       }
@@ -4531,6 +4750,42 @@
 
     function getPlayerNameKey(name) {
       return sanitizePlayerName(name).toLowerCase();
+    }
+
+    function normalizeRecoveryCode(value) {
+      return (value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    }
+
+    function generateRecoveryCode() {
+      const bytes = new Uint8Array(12);
+      crypto.getRandomValues(bytes);
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let raw = "";
+      bytes.forEach((byte) => {
+        raw += alphabet[byte % alphabet.length];
+      });
+      return raw.replace(/(.{4})(?=.)/g, "$1-");
+    }
+
+    async function sha256Hex(value) {
+      const data = new TextEncoder().encode(value);
+      const digest = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+    }
+
+    async function getRecoveryHash(name, code) {
+      return sha256Hex(`${getPlayerNameKey(name)}:${normalizeRecoveryCode(code)}`);
+    }
+
+    function showRecoveryPrompt(name) {
+      if (playerRecoveryRowEl) playerRecoveryRowEl.style.display = "";
+      if (playerRecoveryInputEl) {
+        playerRecoveryInputEl.value = "";
+        playerRecoveryInputEl.focus();
+      }
+      setPlayerNameStatus(`${name} は登録済みです。本人なら復旧コードで復旧できます。`, "is-taken");
     }
 
     function sanitizeLobbyChatText(value) {
@@ -4880,7 +5135,7 @@
       if (result.ok) {
         setPlayerNameStatus("このユーザー名は使用できます", "is-available");
       } else if (result.reason === "duplicate") {
-        setPlayerNameStatus("このユーザー名はすでに使われています", "is-taken");
+        showRecoveryPrompt(name);
       } else {
         setPlayerNameStatus("ユーザー名の確認に失敗しました");
       }
@@ -4909,7 +5164,8 @@
         return { ok: true, name: setStoredPlayerNameLocal(name) };
       }
       const ok = await initFirebaseAdapter();
-      if (!ok || !firebaseAuth?.currentUser?.uid) {
+      if (!ok) return { ok: false, reason: "firebase-unavailable" };
+      if (!firebaseAuth?.currentUser?.uid) {
         return { ok: false, reason: "firebase-unavailable" };
       }
       const uid = firebaseAuth.currentUser.uid;
@@ -4933,6 +5189,115 @@
         await releaseReservedPlayerName(previousName).catch(() => {});
       }
       return { ok: true, name: setStoredPlayerNameLocal(name) };
+    }
+
+    async function issueRecoveryCodeForCurrentPlayer() {
+      const name = getStoredPlayerName();
+      if (!name || name === "PLAYER") {
+        setPlayerNameStatus("先にユーザー名を登録してください");
+        return false;
+      }
+      const ok = await initFirebaseAdapter();
+      if (!ok || !firebaseAuth?.currentUser?.uid) {
+        setPlayerNameStatus("復旧コードの発行に失敗しました");
+        return false;
+      }
+      const uid = firebaseAuth.currentUser.uid;
+      const key = getPlayerNameKey(name);
+      const userRef = firebaseDb.ref(`usernames/${key}`);
+      const userSnapshot = await userRef.once("value");
+      const userRecord = userSnapshot.val();
+      if (!userRecord || userRecord.ownerUid !== uid) {
+        setPlayerNameStatus("このUIDでは復旧コードを発行できません", "is-taken");
+        return false;
+      }
+      if (userRecord.recoveryIssuedAt) {
+        setPlayerNameStatus("復旧コードは発行済みです。再表示はできません。", "is-available");
+        return false;
+      }
+
+      const code = generateRecoveryCode();
+      const hash = await getRecoveryHash(name, code);
+      const now = Date.now();
+      try {
+        await firebaseDb.ref().update({
+          [`recoverySecrets/${key}`]: {
+            ownerUid: uid,
+            hash,
+            issuedAt: now
+          },
+          [`usernames/${key}/recoveryIssuedAt`]: now,
+          [`usernames/${key}/updatedAt`]: now
+        });
+        latestIssuedRecoveryCode = code;
+        if (playerRecoveryResultEl) {
+          playerRecoveryResultEl.style.display = "";
+          playerRecoveryResultEl.textContent = `復旧コード: ${code} / 再表示できません。コピーまたはメモで保存してください。`;
+          playerRecoveryResultEl.classList.add("is-available");
+        }
+        if (playerRecoveryCopyBtn) {
+          playerRecoveryCopyBtn.style.display = "";
+        }
+        setPlayerNameStatus("復旧コードを発行しました。保存しておいてください。", "is-available");
+        return true;
+      } catch (error) {
+        const reason = error?.code || error?.message || "unknown";
+        setPlayerNameStatus(`復旧コードの発行に失敗しました: ${reason}`);
+        titleModeNoteEl.textContent = reason === "PERMISSION_DENIED"
+          ? "Firebase Database Rules が未反映の可能性があります。database rules をデプロイしてください。"
+          : `復旧コードの発行に失敗しました。理由: ${reason}`;
+        titleModeNoteEl.classList.remove("is-info");
+        titleModeNoteEl.classList.add("is-warning");
+        return false;
+      }
+    }
+
+    async function recoverPlayerNameWithCode(nameValue, codeValue) {
+      const name = sanitizePlayerName(nameValue);
+      const code = normalizeRecoveryCode(codeValue);
+      if (!name || !code) {
+        setPlayerNameStatus("ユーザー名と復旧コードを入力してください");
+        return { ok: false, reason: "empty" };
+      }
+      const ok = await initFirebaseAdapter();
+      if (!ok || !firebaseAuth?.currentUser?.uid) {
+        setPlayerNameStatus("復旧に失敗しました");
+        return { ok: false, reason: "firebase-unavailable" };
+      }
+      const uid = firebaseAuth.currentUser.uid;
+      const key = getPlayerNameKey(name);
+      const hash = await getRecoveryHash(name, code);
+      const now = Date.now();
+      await firebaseDb.ref(`recoveryClaims/${key}/${uid}`).set({
+        ok: true,
+        proofHash: hash,
+        createdAt: now
+      });
+      const userRef = firebaseDb.ref(`usernames/${key}`);
+      const result = await userRef.transaction((current) => {
+        if (!current || !current.recoveryIssuedAt || current.ownerUid === uid) return current;
+        return {
+          ...current,
+          ownerUid: uid,
+          recoveredAt: now,
+          updatedAt: now
+        };
+      });
+      const recovered = result.committed && result.snapshot.val()?.ownerUid === uid;
+      if (!recovered) {
+        setPlayerNameStatus("復旧コードが一致しないか、復旧コードが未発行です。", "is-taken");
+        return { ok: false, reason: "recovery-failed" };
+      }
+      setStoredPlayerNameLocal(name);
+      if (playerNameInputEl) playerNameInputEl.disabled = true;
+      if (playerRecoveryRowEl) playerRecoveryRowEl.style.display = "none";
+      if (playerRecoveryIssueBtn) playerRecoveryIssueBtn.style.display = "";
+      syncPlayerNameInput();
+      renderTitleRoomSlots();
+      titleModeNoteEl.textContent = `${name} さんをこの端末に復旧しました。`;
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+      return { ok: true, name };
     }
 
     function getTodayKey() {
@@ -5205,7 +5570,7 @@
       if (!hostName || room?.host?.state === "LEFT") return "create";
       if (hostName === localName && !guestName) return "busy";
       if (!guestName) return "join";
-      return "busy";
+      return "watch";
     }
 
     function renderTitleRoomSlots() {
@@ -5230,6 +5595,10 @@
           button.classList.add("is-joinable");
           button.disabled = false;
           button.innerHTML = `<strong>ROOM ${roomKey}</strong><small>${hostName} さんが待機中です。タップするとこの部屋へ参加します。</small>`;
+        } else if (mode === "watch") {
+          button.classList.add("is-busy");
+          button.disabled = false;
+          button.innerHTML = `<strong>ROOM ${roomKey}</strong><small>${hostName || "HOST"} / ${guestName} が対戦中です。タップすると観戦します。</small>`;
         } else {
           button.classList.add("is-busy");
           button.disabled = !!guestName;
@@ -5261,12 +5630,27 @@
       updateTitleSelection("versus");
       selectedLobbyRoomId = roomKey;
       const mode = getTitleRoomMode(roomKey);
-      selectedLobbyAction = mode === "join" ? "join" : "create";
+      selectedLobbyAction = mode === "watch" ? "watch" : mode === "join" ? "join" : "create";
       startSelectedMode();
     }
 
     function hasFirebaseConfig() {
       return !!(FIREBASE_CONFIG && typeof FIREBASE_CONFIG === "object");
+    }
+
+    function shouldUseFirebaseEmulator() {
+      return location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    }
+
+    function connectFirebaseEmulatorsIfNeeded() {
+      if (!shouldUseFirebaseEmulator() || firebaseApp?.__tetrisEmulatorConnected) return;
+      if (firebaseAuth?.useEmulator) {
+        firebaseAuth.useEmulator("http://127.0.0.1:9099");
+      }
+      if (firebaseDb?.useEmulator) {
+        firebaseDb.useEmulator("127.0.0.1", 9000);
+      }
+      firebaseApp.__tetrisEmulatorConnected = true;
     }
 
     async function initFirebaseAdapter() {
@@ -5287,6 +5671,7 @@
       }
       firebaseDb = firebaseApp.database ? firebaseApp.database() : window.firebase.database();
       firebaseAuth = firebaseApp.auth ? firebaseApp.auth() : window.firebase.auth();
+      connectFirebaseEmulatorsIfNeeded();
       if (firebaseAuth.setPersistence && window.firebase.auth?.Auth?.Persistence?.LOCAL) {
         await firebaseAuth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
       }
@@ -5395,6 +5780,7 @@
 
     async function leaveFirebaseRoom(reason = ROOM_EVENT.ROOM_LEAVE) {
       if (!firebaseSession || !firebaseReady) return false;
+      if (isSpectatorSession()) return false;
       const { roomId: activeRoomId, role } = firebaseSession;
       clearFirebaseDisconnectHandlers();
       const roomRef = firebaseDb.ref(`rooms/${activeRoomId}`);
@@ -5477,6 +5863,7 @@
     }
 
     function syncVersusStartFromRoom(roomId, roomPhase, roomStartAt, bothReady, roomFinished, localRole) {
+      if (localRole === "spectator") return;
       if (bothReady && localRole === "host" && (!roomStartAt || roomPhase === ROOM_PHASE.WAITING)) {
         ensureFirebaseRoomStartAt(roomId).catch(() => {});
         if (!versusStartAtMs && !versusMatchStarted) {
@@ -5592,6 +5979,7 @@
 
     async function releaseFinishedVersusRoom(reason = ROOM_EVENT.ROOM_FINISHED) {
       if (versusRoomReleased || !firebaseSession || !firebaseReady) return false;
+      if (isSpectatorSession()) return false;
       versusRoomReleased = true;
       const finishedRoomId = firebaseSession.roomId;
       clearFirebaseDisconnectHandlers();
@@ -5679,6 +6067,24 @@
         playerName: guestName
       };
       await registerFirebaseDisconnectHandlers(roomId, "guest");
+      return {
+        ok: true,
+        room
+      };
+    }
+
+    async function watchFirebaseRoom(roomId, spectatorName) {
+      const ok = await initFirebaseAdapter();
+      if (!ok) return { ok: false, reason: "missing-config" };
+      const snapshot = await firebaseDb.ref(`rooms/${roomId}`).once("value");
+      const room = snapshot.val();
+      if (!room) return { ok: false, reason: "room-missing" };
+      if (!room.host?.name || !room.guest?.name) return { ok: false, reason: "room-not-playing" };
+      firebaseSession = {
+        role: "spectator",
+        roomId,
+        playerName: spectatorName
+      };
       return {
         ok: true,
         room
@@ -5791,6 +6197,15 @@
         const room = snapshot.val();
         if (!room || !firebaseSession) return;
         const localRole = firebaseSession.role;
+        if (localRole === "spectator") {
+          spectatorRoomSnapshot = room;
+          const roomPhase = room.phase || room.status || ROOM_PHASE.WAITING;
+          versusStatusEl.textContent = `FIREBASE ROOM ${roomId}: 観戦中 (${roomPhase})`;
+          applyVersusRoomSnapshot(room, "host", "guest");
+          renderVersusRoomHud();
+          renderSpectatorBoards(room);
+          return;
+        }
         const remoteRole = localRole === "host" ? "guest" : "host";
         const { local, remote, roomPhase } = applyVersusRoomSnapshot(room, localRole, remoteRole);
         if (!versusStartAtMs && !versusMatchStarted) {
@@ -5834,6 +6249,7 @@
       versusRemoteReadyEl.textContent = versusRoomState.players.remote.ready ? "YES" : "NO";
       versusRemoteGarbageSentEl.textContent = String(versusRoomState.players.remote.garbageSent);
       versusRemoteGarbagePendingEl.textContent = String(versusRoomState.players.remote.garbagePending);
+      opponentNameEl.textContent = versusRoomState.players.remote.name || "WAITING...";
 
       versusLastEventEl.textContent = versusRoomState.lastEvent;
       versusEventCountEl.textContent = String(versusRoomState.eventCount);
@@ -5859,9 +6275,11 @@
       if (selectedGameMode === "versus") {
         titleModeNoteEl.classList.remove("is-warning");
         titleModeNoteEl.classList.add("is-info");
-        titleModeNoteEl.textContent = action === "join"
-          ? "参加可能な ROOM を選ぶと、その部屋へ参加します。"
-          : "空いている ROOM を選ぶと、その部屋で待機を開始します。";
+        titleModeNoteEl.textContent = action === "watch"
+          ? "対戦中の ROOM を選ぶと、2人の盤面を観戦できます。"
+          : action === "join"
+            ? "参加可能な ROOM を選ぶと、その部屋へ参加します。"
+            : "空いている ROOM を選ぶと、その部屋で待機を開始します。";
       }
     }
 
@@ -5992,7 +6410,7 @@
     }
 
     async function markFirebaseRoomPlaying() {
-      if (!firebaseSession || !firebaseReady) return false;
+      if (!firebaseSession || !firebaseReady || isSpectatorSession()) return false;
       const roomRef = firebaseDb.ref(`rooms/${firebaseSession.roomId}`);
       await roomRef.update(buildFirebaseRoomPhaseUpdate(ROOM_PHASE.PLAYING, ROOM_EVENT.GAME_START));
       return true;
@@ -6019,6 +6437,7 @@
     }
 
     function completeVersusMatchStart(statusText = "") {
+      if (isSpectatorSession()) return;
       if (versusMatchStarted || versusTerminal) return;
       waitingForOpponent = false;
       ensureWaitingTimer(false);
@@ -6050,6 +6469,7 @@
     }
 
     function beginVersusCountdown(statusText = "") {
+      if (isSpectatorSession()) return;
       if (currentGameMode !== "versus" || versusMatchStarted || versusTerminal || !versusStartAtMs || versusCountdownEndsAt) return;
       waitingForOpponent = false;
       ensureWaitingTimer(false);
@@ -6070,6 +6490,7 @@
     }
 
     function beginVersusMatch(statusText = "", startAtMs = Date.now() + 3000) {
+      if (isSpectatorSession()) return;
       if (currentGameMode !== "versus" || versusMatchStarted || versusTerminal) return;
       if (versusStartAtMs && versusStartAtMs > Date.now()) {
         if (statusText) versusStatusEl.textContent = `${statusText} 同期完了後に3カウントを開始します。`;
@@ -6092,6 +6513,7 @@
     }
 
     function handleVersusStartTiming() {
+      if (isSpectatorSession()) return;
       const versusFinished = currentGameMode === "versus" && (versusTerminal || versusRoomState?.phase === ROOM_PHASE.FINISHED);
       if (currentGameMode !== "versus" || versusFinished || !versusStartAtMs || versusMatchStarted) {
         return;
@@ -6401,6 +6823,7 @@
     function setGameMode(mode, options = {}) {
       currentGameMode = mode;
       appEl.classList.toggle("mode-versus", mode === "versus");
+      appEl.classList.toggle("mode-spectator", mode === "versus" && !!options.spectator);
       if (mode === "versus") {
         versusRoomReleased = false;
         playCountCommittedForMatch = false;
@@ -6422,11 +6845,14 @@
         roomIdEl.textContent = roomId;
         opponentNameEl.textContent = remoteName;
         versusStatusEl.textContent = options.statusText || "LOCAL ROOM: 相手参加待ちです。";
+        spectatorRoomSnapshot = options.spectatorRoom || null;
         remoteState = null;
         updateRemoteHud(null);
+        renderSpectatorBoards(spectatorRoomSnapshot);
         renderVersusRoomHud();
         renderTitleRoomSlots();
       } else {
+        appEl.classList.remove("mode-spectator");
         versusRoomReleased = false;
         playCountCommittedForMatch = false;
         versusTerminal = false;
@@ -6445,11 +6871,13 @@
         ensureWaitingTimer(false);
         roomId = "----";
         versusRoomState = null;
+        spectatorRoomSnapshot = null;
         firebaseSession = null;
         roomIdEl.textContent = roomId;
         versusStatusEl.textContent = "対戦ロビー初期化前です。";
         remoteState = null;
         updateRemoteHud(null);
+        renderSpectatorBoards(null);
         renderTitleRoomSlots();
       }
       renderTitleSessionInfo();
@@ -6491,9 +6919,7 @@
       unlockAudio();
       let shouldStart = true;
       const lockedName = getStoredPlayerName();
-      const claimedName = isPlayerNameLocked()
-        ? { ok: true, name: lockedName, locked: true }
-        : await claimAndSavePlayerName(playerNameInputEl.value);
+      const claimedName = await claimAndSavePlayerName(playerNameInputEl.value);
       const savedName = claimedName.ok ? claimedName.name : lockedName;
       if (!savedName || savedName === "PLAYER") {
         titleModeNoteEl.textContent = "先にユーザー名を入力してください。ランキングと対戦相手表示に使います。";
@@ -6505,10 +6931,11 @@
       }
       if (!claimedName.ok) {
         titleModeNoteEl.textContent = claimedName.reason === "duplicate"
-          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
+          ? "そのユーザー名は登録済みです。本人の場合は復旧コードで復旧できます。"
           : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
+        if (claimedName.reason === "duplicate") showRecoveryPrompt(playerNameInputEl.value);
         playerNameInputEl.focus();
         return;
       }
@@ -6517,9 +6944,11 @@
       versusWinRecorded = false;
       const showLoading = selectedGameMode === "versus";
       if (showLoading) {
-        setTitleStartLoading(true, selectedLobbyAction === "join"
-          ? "ROOM ID を確認して部屋へ参加しています..."
-          : "対戦ルームを準備して待機画面へ移動しています...");
+        setTitleStartLoading(true, selectedLobbyAction === "watch"
+          ? "ROOM ID を確認して観戦画面を準備しています..."
+          : selectedLobbyAction === "join"
+            ? "ROOM ID を確認して部屋へ参加しています..."
+            : "対戦ルームを準備して待機画面へ移動しています...");
       }
       try {
         if (selectedGameMode === "versus") {
@@ -6535,22 +6964,31 @@
           if (hasFirebaseConfig()) {
             const result = selectedLobbyAction === "join"
               ? await joinFirebaseRoom(requestedRoomId, savedName)
+              : selectedLobbyAction === "watch"
+                ? await watchFirebaseRoom(requestedRoomId, savedName)
               : await createFirebaseRoom(requestedRoomId || createRoomId(), savedName);
             if (result.ok) {
               await subscribeFirebaseRoom(result.room.roomId);
+              const watching = selectedLobbyAction === "watch";
               roomOptions = {
                 roomId: result.room.roomId,
-                localName: savedName,
-                remoteName: selectedLobbyAction === "join"
+                localName: watching ? (result.room.host?.name || "HOST") : savedName,
+                remoteName: watching
+                  ? (result.room.guest?.name || "GUEST")
+                  : selectedLobbyAction === "join"
                   ? (result.room.host?.name || "HOST")
                   : "WAITING...",
-                localState: "SYNC",
-                remoteState: selectedLobbyAction === "join" ? "HOST" : "WAIT",
-                remoteReady: selectedLobbyAction === "join",
-                waitForOpponent: true,
+                localState: watching ? (result.room.host?.state || "HOST") : "SYNC",
+                remoteState: watching ? (result.room.guest?.state || "GUEST") : selectedLobbyAction === "join" ? "HOST" : "WAIT",
+                remoteReady: watching || selectedLobbyAction === "join",
+                waitForOpponent: !watching,
                 matchStarted: false,
+                spectator: watching,
+                spectatorRoom: watching ? result.room : null,
                 waitStartedAt: result.room.createdAt || Date.now(),
-                statusText: selectedLobbyAction === "join"
+                statusText: watching
+                  ? `FIREBASE WATCH: ROOM ${result.room.roomId} を観戦中です。`
+                  : selectedLobbyAction === "join"
                   ? `FIREBASE JOIN: ROOM ${result.room.roomId} に参加しました。開始同期を待っています。`
                   : `FIREBASE CREATE: ROOM ${result.room.roomId} を作成しました。guest を待機中です。`
               };
@@ -6564,7 +7002,9 @@
                   ? `ROOM ${requestedRoomId} は満員です。別の部屋を選んでください。`
                   : result.reason === "room-missing"
                     ? `ROOM ${requestedRoomId} が見つかりません。`
-                    : "Firebase 接続に失敗しました。時間をおいて再度お試しください。";
+                    : result.reason === "room-not-playing"
+                      ? `ROOM ${requestedRoomId} はまだ観戦できる状態ではありません。`
+                      : "Firebase 接続に失敗しました。時間をおいて再度お試しください。";
               return;
             }
           }
@@ -6595,7 +7035,9 @@
       if (!(selectedGameMode === "versus" && waitingForOpponent)) {
         titleScreenEl.classList.remove("is-open");
       }
-      state.paused = selectedGameMode === "versus" ? waitingForOpponent : false;
+      state.paused = selectedGameMode === "versus"
+        ? (waitingForOpponent || selectedLobbyAction === "watch")
+        : false;
       updateHUD(state);
       updateBgmPlayback();
       if (currentGameMode === "versus" && versusMatchStarted) syncVersusPreview(true);
@@ -6945,7 +7387,7 @@
     playerNameInputEl.addEventListener("input", () => {
       if (isPlayerNameLocked()) {
         playerNameInputEl.value = getStoredPlayerName();
-        setPlayerNameStatus("このユーザー名で固定されています", "is-available");
+        setPlayerNameStatus("このユーザー名でログイン済みです", "is-available");
         syncPlayerNameConfirmButton();
         return;
       }
@@ -6980,13 +7422,15 @@
       const result = await checkPlayerNameAvailability(currentValue).catch(() => ({ ok: false, reason: "firebase-unavailable" }));
       if (!result.ok) {
         titleModeNoteEl.textContent = result.reason === "duplicate"
-          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
+          ? "そのユーザー名は登録済みです。本人の場合は復旧コードで復旧できます。"
           : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
-        setPlayerNameStatus(result.reason === "duplicate"
-          ? "このユーザー名はすでに使われています"
-          : "ユーザー名の確認に失敗しました", result.reason === "duplicate" ? "is-taken" : "");
+        if (result.reason === "duplicate") {
+          showRecoveryPrompt(currentValue);
+        } else {
+          setPlayerNameStatus("ユーザー名の確認に失敗しました");
+        }
       }
     });
     playerNameConfirmBtn.addEventListener("click", async () => {
@@ -7007,13 +7451,15 @@
       const result = await claimAndSavePlayerName(typedName);
       if (!result.ok) {
         titleModeNoteEl.textContent = result.reason === "duplicate"
-          ? "そのユーザー名はすでに使われています。別の名前を入力してください。"
+          ? "そのユーザー名は登録済みです。本人の場合は復旧コードで復旧できます。"
           : "ユーザー名の確認に失敗しました。時間をおいて再度お試しください。";
         titleModeNoteEl.classList.remove("is-info");
         titleModeNoteEl.classList.add("is-warning");
-        setPlayerNameStatus(result.reason === "duplicate"
-          ? "このユーザー名はすでに使われています"
-          : "ユーザー名の確認に失敗しました", result.reason === "duplicate" ? "is-taken" : "");
+        if (result.reason === "duplicate") {
+          showRecoveryPrompt(typedName);
+        } else {
+          setPlayerNameStatus("ユーザー名の確認に失敗しました");
+        }
         syncPlayerNameConfirmButton();
         return;
       }
@@ -7023,6 +7469,37 @@
       syncPlayerNameInput();
       renderTitleRoomSlots();
     });
+    if (playerRecoveryConfirmBtn) {
+      playerRecoveryConfirmBtn.addEventListener("click", async () => {
+        await recoverPlayerNameWithCode(playerNameInputEl.value, playerRecoveryInputEl?.value || "");
+      });
+    }
+    if (playerRecoveryInputEl) {
+      playerRecoveryInputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          playerRecoveryConfirmBtn?.click();
+        }
+      });
+    }
+    if (playerRecoveryIssueBtn) {
+      playerRecoveryIssueBtn.addEventListener("click", () => {
+        issueRecoveryCodeForCurrentPlayer().catch(() => {
+          setPlayerNameStatus("復旧コードの発行に失敗しました");
+        });
+      });
+    }
+    if (playerRecoveryCopyBtn) {
+      playerRecoveryCopyBtn.addEventListener("click", async () => {
+        if (!latestIssuedRecoveryCode) return;
+        try {
+          await navigator.clipboard.writeText(latestIssuedRecoveryCode);
+          setPlayerNameStatus("復旧コードをコピーしました", "is-available");
+        } catch (_) {
+          setPlayerNameStatus("コピーできませんでした。コードを選択してコピーしてください。");
+        }
+      });
+    }
     titleRulesBtn.addEventListener("click", () => {
       openRulesModal();
     });

@@ -7,7 +7,32 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "package.json",
+      "package-lock.json",
+      "database.rules.json",
+      "playwright.config.js",
+      "database-debug.log",
+      "firebase-debug.log",
+      "local-server*.log",
+      "e2e/**",
+      ".github/**"
     ]
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "database": {
+      "port": 9000
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
+    "singleProjectMode": true
   }
 }
