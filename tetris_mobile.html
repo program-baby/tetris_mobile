@@ -1469,6 +1469,11 @@
       line-height: 1;
     }
 
+    .title-room-slot.is-cpu {
+      border-color: rgba(250, 204, 21, 0.9);
+      box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.2);
+    }
+
     .title-room-slot strong {
       font-size: 0.92rem;
     }
@@ -2186,6 +2191,11 @@
         <aside id="title-room-panel" class="title-room-panel" aria-live="polite">
           <div class="title-room-panel-head">公開ルーム</div>
           <div class="title-room-list">
+            <button type="button" class="title-room-slot is-cpu" data-cpu-versus>
+              <strong>CPU対戦</strong>
+              <small>通信なしでCPUと対戦します。</small>
+              <span class="title-room-action">開始</span>
+            </button>
             <button type="button" class="title-room-slot is-empty" data-room-slot="GATE1">
               <strong>ROOM GATE1</strong>
               <small>空き部屋です。タップすると待機を開始します。</small>
@@ -2576,6 +2586,7 @@
     const titleVersusStageEl = document.getElementById("title-versus-stage");
     const versusRoomBackBtn = document.getElementById("versus-room-back");
     const titleRoomSlotEls = Array.from(document.querySelectorAll("[data-room-slot]"));
+    const cpuVersusBtn = document.querySelector("[data-cpu-versus]");
     const playerNameInputEl = document.getElementById("player-name-input");
     const playerRecoveryRowEl = document.getElementById("player-recovery-row");
     const playerRecoveryInputEl = document.getElementById("player-recovery-input");
@@ -2746,6 +2757,11 @@
     let selectedLobbyRoomId = "";
     let titleRoomSnapshots = {};
     let titleRoomRefs = [];
+    let cpuVersusActive = false;
+    let cpuState = null;
+    let cpuThinkTimer = 0;
+    let cpuMoveDelayMs = 720;
+    let cpuGarbageQueue = [];
     let adminUsernames = [];
     let adminReportCounts = {};
     let lobbyChatRef = null;
@@ -2788,6 +2804,7 @@
       ROOM_FINISHED: "room:finished",
       ROOM_LEAVE: "room:leave"
     });
+    const CPU_RIVAL_NAME = "CPU RIVAL";
     const BOARD_OFFSET_KEY = "tetrisBoardOffsetV1";
     const CONTROLS_OFFSET_KEY = "tetrisControlsOffsetV1";
     const BGM_ENABLED_KEY = "tetrisBgmEnabledV1";
@@ -5652,6 +5669,14 @@
       startSelectedMode();
     }
 
+    function handleCpuVersusSelect() {
+      updateTitleSelection("versus");
+      selectedLobbyRoomId = "CPU";
+      selectedLobbyAction = "cpu";
+      updateLobbyAction("cpu");
+      startSelectedMode();
+    }
+
     function hasFirebaseConfig() {
       return !!(FIREBASE_CONFIG && typeof FIREBASE_CONFIG === "object");
     }
@@ -6301,6 +6326,8 @@
         titleModeNoteEl.classList.add("is-info");
         titleModeNoteEl.textContent = action === "watch"
           ? "対戦中の ROOM を選ぶと、2人の盤面を観戦できます。"
+          : action === "cpu"
+          ? "CPUと通信なしで対戦できます。"
           : action === "join"
             ? "参加可能な ROOM を選ぶと、その部屋へ参加します。"
             : "空いている ROOM を選ぶと、その部屋で待機を開始します。";
@@ -6350,6 +6377,10 @@
         lines,
         source
       });
+      if (cpuVersusActive) {
+        cpuGarbageQueue.push(lines);
+        return;
+      }
       sendFirebaseGarbage(lines, source).catch(() => {});
     }
 
@@ -6384,8 +6415,195 @@
       setStatus(state, `GARBAGE ${total}`, 1000);
     }
 
+    function getBoardStats(board) {
+      const heights = Array(COLS).fill(0);
+      let holes = 0;
+      for (let x = 0; x < COLS; x++) {
+        let blockSeen = false;
+        for (let y = 0; y < ROWS; y++) {
+          if (board[y][x]) {
+            if (!blockSeen) heights[x] = ROWS - y;
+            blockSeen = true;
+          } else if (blockSeen) {
+            holes++;
+          }
+        }
+      }
+      let bumpiness = 0;
+      for (let x = 0; x < COLS - 1; x++) bumpiness += Math.abs(heights[x] - heights[x + 1]);
+      return {
+        aggregateHeight: heights.reduce((sum, value) => sum + value, 0),
+        bumpiness,
+        holes
+      };
+    }
+
+    function getCpuRotations(piece) {
+      const rotations = [];
+      let matrix = cloneMatrix(SHAPES[piece.type]);
+      for (let i = 0; i < 4; i++) {
+        const key = JSON.stringify(matrix);
+        if (!rotations.some((item) => item.key === key)) {
+          rotations.push({ key, matrix: cloneMatrix(matrix) });
+        }
+        matrix = rotate(matrix);
+      }
+      return rotations;
+    }
+
+    function evaluateCpuPlacement(board, pieceType) {
+      let best = null;
+      for (const rotation of getCpuRotations({ type: pieceType })) {
+        const matrix = rotation.matrix;
+        for (let x = -matrix[0].length + 1; x < COLS; x++) {
+          const testPiece = { type: pieceType, matrix: cloneMatrix(matrix), pos: { x, y: 0 } };
+          if (collide(board, testPiece)) continue;
+          while (!collide(board, testPiece)) testPiece.pos.y++;
+          testPiece.pos.y--;
+          const testBoard = board.map((row) => [...row]);
+          merge(testBoard, testPiece);
+          const cleared = findCompleteRows(testBoard).length;
+          clearRows(testBoard, findCompleteRows(testBoard));
+          const stats = getBoardStats(testBoard);
+          const score = cleared * 10 - stats.holes * 9 - stats.aggregateHeight * 0.42 - stats.bumpiness * 0.72;
+          if (!best || score > best.score) {
+            best = { matrix: cloneMatrix(matrix), x, y: testPiece.pos.y, score };
+          }
+        }
+      }
+      return best;
+    }
+
+    function addCpuScore(cpu, cleared) {
+      if (cleared <= 0) {
+        if (performance.now() > cpu.comboWindowUntil) cpu.combo = -1;
+        return;
+      }
+      const base = SCORE_TABLE.normal[cleared] ?? 0;
+      cpu.lines += cleared;
+      cpu.score += base * cpu.level * Math.min(4, cleared);
+      cpu.level = Math.floor(cpu.lines / 10) + 1;
+      cpu.combo = cpu.combo >= 0 ? cpu.combo + 1 : 0;
+      cpu.comboWindowUntil = performance.now() + COMBO_WINDOW_MS;
+    }
+
+    function flushCpuGarbage() {
+      if (!cpuState || !cpuGarbageQueue.length) return;
+      const total = cpuGarbageQueue.reduce((sum, lines) => sum + lines, 0);
+      cpuGarbageQueue = [];
+      if (applyGarbageRows(cpuState.board, total)) cpuState.gameOver = true;
+      if (versusRoomState) {
+        versusRoomState.players.remote.garbagePending = Math.max(0, versusRoomState.players.remote.garbagePending - total);
+        renderVersusRoomHud();
+      }
+    }
+
+    function sendCpuGarbageToLocal(lines) {
+      const safeLines = Math.max(0, Math.floor(lines || 0));
+      if (!safeLines) return;
+      if (versusRoomState) {
+        versusRoomState.players.remote.garbageSent += safeLines;
+        versusRoomState.players.local.garbagePending += safeLines;
+        versusRoomState.garbageQueue.incoming.push(safeLines);
+        versusRoomState.lastEvent = ROOM_EVENT.GARBAGE_SEND;
+        versusRoomState.eventCount += 1;
+        renderVersusRoomHud();
+      }
+      enqueueIncomingGarbage(state, safeLines);
+    }
+
+    function updateCpuRemoteHud() {
+      if (!cpuState) return;
+      updateRemoteHud(serializeGameState(cpuState));
+      if (versusRoomState) {
+        versusRoomState.players.remote.state = cpuState.gameOver ? "LOSE" : "LIVE";
+        renderVersusRoomHud();
+      }
+    }
+
+    function finishCpuVersusWin() {
+      if (versusTerminal && !cpuVersusActive) return;
+      state.paused = true;
+      versusMatchStarted = false;
+      versusTerminal = true;
+      cpuVersusActive = false;
+      if (versusRoomState) {
+        versusRoomState.phase = ROOM_PHASE.FINISHED;
+        versusRoomState.players.local.state = "WIN";
+        versusRoomState.players.remote.state = "LOSE";
+        renderVersusRoomHud();
+      }
+      versusResultLabel = "YOU WIN";
+      versusStatusEl.textContent = "CPU対戦: CPUがゲームオーバーしました。あなたの勝利です。";
+      setStatus(state, "YOU WIN", 1800);
+      updateHUD(state);
+      scheduleVersusFinishReturn("CPUに勝利しました。タイトル画面へ戻りました。", 1800);
+    }
+
+    function finishCpuVersusLose() {
+      if (versusTerminal && !cpuVersusActive) return;
+      versusMatchStarted = false;
+      versusTerminal = true;
+      cpuVersusActive = false;
+      state.paused = true;
+      if (versusRoomState) {
+        versusRoomState.phase = ROOM_PHASE.FINISHED;
+        versusRoomState.players.local.state = "LOSE";
+        versusRoomState.players.remote.state = "WIN";
+        renderVersusRoomHud();
+      }
+      versusResultLabel = "YOU LOSE";
+      versusStatusEl.textContent = "CPU対戦: あなたがゲームオーバーです。CPUの勝利です。";
+      setStatus(state, "YOU LOSE", 1800);
+      updateHUD(state);
+      scheduleVersusFinishReturn("CPUに敗北しました。タイトル画面へ戻りました。", 1800);
+    }
+
+    function performCpuMove() {
+      if (!cpuVersusActive || !cpuState || cpuState.gameOver || cpuState.paused || cpuState.clearing) return;
+      flushCpuGarbage();
+      if (cpuState.gameOver) {
+        updateCpuRemoteHud();
+        finishCpuVersusWin();
+        return;
+      }
+      const move = evaluateCpuPlacement(cpuState.board, cpuState.piece.type);
+      if (!move) {
+        cpuState.gameOver = true;
+        updateCpuRemoteHud();
+        finishCpuVersusWin();
+        return;
+      }
+      cpuState.piece.matrix = cloneMatrix(move.matrix);
+      cpuState.piece.pos.x = move.x;
+      cpuState.piece.pos.y = move.y;
+      merge(cpuState.board, cpuState.piece);
+      cpuState.piecesLocked++;
+      const rows = findCompleteRows(cpuState.board);
+      const cleared = clearRows(cpuState.board, rows);
+      addCpuScore(cpuState, cleared);
+      sendCpuGarbageToLocal(calculateGarbageLines(cleared));
+      spawnNext(cpuState);
+      updateCpuRemoteHud();
+      if (cpuState.gameOver) finishCpuVersusWin();
+    }
+
+    function updateCpuOpponent(delta) {
+      if (!cpuVersusActive || !cpuState || !versusMatchStarted || state.paused || state.gameOver || versusTerminal) return;
+      cpuState.activeMs += Math.max(0, Math.min(delta, 1000));
+      cpuThinkTimer += delta;
+      if (cpuThinkTimer >= cpuMoveDelayMs) {
+        cpuThinkTimer = 0;
+        performCpuMove();
+      }
+    }
+
     function syncVersusPreview(force = false) {
       if (currentGameMode !== "versus" || waitingForOpponent || !versusMatchStarted) return;
+      if (cpuVersusActive) {
+        updateCpuRemoteHud();
+        return;
+      }
       const now = performance.now();
       if (!force && now - remoteStateTimer < 120) return;
       remoteStateTimer = now;
@@ -6853,6 +7071,10 @@
         playCountCommittedForMatch = false;
         versusTerminal = false;
         versusResultLabel = "";
+        cpuVersusActive = !!options.cpu;
+        cpuState = cpuVersusActive ? createState() : null;
+        cpuThinkTimer = 0;
+        cpuGarbageQueue = [];
         processedGarbageIds = new Set();
         waitingForOpponent = !!options.waitForOpponent;
         versusMatchStarted = !!options.matchStarted;
@@ -6874,9 +7096,14 @@
         updateRemoteHud(null);
         renderSpectatorBoards(spectatorRoomSnapshot);
         renderVersusRoomHud();
+        if (cpuVersusActive) updateCpuRemoteHud();
         renderTitleRoomSlots();
       } else {
         appEl.classList.remove("mode-spectator");
+        cpuVersusActive = false;
+        cpuState = null;
+        cpuThinkTimer = 0;
+        cpuGarbageQueue = [];
         versusRoomReleased = false;
         playCountCommittedForMatch = false;
         versusTerminal = false;
@@ -6970,13 +7197,17 @@
       if (showLoading) {
         setTitleStartLoading(true, selectedLobbyAction === "watch"
           ? "ROOM ID を確認して観戦画面を準備しています..."
+          : selectedLobbyAction === "cpu"
+          ? "CPU対戦を準備しています..."
           : selectedLobbyAction === "join"
             ? "ROOM ID を確認して部屋へ参加しています..."
             : "対戦ルームを準備して待機画面へ移動しています...");
       }
       try {
         if (selectedGameMode === "versus") {
-          const requestedRoomId = (selectedLobbyRoomId || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+          const requestedRoomId = selectedLobbyAction === "cpu"
+            ? "CPU"
+            : (selectedLobbyRoomId || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
           if (!requestedRoomId) {
             titleModeNoteEl.textContent = "左の ROOM カードをタップして待機または参加してください。";
             titleModeNoteEl.classList.remove("is-info");
@@ -6985,7 +7216,20 @@
             return;
           }
           let roomOptions = null;
-          if (hasFirebaseConfig()) {
+          if (selectedLobbyAction === "cpu") {
+            roomOptions = {
+              roomId: "CPU",
+              localName: savedName,
+              remoteName: CPU_RIVAL_NAME,
+              localState: "LIVE",
+              remoteState: "LIVE",
+              remoteReady: true,
+              waitForOpponent: false,
+              matchStarted: true,
+              cpu: true,
+              statusText: "CPU対戦: 開始しました。"
+            };
+          } else if (hasFirebaseConfig()) {
             const result = selectedLobbyAction === "join"
               ? await joinFirebaseRoom(requestedRoomId, savedName)
               : selectedLobbyAction === "watch"
@@ -7102,6 +7346,7 @@
       if (!state.paused && !state.gameOver) {
         state.activeMs += Math.max(0, Math.min(delta, 1000));
       }
+      updateCpuOpponent(delta);
 
       if (state.clearing) {
         const elapsed = performance.now() - state.clearing.startedAt;
@@ -7137,7 +7382,9 @@
           renderVersusRoomHud();
         }
         emitGameEvent("gameOver", { score: state.score, lines: state.lines });
-        if (currentGameMode === "versus") {
+        if (cpuVersusActive) {
+          finishCpuVersusLose();
+        } else if (currentGameMode === "versus") {
           finalizeLocalVersusLose(roomId);
         } else {
           setStatus(state, "画面をタップしてタイトルへ戻る", 60 * 60 * 1000);
@@ -7243,14 +7490,29 @@
         versusWinRecorded = false;
         updateHUD(state);
         if (currentGameMode === "versus") {
-          versusRoomState = createVersusRoomState();
-          clearVersusCountdown();
-          waitingForOpponent = true;
-          versusMatchStarted = false;
-          waitingStartedAt = Date.now();
-          versusStatusEl.textContent = `LOCAL ROOM ${roomId}: リセットして再同期しました。`;
-          renderVersusRoomHud();
-          updateRemoteHud(null);
+          if (cpuVersusActive || selectedLobbyAction === "cpu") {
+            setGameMode("versus", {
+              roomId: "CPU",
+              localName: getStoredPlayerName(),
+              remoteName: CPU_RIVAL_NAME,
+              localState: "LIVE",
+              remoteState: "LIVE",
+              remoteReady: true,
+              matchStarted: true,
+              cpu: true,
+              statusText: "CPU対戦: リセットしました。"
+            });
+            state.paused = false;
+          } else {
+            versusRoomState = createVersusRoomState();
+            clearVersusCountdown();
+            waitingForOpponent = true;
+            versusMatchStarted = false;
+            waitingStartedAt = Date.now();
+            versusStatusEl.textContent = `LOCAL ROOM ${roomId}: リセットして再同期しました。`;
+            renderVersusRoomHud();
+            updateRemoteHud(null);
+          }
         }
         restartBtn.classList.remove("holding");
         restartBtn.textContent = "リセット長押し";
@@ -7397,6 +7659,11 @@
       startSelectedMode();
     });
     modeVersusBtn.addEventListener("click", () => updateTitleSelection("versus"));
+    cpuVersusBtn?.addEventListener("click", handleCpuVersusSelect);
+    cpuVersusBtn?.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      handleCpuVersusSelect();
+    }, { passive: false });
     versusRoomBackBtn.addEventListener("click", () => updateTitleSelection("single"));
     versusRoomBackBtn.addEventListener("touchstart", (e) => {
       e.preventDefault();
