@@ -269,6 +269,169 @@
       background: rgba(2, 6, 23, 0.28);
     }
 
+    .app.mode-cpu-versus .versus-opponent {
+      border-color: rgba(34, 211, 238, 0.62);
+      background: linear-gradient(180deg, rgba(8, 47, 73, 0.48), rgba(2, 6, 23, 0.34));
+      box-shadow: 0 0 20px rgba(34, 211, 238, 0.16);
+    }
+
+    .cpu-avatar {
+      display: none;
+      grid-template-columns: 46px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+      padding: 6px;
+      border: 1px solid rgba(125, 211, 252, 0.34);
+      border-radius: 8px;
+      background:
+        radial-gradient(circle at 12% 16%, rgba(244, 114, 182, 0.18), transparent 28%),
+        rgba(2, 6, 23, 0.36);
+    }
+
+    .app.mode-cpu-versus .cpu-avatar {
+      display: grid;
+    }
+
+    .cpu-avatar-face {
+      position: relative;
+      width: 46px;
+      aspect-ratio: 1;
+      border-radius: 42% 42% 48% 48%;
+      background:
+        radial-gradient(circle at 32% 52%, rgba(244, 114, 182, 0.72) 0 8%, transparent 9%),
+        radial-gradient(circle at 68% 52%, rgba(244, 114, 182, 0.72) 0 8%, transparent 9%),
+        radial-gradient(circle at 35% 39%, #f8fafc 0 9%, transparent 10%),
+        radial-gradient(circle at 65% 39%, #f8fafc 0 9%, transparent 10%),
+        radial-gradient(circle at 36% 40%, #0891b2 0 4%, transparent 5%),
+        radial-gradient(circle at 66% 40%, #0891b2 0 4%, transparent 5%),
+        linear-gradient(145deg, #cffafe, #67e8f9 54%, #22d3ee);
+      box-shadow:
+        inset 0 -8px 10px rgba(14, 116, 144, 0.24),
+        0 0 0 2px rgba(34, 211, 238, 0.34),
+        0 0 16px rgba(34, 211, 238, 0.48);
+      overflow: visible;
+    }
+
+    .cpu-avatar-face::before,
+    .cpu-avatar-face::after {
+      content: "";
+      position: absolute;
+      background: #bae6fd;
+      box-shadow: 0 0 8px rgba(186, 230, 253, 0.8);
+    }
+
+    .cpu-avatar-face::before {
+      width: 16px;
+      height: 8px;
+      left: 15px;
+      bottom: 8px;
+      border-radius: 0 0 999px 999px;
+      background: transparent;
+      border-bottom: 3px solid #0e7490;
+      box-shadow: none;
+    }
+
+    .cpu-avatar-face::after {
+      width: 62px;
+      height: 18px;
+      left: -8px;
+      top: -8px;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 10% 50%, #22d3ee 0 18%, transparent 19%),
+        radial-gradient(circle at 90% 50%, #22d3ee 0 18%, transparent 19%);
+      box-shadow: none;
+      z-index: -1;
+    }
+
+    .cpu-avatar-info {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .cpu-avatar-name {
+      color: #f0fdfa;
+      font-size: 0.82rem;
+      font-weight: 900;
+      line-height: 1.05;
+    }
+
+    .cpu-avatar-mood {
+      color: #67e8f9;
+      font-size: 0.56rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .cpu-avatar.is-thinking .cpu-avatar-face {
+      animation: neonPulse 1.2s ease-in-out infinite;
+    }
+
+    .cpu-avatar.is-action .cpu-avatar-face {
+      transform: rotate(-5deg) translateY(-1px);
+      box-shadow:
+        0 0 0 2px rgba(250, 204, 21, 0.42),
+        0 0 18px rgba(250, 204, 21, 0.42);
+    }
+
+    .cpu-avatar.is-danger .cpu-avatar-face {
+      background:
+        radial-gradient(circle at 32% 52%, rgba(251, 113, 133, 0.76) 0 8%, transparent 9%),
+        radial-gradient(circle at 68% 52%, rgba(251, 113, 133, 0.76) 0 8%, transparent 9%),
+        radial-gradient(circle at 35% 39%, #facc15 0 9%, transparent 10%),
+        radial-gradient(circle at 65% 39%, #facc15 0 9%, transparent 10%),
+        linear-gradient(145deg, #fef3c7, #67e8f9 52%, #fb7185);
+    }
+
+    .cpu-avatar.is-worried .cpu-avatar-face {
+      transform: translateY(1px);
+      background:
+        radial-gradient(circle at 32% 52%, rgba(148, 163, 184, 0.6) 0 8%, transparent 9%),
+        radial-gradient(circle at 68% 52%, rgba(148, 163, 184, 0.6) 0 8%, transparent 9%),
+        radial-gradient(ellipse at 35% 42%, #0f172a 0 8%, transparent 9%),
+        radial-gradient(ellipse at 65% 42%, #0f172a 0 8%, transparent 9%),
+        linear-gradient(145deg, #bae6fd, #7dd3fc 52%, #94a3b8);
+      box-shadow:
+        inset 0 -8px 10px rgba(15, 23, 42, 0.22),
+        0 0 0 2px rgba(148, 163, 184, 0.36),
+        0 0 12px rgba(148, 163, 184, 0.28);
+    }
+
+    .cpu-avatar.is-worried .cpu-avatar-face::before {
+      width: 14px;
+      left: 16px;
+      bottom: 7px;
+      border-bottom: 0;
+      border-top: 3px solid #0f172a;
+      border-radius: 999px 999px 0 0;
+    }
+
+    .cpu-avatar.is-win .cpu-avatar-face {
+      box-shadow:
+        0 0 0 2px rgba(250, 204, 21, 0.58),
+        0 0 22px rgba(250, 204, 21, 0.64);
+    }
+
+    .cpu-avatar.is-lose {
+      opacity: 0.72;
+    }
+
+    .cpu-avatar.is-lose .cpu-avatar-face::before {
+      width: 14px;
+      left: 16px;
+      bottom: 7px;
+      border-bottom: 0;
+      border-top: 3px solid #0e7490;
+      border-radius: 999px 999px 0 0;
+    }
+
+    @keyframes neonPulse {
+      0%, 100% { transform: translateY(0); filter: brightness(1); }
+      50% { transform: translateY(-1px); filter: brightness(1.22); }
+    }
+
     .versus-head {
       width: 100%;
       display: grid;
@@ -2125,6 +2288,13 @@
             </div>
             <div class="versus-side">
               <div class="versus-opponent">
+                <div id="cpu-avatar" class="cpu-avatar is-thinking" aria-hidden="true">
+                  <div class="cpu-avatar-face"></div>
+                  <div class="cpu-avatar-info">
+                    <div class="cpu-avatar-name">ネオン</div>
+                    <div id="cpu-avatar-mood" class="cpu-avatar-mood">解析中</div>
+                  </div>
+                </div>
                 <div class="versus-head">
                   <span id="opponent-name" class="versus-name">OPPONENT</span>
                   <span id="sync-badge" class="versus-sync">LOCAL SYNC</span>
@@ -2639,6 +2809,8 @@
     const opponentScoreEl = document.getElementById("opponent-score");
     const opponentLinesEl = document.getElementById("opponent-lines");
     const opponentStateEl = document.getElementById("opponent-state");
+    const cpuAvatarEl = document.getElementById("cpu-avatar");
+    const cpuAvatarMoodEl = document.getElementById("cpu-avatar-mood");
     const versusLogEl = document.getElementById("versus-log");
     const spectatorHostNameEl = document.getElementById("spectator-host-name");
     const spectatorHostStateEl = document.getElementById("spectator-host-state");
@@ -2761,6 +2933,8 @@
     let cpuState = null;
     let cpuThinkTimer = 0;
     let cpuMoveDelayMs = 720;
+    let cpuActionTimer = 0;
+    let cpuPlan = null;
     let cpuGarbageQueue = [];
     let adminUsernames = [];
     let adminReportCounts = {};
@@ -2804,7 +2978,7 @@
       ROOM_FINISHED: "room:finished",
       ROOM_LEAVE: "room:leave"
     });
-    const CPU_RIVAL_NAME = "CPU RIVAL";
+    const CPU_RIVAL_NAME = "ネオン";
     const BOARD_OFFSET_KEY = "tetrisBoardOffsetV1";
     const CONTROLS_OFFSET_KEY = "tetrisControlsOffsetV1";
     const BGM_ENABLED_KEY = "tetrisBgmEnabledV1";
@@ -5682,16 +5856,23 @@
     }
 
     function shouldUseFirebaseEmulator() {
-      return location.hostname === "localhost" || location.hostname === "127.0.0.1";
+      return location.port === "5000" && (
+        location.hostname === "localhost" ||
+        location.hostname === "127.0.0.1" ||
+        /^192\.168\.\d+\.\d+$/.test(location.hostname) ||
+        /^10\.\d+\.\d+\.\d+$/.test(location.hostname) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/.test(location.hostname)
+      );
     }
 
     function connectFirebaseEmulatorsIfNeeded() {
       if (!shouldUseFirebaseEmulator() || firebaseApp?.__tetrisEmulatorConnected) return;
+      const emulatorHost = location.hostname === "localhost" ? "127.0.0.1" : location.hostname;
       if (firebaseAuth?.useEmulator) {
-        firebaseAuth.useEmulator("http://127.0.0.1:9099");
+        firebaseAuth.useEmulator(`http://${emulatorHost}:9099`, { disableWarnings: true });
       }
       if (firebaseDb?.useEmulator) {
-        firebaseDb.useEmulator("127.0.0.1", 9000);
+        firebaseDb.useEmulator(emulatorHost, 9000);
       }
       firebaseApp.__tetrisEmulatorConnected = true;
     }
@@ -6444,7 +6625,7 @@
       for (let i = 0; i < 4; i++) {
         const key = JSON.stringify(matrix);
         if (!rotations.some((item) => item.key === key)) {
-          rotations.push({ key, matrix: cloneMatrix(matrix) });
+          rotations.push({ key, matrix: cloneMatrix(matrix), turns: i });
         }
         matrix = rotate(matrix);
       }
@@ -6467,11 +6648,70 @@
           const stats = getBoardStats(testBoard);
           const score = cleared * 10 - stats.holes * 9 - stats.aggregateHeight * 0.42 - stats.bumpiness * 0.72;
           if (!best || score > best.score) {
-            best = { matrix: cloneMatrix(matrix), x, y: testPiece.pos.y, score };
+            best = { matrix: cloneMatrix(matrix), key: rotation.key, turns: rotation.turns, x, y: testPiece.pos.y, score };
           }
         }
       }
       return best;
+    }
+
+    function createCpuPlan() {
+      const placement = evaluateCpuPlacement(cpuState.board, cpuState.piece.type);
+      if (!placement) return null;
+      return {
+        targetKey: placement.key,
+        targetX: placement.x,
+        rotationsRemaining: placement.turns,
+        settling: false
+      };
+    }
+
+    function moveCpuPiece(dir) {
+      cpuState.piece.pos.x += dir;
+      if (collide(cpuState.board, cpuState.piece)) {
+        cpuState.piece.pos.x -= dir;
+        return false;
+      }
+      return true;
+    }
+
+    function rotateCpuPiece() {
+      const originalMatrix = cpuState.piece.matrix;
+      const originalX = cpuState.piece.pos.x;
+      cpuState.piece.matrix = rotate(cpuState.piece.matrix);
+      const kicks = [0, -1, 1, -2, 2];
+      for (const k of kicks) {
+        cpuState.piece.pos.x = originalX + k;
+        if (!collide(cpuState.board, cpuState.piece)) return true;
+      }
+      cpuState.piece.matrix = originalMatrix;
+      cpuState.piece.pos.x = originalX;
+      return false;
+    }
+
+    function lockCpuPiece() {
+      merge(cpuState.board, cpuState.piece);
+      cpuState.piecesLocked++;
+      const rows = findCompleteRows(cpuState.board);
+      const cleared = clearRows(cpuState.board, rows);
+      addCpuScore(cpuState, cleared);
+      sendCpuGarbageToLocal(calculateGarbageLines(cleared));
+      flushCpuGarbage();
+      spawnNext(cpuState);
+      cpuPlan = null;
+      cpuThinkTimer = 0;
+      updateCpuRemoteHud();
+      if (cpuState.gameOver) finishCpuVersusWin();
+    }
+
+    function softDropCpuPiece() {
+      cpuState.piece.pos.y++;
+      if (collide(cpuState.board, cpuState.piece)) {
+        cpuState.piece.pos.y--;
+        lockCpuPiece();
+      } else {
+        updateCpuRemoteHud();
+      }
     }
 
     function addCpuScore(cpu, cleared) {
@@ -6510,6 +6750,22 @@
         renderVersusRoomHud();
       }
       enqueueIncomingGarbage(state, safeLines);
+      setCpuAvatarMood("action", `攻撃 +${safeLines}`);
+    }
+
+    function getCpuStackHeight() {
+      if (!cpuState) return 0;
+      for (let y = 0; y < ROWS; y++) {
+        if (cpuState.board[y].some((cell) => cell !== 0)) return ROWS - y;
+      }
+      return 0;
+    }
+
+    function setCpuAvatarMood(mood = "thinking", text = "解析中") {
+      if (!cpuAvatarEl) return;
+      cpuAvatarEl.classList.remove("is-thinking", "is-action", "is-danger", "is-worried", "is-win", "is-lose");
+      cpuAvatarEl.classList.add(`is-${mood}`);
+      if (cpuAvatarMoodEl) cpuAvatarMoodEl.textContent = text;
     }
 
     function updateCpuRemoteHud() {
@@ -6519,6 +6775,12 @@
         versusRoomState.players.remote.state = cpuState.gameOver ? "LOSE" : "LIVE";
         renderVersusRoomHud();
       }
+      if (!cpuVersusActive) return;
+      if (cpuState.gameOver) setCpuAvatarMood("lose", "停止中");
+      else if (getCpuStackHeight() >= 13) setCpuAvatarMood("worried", "ちょっと危険");
+      else if (cpuGarbageQueue.length) setCpuAvatarMood("danger", "受信中");
+      else if (cpuPlan) setCpuAvatarMood("action", "操作中");
+      else setCpuAvatarMood("thinking", "解析中");
     }
 
     function finishCpuVersusWin() {
@@ -6534,6 +6796,7 @@
         renderVersusRoomHud();
       }
       versusResultLabel = "YOU WIN";
+      setCpuAvatarMood("lose", "負けました");
       versusStatusEl.textContent = "CPU対戦: CPUがゲームオーバーしました。あなたの勝利です。";
       setStatus(state, "YOU WIN", 1800);
       updateHUD(state);
@@ -6553,13 +6816,14 @@
         renderVersusRoomHud();
       }
       versusResultLabel = "YOU LOSE";
+      setCpuAvatarMood("win", "勝ちました");
       versusStatusEl.textContent = "CPU対戦: あなたがゲームオーバーです。CPUの勝利です。";
       setStatus(state, "YOU LOSE", 1800);
       updateHUD(state);
       scheduleVersusFinishReturn("CPUに敗北しました。タイトル画面へ戻りました。", 1800);
     }
 
-    function performCpuMove() {
+    function performCpuAction() {
       if (!cpuVersusActive || !cpuState || cpuState.gameOver || cpuState.paused || cpuState.clearing) return;
       flushCpuGarbage();
       if (cpuState.gameOver) {
@@ -6567,34 +6831,60 @@
         finishCpuVersusWin();
         return;
       }
-      const move = evaluateCpuPlacement(cpuState.board, cpuState.piece.type);
-      if (!move) {
+      if (!cpuPlan) cpuPlan = createCpuPlan();
+      if (!cpuPlan) {
         cpuState.gameOver = true;
         updateCpuRemoteHud();
         finishCpuVersusWin();
         return;
       }
-      cpuState.piece.matrix = cloneMatrix(move.matrix);
-      cpuState.piece.pos.x = move.x;
-      cpuState.piece.pos.y = move.y;
-      merge(cpuState.board, cpuState.piece);
-      cpuState.piecesLocked++;
-      const rows = findCompleteRows(cpuState.board);
-      const cleared = clearRows(cpuState.board, rows);
-      addCpuScore(cpuState, cleared);
-      sendCpuGarbageToLocal(calculateGarbageLines(cleared));
-      spawnNext(cpuState);
+
+      if (cpuPlan.rotationsRemaining > 0) {
+        if (rotateCpuPiece()) cpuPlan.rotationsRemaining--;
+        else cpuPlan.rotationsRemaining = 0;
+        setCpuAvatarMood("action", "回転中");
+        updateCpuRemoteHud();
+        return;
+      }
+
+      const currentKey = JSON.stringify(cpuState.piece.matrix);
+      if (currentKey !== cpuPlan.targetKey) {
+        rotateCpuPiece();
+        setCpuAvatarMood("action", "回転中");
+        updateCpuRemoteHud();
+        return;
+      }
+
+      if (cpuState.piece.pos.x !== cpuPlan.targetX) {
+        const dir = cpuState.piece.pos.x < cpuPlan.targetX ? 1 : -1;
+        if (!moveCpuPiece(dir)) cpuPlan.targetX = cpuState.piece.pos.x;
+        setCpuAvatarMood("action", dir > 0 ? "右へ移動" : "左へ移動");
+        updateCpuRemoteHud();
+        return;
+      }
+
+      setCpuAvatarMood("action", "落下中");
+      softDropCpuPiece();
       updateCpuRemoteHud();
-      if (cpuState.gameOver) finishCpuVersusWin();
     }
 
     function updateCpuOpponent(delta) {
       if (!cpuVersusActive || !cpuState || !versusMatchStarted || state.paused || state.gameOver || versusTerminal) return;
       cpuState.activeMs += Math.max(0, Math.min(delta, 1000));
-      cpuThinkTimer += delta;
-      if (cpuThinkTimer >= cpuMoveDelayMs) {
+      if (!cpuPlan) {
+        cpuThinkTimer += delta;
+        if (cpuThinkTimer < cpuMoveDelayMs) {
+          setCpuAvatarMood("thinking", "解析中");
+          updateCpuRemoteHud();
+          return;
+        }
+        cpuPlan = createCpuPlan();
         cpuThinkTimer = 0;
-        performCpuMove();
+      }
+      cpuActionTimer += delta;
+      if (cpuActionTimer >= 96) {
+        cpuActionTimer = 0;
+        performCpuAction();
       }
     }
 
@@ -7066,6 +7356,7 @@
       currentGameMode = mode;
       appEl.classList.toggle("mode-versus", mode === "versus");
       appEl.classList.toggle("mode-spectator", mode === "versus" && !!options.spectator);
+      appEl.classList.toggle("mode-cpu-versus", mode === "versus" && !!options.cpu);
       if (mode === "versus") {
         versusRoomReleased = false;
         playCountCommittedForMatch = false;
@@ -7074,6 +7365,8 @@
         cpuVersusActive = !!options.cpu;
         cpuState = cpuVersusActive ? createState() : null;
         cpuThinkTimer = 0;
+        cpuActionTimer = 0;
+        cpuPlan = null;
         cpuGarbageQueue = [];
         processedGarbageIds = new Set();
         waitingForOpponent = !!options.waitForOpponent;
@@ -7091,6 +7384,7 @@
         roomIdEl.textContent = roomId;
         opponentNameEl.textContent = remoteName;
         versusStatusEl.textContent = options.statusText || "LOCAL ROOM: 相手参加待ちです。";
+        if (cpuVersusActive) setCpuAvatarMood("thinking", "解析中");
         spectatorRoomSnapshot = options.spectatorRoom || null;
         remoteState = null;
         updateRemoteHud(null);
@@ -7100,9 +7394,12 @@
         renderTitleRoomSlots();
       } else {
         appEl.classList.remove("mode-spectator");
+        appEl.classList.remove("mode-cpu-versus");
         cpuVersusActive = false;
         cpuState = null;
         cpuThinkTimer = 0;
+        cpuActionTimer = 0;
+        cpuPlan = null;
         cpuGarbageQueue = [];
         versusRoomReleased = false;
         playCountCommittedForMatch = false;
