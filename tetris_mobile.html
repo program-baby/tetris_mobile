@@ -6087,7 +6087,10 @@
       await registerFirebaseDisconnectHandlers(roomId, "guest");
       return {
         ok: true,
-        room
+        room: {
+          ...room,
+          roomId: room.roomId || roomId
+        }
       };
     }
 
@@ -6105,7 +6108,10 @@
       };
       return {
         ok: true,
-        room
+        room: {
+          ...room,
+          roomId: room.roomId || roomId
+        }
       };
     }
 
@@ -6986,10 +6992,11 @@
                 ? await watchFirebaseRoom(requestedRoomId, savedName)
               : await createFirebaseRoom(requestedRoomId || createRoomId(), savedName);
             if (result.ok) {
-              await subscribeFirebaseRoom(result.room.roomId);
+              const activeRoomId = result.room.roomId || requestedRoomId;
+              await subscribeFirebaseRoom(activeRoomId);
               const watching = selectedLobbyAction === "watch";
               roomOptions = {
-                roomId: result.room.roomId,
+                roomId: activeRoomId,
                 localName: watching ? (result.room.host?.name || "HOST") : savedName,
                 remoteName: watching
                   ? (result.room.guest?.name || "GUEST")
@@ -7005,10 +7012,10 @@
                 spectatorRoom: watching ? result.room : null,
                 waitStartedAt: result.room.createdAt || Date.now(),
                 statusText: watching
-                  ? `FIREBASE WATCH: ROOM ${result.room.roomId} を観戦中です。`
+                  ? `FIREBASE WATCH: ROOM ${activeRoomId} を観戦中です。`
                   : selectedLobbyAction === "join"
-                  ? `FIREBASE JOIN: ROOM ${result.room.roomId} に参加しました。開始同期を待っています。`
-                  : `FIREBASE CREATE: ROOM ${result.room.roomId} を作成しました。guest を待機中です。`
+                  ? `FIREBASE JOIN: ROOM ${activeRoomId} に参加しました。開始同期を待っています。`
+                  : `FIREBASE CREATE: ROOM ${activeRoomId} を作成しました。guest を待機中です。`
               };
             } else {
               shouldStart = false;
