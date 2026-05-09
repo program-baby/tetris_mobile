@@ -2936,6 +2936,7 @@
     let cpuActionTimer = 0;
     let cpuPlan = null;
     let cpuGarbageQueue = [];
+    let cpuResultAwaitingTap = false;
     let adminUsernames = [];
     let adminReportCounts = {};
     let lobbyChatRef = null;
@@ -6701,7 +6702,7 @@
       cpuPlan = null;
       cpuThinkTimer = 0;
       updateCpuRemoteHud();
-      if (cpuState.gameOver) finishCpuVersusWin();
+      finalizeCpuDefeatIfNeeded();
     }
 
     function softDropCpuPiece() {
@@ -6783,12 +6784,19 @@
       else setCpuAvatarMood("thinking", "解析中");
     }
 
+    function finalizeCpuDefeatIfNeeded() {
+      if (!cpuState || !cpuState.gameOver || versusTerminal) return false;
+      finishCpuVersusWin();
+      return true;
+    }
+
     function finishCpuVersusWin() {
       if (versusTerminal && !cpuVersusActive) return;
       state.paused = true;
       versusMatchStarted = false;
       versusTerminal = true;
       cpuVersusActive = false;
+      cpuResultAwaitingTap = true;
       if (versusRoomState) {
         versusRoomState.phase = ROOM_PHASE.FINISHED;
         versusRoomState.players.local.state = "WIN";
@@ -6798,9 +6806,8 @@
       versusResultLabel = "YOU WIN";
       setCpuAvatarMood("lose", "負けました");
       versusStatusEl.textContent = "CPU対戦: CPUがゲームオーバーしました。あなたの勝利です。";
-      setStatus(state, "YOU WIN", 1800);
+      setStatus(state, "YOU WIN / 画面をタップして終了", 60 * 60 * 1000);
       updateHUD(state);
-      scheduleVersusFinishReturn("CPUに勝利しました。タイトル画面へ戻りました。", 1800);
     }
 
     function finishCpuVersusLose() {
@@ -6808,6 +6815,7 @@
       versusMatchStarted = false;
       versusTerminal = true;
       cpuVersusActive = false;
+      cpuResultAwaitingTap = true;
       state.paused = true;
       if (versusRoomState) {
         versusRoomState.phase = ROOM_PHASE.FINISHED;
@@ -6818,24 +6826,20 @@
       versusResultLabel = "YOU LOSE";
       setCpuAvatarMood("win", "勝ちました");
       versusStatusEl.textContent = "CPU対戦: あなたがゲームオーバーです。CPUの勝利です。";
-      setStatus(state, "YOU LOSE", 1800);
+      setStatus(state, "YOU LOSE / 画面をタップして終了", 60 * 60 * 1000);
       updateHUD(state);
-      scheduleVersusFinishReturn("CPUに敗北しました。タイトル画面へ戻りました。", 1800);
     }
 
     function performCpuAction() {
-      if (!cpuVersusActive || !cpuState || cpuState.gameOver || cpuState.paused || cpuState.clearing) return;
+      if (!cpuVersusActive || !cpuState || cpuState.paused || cpuState.clearing) return;
+      if (finalizeCpuDefeatIfNeeded()) return;
       flushCpuGarbage();
-      if (cpuState.gameOver) {
-        updateCpuRemoteHud();
-        finishCpuVersusWin();
-        return;
-      }
+      if (finalizeCpuDefeatIfNeeded()) return;
       if (!cpuPlan) cpuPlan = createCpuPlan();
       if (!cpuPlan) {
         cpuState.gameOver = true;
         updateCpuRemoteHud();
-        finishCpuVersusWin();
+        finalizeCpuDefeatIfNeeded();
         return;
       }
 
@@ -6869,7 +6873,9 @@
     }
 
     function updateCpuOpponent(delta) {
-      if (!cpuVersusActive || !cpuState || !versusMatchStarted || state.paused || state.gameOver || versusTerminal) return;
+      if (!cpuVersusActive || !cpuState || !versusMatchStarted || state.gameOver || versusTerminal) return;
+      if (finalizeCpuDefeatIfNeeded()) return;
+      if (state.paused) return;
       cpuState.activeMs += Math.max(0, Math.min(delta, 1000));
       if (!cpuPlan) {
         cpuThinkTimer += delta;
@@ -7362,6 +7368,7 @@
         playCountCommittedForMatch = false;
         versusTerminal = false;
         versusResultLabel = "";
+        cpuResultAwaitingTap = false;
         cpuVersusActive = !!options.cpu;
         cpuState = cpuVersusActive ? createState() : null;
         cpuThinkTimer = 0;
@@ -7405,6 +7412,7 @@
         playCountCommittedForMatch = false;
         versusTerminal = false;
         versusResultLabel = "";
+        cpuResultAwaitingTap = false;
         clearVersusCountdown();
         clearFirebaseDisconnectHandlers();
         if (firebaseRoomRef && firebaseRoomListener) {
@@ -7730,6 +7738,7 @@
         return;
       }
       if (e.key === "p" || e.key === "P") {
+        if (versusTerminal || cpuResultAwaitingTap) return;
         state.paused = !state.paused;
         updateHUD(state);
         return;
@@ -7769,8 +7778,27 @@
       openTitleScreen();
     }
 
+    function handleCpuVersusResultTapReturn(e) {
+      if (!cpuResultAwaitingTap) return;
+      if (currentGameMode !== "versus") return;
+      if (!versusTerminal) return;
+      if (titleScreenEl.classList.contains("is-open")) return;
+      if (rankingModalEl.classList.contains("is-open")) return;
+      if (celebrationOpen) return;
+      if (e) e.preventDefault();
+      cpuResultAwaitingTap = false;
+      selectedLobbyAction = "create";
+      setGameMode("single");
+      openTitleScreen();
+      titleModeNoteEl.textContent = "CPU対戦を終了しました。";
+      titleModeNoteEl.classList.remove("is-warning");
+      titleModeNoteEl.classList.add("is-info");
+    }
+
     appEl.addEventListener("click", handleSingleGameOverTapReturn);
     appEl.addEventListener("touchstart", handleSingleGameOverTapReturn, { passive: false });
+    appEl.addEventListener("click", handleCpuVersusResultTapReturn);
+    appEl.addEventListener("touchstart", handleCpuVersusResultTapReturn, { passive: false });
 
     loadBgmSettings();
     loadBoardOffset();
@@ -7787,7 +7815,7 @@
         versusWinRecorded = false;
         updateHUD(state);
         if (currentGameMode === "versus") {
-          if (cpuVersusActive || selectedLobbyAction === "cpu") {
+          if (cpuVersusActive || appEl.classList.contains("mode-cpu-versus")) {
             setGameMode("versus", {
               roomId: "CPU",
               localName: getStoredPlayerName(),
@@ -7909,6 +7937,7 @@
     bindTap(softBtn, () => drop(state, true));
 
     bindTap(pauseBtn, () => {
+      if (versusTerminal || cpuResultAwaitingTap) return;
       state.paused = !state.paused;
       updateHUD(state);
     });
