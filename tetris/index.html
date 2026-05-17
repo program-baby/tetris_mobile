@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Pixel Arcade</title>
+  <meta name="description" content="ブラウザで遊べる、レトロなオンラインゲームセンター。">
+  <style>
+    :root {
+      --bg: #07080d;
+      --panel: rgba(12, 14, 22, 0.88);
+      --panel-strong: rgba(19, 22, 33, 0.94);
+      --line: rgba(255, 255, 255, 0.15);
+      --text: #f8fafc;
+      --muted: #aeb8c9;
+      --cyan: #22d3ee;
+      --pink: #fb3f86;
+      --yellow: #facc15;
+      --green: #a3e635;
+      --red: #fb7185;
+      --content: min(960px, calc(100vw - 28px));
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(7, 8, 13, 0.46), rgba(7, 8, 13, 0.94)),
+        url("./bg.png") center / cover fixed no-repeat;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      width: var(--content);
+      min-height: 100vh;
+      margin: 0 auto;
+      display: grid;
+      align-content: center;
+      gap: 18px;
+      padding: 28px 0;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      width: fit-content;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      background: #0b0d14;
+    }
+
+    .brand-mark span:nth-child(1) { background: var(--cyan); }
+    .brand-mark span:nth-child(2) { background: var(--pink); }
+    .brand-mark span:nth-child(3) { background: var(--yellow); }
+    .brand-mark span:nth-child(4) { background: var(--green); }
+
+    .hero {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: clamp(22px, 5vw, 42px);
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.48);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(3rem, 11vw, 6.8rem);
+      line-height: 0.92;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      text-shadow: 0 0 28px rgba(34, 211, 238, 0.28);
+    }
+
+    .lead {
+      max-width: 620px;
+      margin: 18px 0 0;
+      color: #dbeafe;
+      font-size: clamp(1.05rem, 2.6vw, 1.28rem);
+      line-height: 1.75;
+      font-weight: 700;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .button {
+      min-height: 50px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 20px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .button.primary {
+      color: #09090f;
+      background: linear-gradient(90deg, var(--yellow), #fb923c);
+      border-color: rgba(250, 204, 21, 0.62);
+    }
+
+    .games {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(240px, 0.42fr);
+      gap: 18px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      padding: 18px;
+    }
+
+    .game-card {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+    }
+
+    .mini-screen {
+      aspect-ratio: 1;
+      border: 6px solid #05060a;
+      background:
+        linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.36)),
+        url("./bg.png") center / cover no-repeat;
+      display: grid;
+      place-items: end center;
+      padding: 10px;
+      color: var(--green);
+      font-size: 0.78rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    h2,
+    h3 {
+      margin: 0;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      font-size: clamp(1.7rem, 4vw, 2.5rem);
+      line-height: 1.05;
+    }
+
+    h3 {
+      font-size: 1rem;
+    }
+
+    .card p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      line-height: 1.65;
+      font-weight: 700;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .badge {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 9px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: var(--cyan);
+      font-size: 0.74rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .soon {
+      display: grid;
+      align-content: space-between;
+      min-height: 100%;
+    }
+
+    .soon strong {
+      color: var(--pink);
+      text-transform: uppercase;
+    }
+
+    .live-board {
+      display: grid;
+      gap: 10px;
+    }
+
+    .live-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 2px;
+    }
+
+    .live-status {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 9px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .live-room {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .live-room-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .room-name {
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .room-state {
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .room-state.waiting { color: var(--yellow); }
+    .room-state.playing { color: var(--green); }
+    .room-state.watch { color: var(--cyan); }
+    .room-state.empty { color: var(--muted); }
+    .room-state.left { color: var(--red); }
+
+    .players {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .player {
+      min-width: 0;
+      padding: 9px;
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .player span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .player strong {
+      display: block;
+      margin-top: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    footer {
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    footer a {
+      color: var(--cyan);
+      font-weight: 900;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        background-attachment: scroll;
+      }
+
+      .page {
+        align-content: start;
+      }
+
+      .games,
+      .game-card {
+        grid-template-columns: 1fr;
+      }
+
+      .mini-screen {
+        min-height: 150px;
+        aspect-ratio: auto;
+      }
+
+      .actions {
+        display: grid;
+      }
+
+      .button {
+        width: 100%;
+      }
+
+      .players {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="brand" aria-label="Pixel Arcade">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+      Pixel Arcade
+    </div>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title">Pixel<br>Arcade</h1>
+      <p class="lead">ブラウザで遊べる、レトロなオンラインゲームセンター。まずはオンライン対戦対応のブロックパズルから。</p>
+      <div class="actions">
+        <a class="button primary" href="./tetris_mobile.html">Play Block Battle</a>
+      </div>
+    </section>
+
+    <section class="games" aria-label="Arcade games">
+      <article class="card game-card">
+        <div class="mini-screen" aria-hidden="true">Online</div>
+        <div>
+          <h2>Block Battle Online</h2>
+          <p>ソロプレイ、対戦ロビー、ランキング、観戦に対応したテトリス風ゲーム。</p>
+          <div class="badges">
+            <span class="badge">Solo</span>
+            <span class="badge">Lobby</span>
+            <span class="badge">Ranking</span>
+            <span class="badge">Watch</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card soon">
+        <div class="live-board" aria-live="polite">
+          <div class="live-head">
+            <h3>Live Rooms</h3>
+            <span id="live-status" class="live-status">Syncing</span>
+          </div>
+          <div id="live-rooms">
+            <p>ルーム状況を読み込み中です。</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <footer>
+      GitHub Pages arcade entrance / Game powered by Firebase /
+      <a href="https://github.com/program-baby/tetris_mobile/issues/new?title=Pixel%20Arcade%20issue&body=%E7%99%BA%E7%94%9F%E3%81%97%E3%81%9F%E5%95%8F%E9%A1%8C%3A%0A%0A%E6%89%8B%E9%A0%86%3A%0A%0A%E7%92%B0%E5%A2%83%28PC%2F%E3%82%B9%E3%83%9E%E3%83%9B%2C%20%E3%83%96%E3%83%A9%E3%82%A6%E3%82%B6%29%3A%0A" target="_blank" rel="noopener">問題報告</a>
+    </footer>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script>
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyCMvK0bVlBXg94Mgafk8k6CLC_VzI__BU4",
+      authDomain: "tetris-mobile-2d560.firebaseapp.com",
+      databaseURL: "https://tetris-mobile-2d560-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "tetris-mobile-2d560",
+      storageBucket: "tetris-mobile-2d560.firebasestorage.app",
+      messagingSenderId: "683914647425",
+      appId: "1:683914647425:web:dd1a316d72c0721b4cba80"
+    };
+
+    const PUBLIC_ROOMS = ["GATE1", "GATE2", "GATE3"];
+    const ROOM_STALE_MS = 5 * 60 * 1000;
+    const liveStatusEl = document.getElementById("live-status");
+    const liveRoomsEl = document.getElementById("live-rooms");
+    const staleCleanupPending = {};
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+
+    function isRoomStale(room) {
+      const hostName = room?.host?.name || "";
+      const guestName = room?.guest?.name || "";
+      const hostLeft = room?.host?.state === "LEFT";
+      const guestLeft = room?.guest?.state === "LEFT";
+      if (!hostName || hostLeft) return false;
+      const basis = Number(room?.updatedAt || room?.createdAt || 0);
+      if (!basis || Date.now() - basis < ROOM_STALE_MS) return false;
+      if (!guestName || guestLeft) return true;
+      const phase = room?.phase || room?.status || "waiting";
+      return phase === "sync"
+        || phase === "countdown"
+        || phase === "playing"
+        || phase === "finished";
+    }
+
+    function getRoomView(room) {
+      if (!room || isRoomStale(room) || room?.host?.state === "LEFT") {
+        return { label: "空き", stateClass: "empty", host: "-", guest: "-" };
+      }
+
+      const host = room.host?.name || "-";
+      const guest = room.guest?.name || "";
+      const phase = room.phase || room.status || "WAITING";
+      const guestLeft = room.guest?.state === "LEFT";
+
+      if (!guest || guestLeft) {
+        return { label: "募集中", stateClass: "waiting", host, guest: "募集中" };
+      }
+
+      if (phase === "playing" || phase === "countdown" || phase === "sync") {
+        return { label: "対戦中", stateClass: "playing", host, guest };
+      }
+
+      if (phase === "finished") {
+        return { label: "終了", stateClass: "left", host, guest };
+      }
+
+      return { label: "観戦可", stateClass: "watch", host, guest };
+    }
+
+    function renderRooms(rooms) {
+      const activeCount = PUBLIC_ROOMS.reduce((count, roomId) => {
+        const view = getRoomView(rooms[roomId]);
+        return view.stateClass === "empty" ? count : count + 1;
+      }, 0);
+
+      liveStatusEl.textContent = activeCount ? `${activeCount} active` : "No active rooms";
+      liveRoomsEl.innerHTML = PUBLIC_ROOMS.map((roomId) => {
+        const view = getRoomView(rooms[roomId]);
+        return `
+          <article class="live-room">
+            <div class="live-room-top">
+              <span class="room-name">ROOM ${escapeHtml(roomId)}</span>
+              <span class="room-state ${view.stateClass}">${escapeHtml(view.label)}</span>
+            </div>
+            <div class="players">
+              <div class="player"><span>Host</span><strong>${escapeHtml(view.host)}</strong></div>
+              <div class="player"><span>Guest</span><strong>${escapeHtml(view.guest)}</strong></div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    async function initLiveRooms() {
+      try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        await firebase.auth().signInAnonymously();
+        const rooms = {};
+        renderRooms(rooms);
+
+        PUBLIC_ROOMS.forEach((roomId) => {
+          const roomRef = firebase.database().ref(`rooms/${roomId}`);
+          roomRef.on("value", (snapshot) => {
+            rooms[roomId] = snapshot.val();
+            if (isRoomStale(rooms[roomId]) && !staleCleanupPending[roomId]) {
+              staleCleanupPending[roomId] = true;
+              roomRef.set(null).catch(() => {}).finally(() => {
+                staleCleanupPending[roomId] = false;
+              });
+            }
+            renderRooms(rooms);
+          });
+        });
+      } catch (error) {
+        liveStatusEl.textContent = "Offline";
+        liveRoomsEl.innerHTML = "<p>ルーム状況を取得できませんでした。</p>";
+      }
+    }
+
+    initLiveRooms();
+  </script>
+</body>
+</html>

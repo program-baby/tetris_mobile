@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "serve": "node scripts/static-server.mjs 4173",
+    "deploy:firebase": "firebase deploy",
     "emulators": "firebase emulators:start --only auth,database,hosting",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
-    "firebase-tools": "^15.16.0",
-    "http-server": "^14.1.1"
+    "firebase-tools": "^15.16.0"
   }
 }

@@ -19,7 +19,7 @@ module.exports = defineConfig({
     }
   ],
   webServer: {
-    command: "npx http-server . -p 4173 -c-1",
+    command: "node scripts/static-server.mjs 4173",
     url: "http://127.0.0.1:4173/index.html",
     reuseExistingServer: !process.env.CI
   }
