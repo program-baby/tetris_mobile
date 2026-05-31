@@ -1,4 +1,4 @@
-name: E2E Tests
+﻿name: E2E Tests
 
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: tetris
+        working-directory: arcade
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,5 +35,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: tetris/playwright-report/
+          path: arcade/playwright-report/
           retention-days: 7

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Pixel Arcade</title>
+  <meta name="description" content="ブラウザで遊べる、レトロなオンラインゲームセンター。">
+  <style>
+    :root {
+      --bg: #07080d;
+      --panel: rgba(12, 14, 22, 0.88);
+      --panel-strong: rgba(19, 22, 33, 0.94);
+      --line: rgba(255, 255, 255, 0.15);
+      --text: #f8fafc;
+      --muted: #aeb8c9;
+      --cyan: #22d3ee;
+      --pink: #fb3f86;
+      --yellow: #facc15;
+      --green: #a3e635;
+      --red: #fb7185;
+      --content: min(960px, calc(100vw - 28px));
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(7, 8, 13, 0.46), rgba(7, 8, 13, 0.94)),
+        url("./bg.png") center / cover fixed no-repeat;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      width: var(--content);
+      min-height: 100vh;
+      margin: 0 auto;
+      display: grid;
+      align-content: center;
+      gap: 18px;
+      padding: 28px 0;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      width: fit-content;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      background: #0b0d14;
+    }
+
+    .brand-mark span:nth-child(1) { background: var(--cyan); }
+    .brand-mark span:nth-child(2) { background: var(--pink); }
+    .brand-mark span:nth-child(3) { background: var(--yellow); }
+    .brand-mark span:nth-child(4) { background: var(--green); }
+
+    .hero {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: clamp(22px, 5vw, 42px);
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.48);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(3rem, 11vw, 6.8rem);
+      line-height: 0.92;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      text-shadow: 0 0 28px rgba(34, 211, 238, 0.28);
+    }
+
+    .lead {
+      max-width: 620px;
+      margin: 18px 0 0;
+      color: #dbeafe;
+      font-size: clamp(1.05rem, 2.6vw, 1.28rem);
+      line-height: 1.75;
+      font-weight: 700;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .button {
+      min-height: 50px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 20px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .button.primary {
+      color: #09090f;
+      background: linear-gradient(90deg, var(--yellow), #fb923c);
+      border-color: rgba(250, 204, 21, 0.62);
+    }
+
+    .games {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      padding: 18px;
+    }
+
+    .game-card {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+    }
+
+    .mini-screen {
+      aspect-ratio: 1;
+      border: 6px solid #05060a;
+      background:
+        linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.36)),
+        url("./bg.png") center / cover no-repeat;
+      display: grid;
+      place-items: end center;
+      padding: 10px;
+      color: var(--green);
+      font-size: 0.78rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .mini-screen.dirt {
+      color: var(--yellow);
+    }
+
+    h2,
+    h3 {
+      margin: 0;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      font-size: clamp(1.7rem, 4vw, 2.5rem);
+      line-height: 1.05;
+    }
+
+    h3 {
+      font-size: 1rem;
+    }
+
+    .card p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      line-height: 1.65;
+      font-weight: 700;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .game-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .game-actions .button {
+      min-height: 40px;
+      padding: 0 14px;
+      font-size: 0.78rem;
+    }
+
+    .badge {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 9px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: var(--cyan);
+      font-size: 0.74rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    footer {
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    footer a {
+      color: var(--cyan);
+      font-weight: 900;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        background-attachment: scroll;
+      }
+
+      .page {
+        align-content: start;
+      }
+
+      .games,
+      .game-card {
+        grid-template-columns: 1fr;
+      }
+
+      .mini-screen {
+        min-height: 150px;
+        aspect-ratio: auto;
+      }
+
+      .actions {
+        display: grid;
+      }
+
+      .button {
+        width: 100%;
+      }
+
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="brand" aria-label="Pixel Arcade">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+      Pixel Arcade
+    </div>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title">Pixel<br>Arcade</h1>
+      <p class="lead">ブラウザで遊べる、レトロなオンラインゲームセンター。まずはオンライン対戦対応のブロックパズルから。</p>
+    </section>
+
+    <section class="games" aria-label="Arcade games">
+      <article class="card game-card">
+        <div class="mini-screen" aria-hidden="true">Online</div>
+        <div>
+          <h2>Block Battle Online</h2>
+          <p>ソロプレイ、対戦ロビー、ランキング、観戦に対応したテトリス風ゲーム。</p>
+          <div class="game-actions">
+            <a class="button primary" href="./tetris_mobile.html">Play</a>
+          </div>
+          <div class="badges">
+            <span class="badge">Solo</span>
+            <span class="badge">Lobby</span>
+            <span class="badge">Ranking</span>
+            <span class="badge">Watch</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card game-card">
+        <div class="mini-screen dirt" aria-hidden="true">Play</div>
+        <div>
+          <h2>Pixel Dirt Rush</h2>
+          <p>ジャンプ台と障害物を越えて最速ゴールを目指す、モトクロス風タイムアタック。</p>
+          <div class="game-actions">
+            <a class="button primary" href="./games/pixel-dirt-rush/">Play</a>
+          </div>
+          <div class="badges">
+            <span class="badge">Race</span>
+            <span class="badge">Time Attack</span>
+            <span class="badge">Mobile OK</span>
+            <span class="badge">MVP</span>
+          </div>
+        </div>
+      </article>
+
+    </section>
+
+    <footer>
+      GitHub Pages arcade entrance / Game powered by Firebase /
+      <a href="https://github.com/program-baby/tetris_mobile/issues/new?title=Pixel%20Arcade%20issue&body=%E7%99%BA%E7%94%9F%E3%81%97%E3%81%9F%E5%95%8F%E9%A1%8C%3A%0A%0A%E6%89%8B%E9%A0%86%3A%0A%0A%E7%92%B0%E5%A2%83%28PC%2F%E3%82%B9%E3%83%9E%E3%83%9B%2C%20%E3%83%96%E3%83%A9%E3%82%A6%E3%82%B6%29%3A%0A" target="_blank" rel="noopener">問題報告</a>
+    </footer>
+  </main>
+</body>
+</html>

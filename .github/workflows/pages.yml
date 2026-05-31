@@ -1,4 +1,4 @@
-name: Deploy GitHub Pages
+﻿name: Deploy GitHub Pages
 
 on:
   push:
@@ -27,10 +27,10 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp tetris/index.html _site/index.html
-          cp tetris/tetris_mobile.html _site/tetris_mobile.html
-          cp tetris/tetris.html _site/tetris.html
-          cp tetris/bg.png _site/bg.png
+          cp arcade/index.html _site/index.html
+          cp arcade/tetris_mobile.html _site/tetris_mobile.html
+          cp arcade/tetris.html _site/tetris.html
+          cp arcade/bg.png _site/bg.png
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

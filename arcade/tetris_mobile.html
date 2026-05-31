@@ -1816,6 +1816,20 @@
       box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.16);
     }
 
+    #support-report-form {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #support-report-input {
+      min-height: 118px;
+      line-height: 1.55;
+      resize: vertical;
+    }
+
+    #support-report-send {
+      justify-self: stretch;
+    }
+
     .lobby-chat-send {
       border: 0;
       border-radius: 10px;
@@ -2441,7 +2455,7 @@
           <button id="title-rules" class="ghost title-start-btn" type="button">ルール</button>
           <button id="title-notice" class="ghost title-start-btn" type="button">お知らせ</button>
           <button id="title-ranking" class="ghost title-start-btn" type="button">ランキング</button>
-          <a class="ghost title-start-btn" href="https://github.com/program-baby/tetris_mobile/issues/new?title=Block%20Battle%20issue&body=%E7%99%BA%E7%94%9F%E3%81%97%E3%81%9F%E5%95%8F%E9%A1%8C%3A%0A%0A%E6%89%8B%E9%A0%86%3A%0A%0A%E3%83%AB%E3%83%BC%E3%83%A0ID%2F%E3%83%A2%E3%83%BC%E3%83%89%3A%0A%0A%E7%92%B0%E5%A2%83%28PC%2F%E3%82%B9%E3%83%9E%E3%83%9B%2C%20%E3%83%96%E3%83%A9%E3%82%A6%E3%82%B6%29%3A%0A" target="_blank" rel="noopener">問題報告</a>
+          <button id="title-support-report" class="ghost title-start-btn" type="button">問題報告</button>
           <button id="title-admin" class="ghost title-start-btn" type="button">管理</button>
         </div>
       </div>
@@ -2562,6 +2576,21 @@
         <button id="lobby-chat-send" class="lobby-chat-send" type="submit">送信</button>
       </form>
       <div id="lobby-chat-status" class="lobby-chat-status" aria-live="polite">ユーザー名を確定すると送信できます。</div>
+    </div>
+  </section>
+
+  <section id="support-report-modal" class="ranking-modal" aria-hidden="true">
+    <div class="ranking-modal-card lobby-chat-modal-card">
+      <div class="ranking-modal-head">
+        <h2 class="ranking-modal-title">問題報告</h2>
+        <button id="support-report-close" class="ghost ranking-close" type="button">×</button>
+      </div>
+      <p class="admin-note">困っていることを短く送れます。GitHubログインは不要です。</p>
+      <form id="support-report-form" class="lobby-chat-form">
+        <textarea id="support-report-input" class="lobby-chat-input" rows="5" maxlength="300" placeholder="例: スマホで回転ボタンが押しづらい / 対戦ルームに入れない"></textarea>
+        <button id="support-report-send" class="lobby-chat-send" type="submit">送信</button>
+      </form>
+      <div id="support-report-status" class="lobby-chat-status" aria-live="polite">内容を入力して送信してください。</div>
     </div>
   </section>
 
@@ -2777,6 +2806,7 @@
     const titleRulesBtn = document.getElementById("title-rules");
     const titleNoticeBtn = document.getElementById("title-notice");
     const titleRankingBtn = document.getElementById("title-ranking");
+    const titleSupportReportBtn = document.getElementById("title-support-report");
     const titleAdminBtn = document.getElementById("title-admin");
     const playCountTodayEl = document.getElementById("play-count-today");
     const playCountTotalEl = document.getElementById("play-count-total");
@@ -2792,6 +2822,12 @@
     const lobbyChatInputEl = document.getElementById("lobby-chat-input");
     const lobbyChatSendBtn = document.getElementById("lobby-chat-send");
     const lobbyChatStatusEl = document.getElementById("lobby-chat-status");
+    const supportReportModalEl = document.getElementById("support-report-modal");
+    const supportReportCloseBtn = document.getElementById("support-report-close");
+    const supportReportFormEl = document.getElementById("support-report-form");
+    const supportReportInputEl = document.getElementById("support-report-input");
+    const supportReportSendBtn = document.getElementById("support-report-send");
+    const supportReportStatusEl = document.getElementById("support-report-status");
     const versusBoxEl = document.getElementById("versus-box");
     const roomIdEl = document.getElementById("room-id");
     const versusStatusEl = document.getElementById("versus-status");
@@ -3698,6 +3734,18 @@
     function closeNoticeModal() {
       noticeModalEl.classList.remove("is-open");
       noticeModalEl.setAttribute("aria-hidden", "true");
+    }
+
+    function openSupportReportModal() {
+      supportReportModalEl.classList.add("is-open");
+      supportReportModalEl.setAttribute("aria-hidden", "false");
+      if (supportReportStatusEl) supportReportStatusEl.textContent = "内容を入力して送信してください。";
+      setTimeout(() => supportReportInputEl?.focus(), 40);
+    }
+
+    function closeSupportReportModal() {
+      supportReportModalEl.classList.remove("is-open");
+      supportReportModalEl.setAttribute("aria-hidden", "true");
     }
 
     function ensureAdminUnlocked() {
@@ -5246,6 +5294,49 @@
       lobbyChatInputEl.value = "";
       setLobbyChatStatus("送信しました。");
       syncLobbyChatInputState();
+    }
+
+    function sanitizeSupportReportText(value) {
+      return String(value || "").replace(/\s+/g, " ").trim().slice(0, 300);
+    }
+
+    async function sendSupportReport(event) {
+      if (event) event.preventDefault();
+      const text = sanitizeSupportReportText(supportReportInputEl?.value || "");
+      if (!text) {
+        supportReportStatusEl.textContent = "内容を入力してください。";
+        supportReportStatusEl.classList.add("is-warning");
+        return;
+      }
+      supportReportSendBtn.disabled = true;
+      supportReportStatusEl.textContent = "送信中...";
+      supportReportStatusEl.classList.remove("is-warning");
+      try {
+        const ok = await initFirebaseAdapter();
+        if (!ok || !firebaseDb || !firebaseAuth?.currentUser?.uid) {
+          throw new Error("firebase unavailable");
+        }
+        await firebaseDb.ref("supportReports").push({
+          uid: firebaseAuth.currentUser.uid,
+          name: getStoredPlayerName(),
+          text,
+          mode: currentGameMode || selectedGameMode || "title",
+          roomId: selectedLobbyRoomId || firebaseSession?.roomId || "",
+          page: location.pathname,
+          userAgent: navigator.userAgent ? navigator.userAgent.slice(0, 160) : "",
+          createdAt: Date.now()
+        });
+        supportReportInputEl.value = "";
+        supportReportStatusEl.textContent = "送信しました。ありがとうございます。";
+        titleModeNoteEl.textContent = "問題報告を送信しました。確認します。";
+        titleModeNoteEl.classList.remove("is-warning");
+        titleModeNoteEl.classList.add("is-info");
+      } catch (_) {
+        supportReportStatusEl.textContent = "送信できませんでした。時間をおいて再度お試しください。";
+        supportReportStatusEl.classList.add("is-warning");
+      } finally {
+        supportReportSendBtn.disabled = false;
+      }
     }
 
     async function muteLobbyUser(uid, name) {
@@ -8151,6 +8242,14 @@
     noticeCloseBtn.addEventListener("click", closeNoticeModal);
     noticeModalEl.addEventListener("click", (e) => {
       if (e.target === noticeModalEl) closeNoticeModal();
+    });
+    titleSupportReportBtn.addEventListener("click", openSupportReportModal);
+    supportReportCloseBtn.addEventListener("click", closeSupportReportModal);
+    supportReportModalEl.addEventListener("click", (e) => {
+      if (e.target === supportReportModalEl) closeSupportReportModal();
+    });
+    supportReportFormEl.addEventListener("submit", (e) => {
+      sendSupportReport(e);
     });
     titleRankingBtn.addEventListener("click", () => {
       openRankingModal();

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Pixel Dirt Rush</title>
+  <meta name="description" content="スマホで遊びやすいレトロなモトクロス風タイムアタックゲーム。">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="game-shell">
+    <header class="topbar">
+      <a class="back-link" href="../../index.html" aria-label="Pixel Arcadeに戻る">Arcade</a>
+      <div class="brand">
+        <span>Pixel Dirt Rush</span>
+        <small>Course 01</small>
+      </div>
+      <button id="pause-button" class="small-button" type="button">Pause</button>
+      <button id="restart-button" class="small-button" type="button">Restart</button>
+    </header>
+
+    <section class="hud" aria-label="Race status">
+      <div>
+        <span>Time</span>
+        <strong id="time-label">00:00.00</strong>
+      </div>
+      <div>
+        <span>Best</span>
+        <strong id="best-label">--:--.--</strong>
+      </div>
+      <div>
+        <span>Crash</span>
+        <strong id="crash-label">0</strong>
+      </div>
+    </section>
+
+    <section class="stage-wrap" aria-label="Pixel Dirt Rush game">
+      <canvas id="game" width="960" height="540"></canvas>
+      <div id="start-screen" class="overlay is-open">
+        <div>
+          <p class="eyebrow">Time Attack</p>
+          <h1>Pixel Dirt Rush</h1>
+          <p>ジャンプ台と泥道を越えて、最速ゴールを狙え。</p>
+          <button id="start-button" class="main-button" type="button">Start Race</button>
+        </div>
+      </div>
+      <div id="result-screen" class="overlay">
+        <div>
+          <p class="eyebrow">Finish</p>
+          <h1 id="result-title">Goal!</h1>
+          <p id="result-detail">Time 00:00.00</p>
+          <button id="retry-button" class="main-button" type="button">Title Screen</button>
+        </div>
+      </div>
+      <div id="pause-screen" class="overlay">
+        <div>
+          <p class="eyebrow">Paused</p>
+          <h1>Pause</h1>
+          <p>レースを一時停止中です。</p>
+          <button id="resume-button" class="main-button" type="button">Resume</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="touch-controls" aria-label="Touch controls">
+      <div class="control-group tilt-pad">
+        <button data-action="leanBack" type="button">Back</button>
+        <button data-action="leanForward" type="button">Front</button>
+      </div>
+      <div class="control-group drive-pad">
+        <button data-action="jump" class="jump" type="button">Jump</button>
+        <button data-action="accelerate" class="go" type="button">Go</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="./courseData.js"></script>
+  <script src="./game.js"></script>
+</body>
+</html>
