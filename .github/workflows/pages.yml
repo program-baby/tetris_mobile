@@ -27,10 +27,27 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp arcade/index.html _site/index.html
-          cp arcade/tetris_mobile.html _site/tetris_mobile.html
-          cp arcade/tetris.html _site/tetris.html
-          cp arcade/bg.png _site/bg.png
+          rsync -av \
+            --exclude='firebase.json' \
+            --exclude='.*' \
+            --exclude='node_modules/' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            --exclude='database.rules.json' \
+            --exclude='playwright.config.js' \
+            --exclude='database-debug.log' \
+            --exclude='firebase-debug.log' \
+            --exclude='logs/' \
+            --exclude='test-results/' \
+            --exclude='playwright-report/' \
+            --exclude='START_*.bat' \
+            --exclude='*.log' \
+            --exclude='docs/' \
+            --exclude='scripts/' \
+            --exclude='local-server*.log' \
+            --exclude='local-emulator*.log' \
+            --exclude='e2e/' \
+            arcade/ _site/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
